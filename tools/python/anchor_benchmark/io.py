@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 
-NOTEBOOK_VERSION = "colab-bench-r1"
+NOTEBOOK_VERSION = "colab-bench-r1.1"
 BENCHMARK_BOUNDARY = "Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores."
 
 
@@ -118,4 +118,3 @@ def _fnv1a32(text: str) -> int:
         digest ^= ord(char)
         digest = (digest * 0x01000193) & 0xFFFFFFFF
     return digest
-

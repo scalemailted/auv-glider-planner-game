@@ -42,14 +42,19 @@ export function validateAcceptanceReport(report, options = {}) {
   require(report.status === 'PASS', 'status must be PASS after real Colab/Python execution');
   require(typeof report.notebookDigest === 'string' && report.notebookDigest.length > 0 && report.notebookDigest !== 'UNKNOWN', 'notebookDigest must be recorded');
   require(report.validationBaselineDigest === 'fnv1a32:dd016175', 'validation baseline digest must match SCI-VALID-R2A');
+  require(typeof report.benchmarkBundleDigest === 'string' && /^fnv1a32:/.test(report.benchmarkBundleDigest), 'benchmarkBundleDigest must be a stable digest');
+  require(typeof report.publicProjectionDigest === 'string' && /^fnv1a32:/.test(report.publicProjectionDigest), 'publicProjectionDigest must be a stable digest');
+  require(typeof report.executionPackageDigest === 'string' && /^fnv1a32:/.test(report.executionPackageDigest), 'executionPackageDigest must be a stable digest');
+  require(typeof report.colabExecutionReportDigest === 'string' && /^fnv1a32:/.test(report.colabExecutionReportDigest), 'colabExecutionReportDigest must be a stable digest');
   require(report.fairnessClass === 'FORECAST_ONLY', 'default acceptance report must be FORECAST_ONLY');
   require(!/ORACLE_HIDDEN_TRUTH/i.test(JSON.stringify(report.fairnessClass ?? '')), 'oracle hidden truth must not be the default acceptance fairness');
 
   const dataParity = report.dataParity ?? {};
-  for (const key of ['schema', 'axes', 'masks', 'currents', 'scalars', 'missionGeometry']) {
+  for (const key of ['schema', 'coordinates', 'axes', 'masks', 'currents', 'currentDepths', 'currentTimes', 'scalars', 'scalarDepths', 'scalarTimes', 'missionGeometry', 'fieldDigests']) {
     require(dataParity[key] === 'PASS', `dataParity.${key} must be PASS`);
   }
   require(['PASS', 'WARN'].includes(dataParity.bathymetry), 'dataParity.bathymetry must be PASS or WARN for compact fixtures');
+  if (dataParity.publicProjectionDigest) require(dataParity.publicProjectionDigest === report.publicProjectionDigest, 'dataParity publicProjectionDigest must match report publicProjectionDigest');
   require(Number.isInteger(dataParity.probeCount) && dataParity.probeCount > 0, 'dataParity.probeCount must be positive');
   require(dataParity.failedProbeCount === 0, 'dataParity.failedProbeCount must be zero');
 
@@ -82,9 +87,15 @@ export function validateAcceptanceReport(report, options = {}) {
   require(typeof official.scoreProfileId === 'string' && official.scoreProfileId.length > 0, 'official scoreProfileId must be present');
   require(typeof official.scoreProfileVersion === 'string' && official.scoreProfileVersion.length > 0, 'official scoreProfileVersion must be present');
   require(typeof official.scoreResultDigest === 'string' && official.scoreResultDigest.length > 0, 'official scoreResultDigest must be present');
+  require(typeof official.simulationResultDigest === 'string' && /^fnv1a32:/.test(official.simulationResultDigest), 'official simulationResultDigest must be present');
   require(Number.isFinite(Number(official.officialScore)), 'official score must be finite');
+  require(Math.abs(Number(official.officialScore) - 23.593559) <= 1e-6, 'checked-in static A* official score must remain 23.593559');
+  if (official.totalEvaluationTimeSeconds !== null && official.totalEvaluationTimeSeconds !== undefined) {
+    require(Number.isFinite(Number(official.totalEvaluationTimeSeconds)), 'official totalEvaluationTimeSeconds must be finite when present');
+  }
   if (report.environmentDigest) require(/^fnv1a32:/.test(report.environmentDigest), 'environmentDigest must be a stable digest');
   if (report.missionDigest) require(/^fnv1a32:/.test(report.missionDigest), 'missionDigest must be a stable digest');
+  if (report.solverPacketDigest) require(/^fnv1a32:/.test(report.solverPacketDigest), 'solverPacketDigest must be a stable digest');
 
   const artifacts = report.outputArtifacts ?? [];
   require(Array.isArray(artifacts) && artifacts.length > 0, 'outputArtifacts must list generated notebook artifacts');

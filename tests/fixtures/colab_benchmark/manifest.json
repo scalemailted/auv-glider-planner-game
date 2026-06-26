@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "type": "anchor.colab-benchmark.fixture-manifest",
-  "phase": "COLAB-BENCH-R1",
+  "phase": "COLAB-BENCH-R1.1",
   "validationBaselineDigest": "fnv1a32:dd016175",
   "defaultFairnessClass": "FORECAST_ONLY",
   "defaultVisibilityClass": "FORECAST_ONLY",
@@ -42,5 +42,39 @@
       "solverPacketPath": "tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json"
     }
   ],
-  "boundary": "Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores."
+  "boundary": "Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.",
+  "benchmarkBundles": [
+    {
+      "fixtureId": "static_additive_routing",
+      "path": "tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json",
+      "payloadDigest": "fnv1a32:2ab9f675",
+      "publicProjectionDigest": "fnv1a32:220ad0dc",
+      "solverPacketDigest": "fnv1a32:0208e708",
+      "hiddenTruthIncluded": false
+    },
+    {
+      "fixtureId": "small_science_orienteering",
+      "path": "tests/fixtures/colab_benchmark/bundles/small_science_orienteering.classical-planner-benchmark-bundle.json",
+      "payloadDigest": "fnv1a32:9475750b",
+      "publicProjectionDigest": "fnv1a32:e7c25a76",
+      "solverPacketDigest": "fnv1a32:531dc3e8",
+      "hiddenTruthIncluded": false
+    },
+    {
+      "fixtureId": "time_varying_current",
+      "path": "tests/fixtures/colab_benchmark/bundles/time_varying_current.classical-planner-benchmark-bundle.json",
+      "payloadDigest": "fnv1a32:3d0c1000",
+      "publicProjectionDigest": "fnv1a32:2dd0cc62",
+      "solverPacketDigest": "fnv1a32:be606e4a",
+      "hiddenTruthIncluded": false
+    },
+    {
+      "fixtureId": "regional_challenge",
+      "path": "tests/fixtures/colab_benchmark/bundles/regional_challenge.classical-planner-benchmark-bundle.json",
+      "payloadDigest": "fnv1a32:a1c0fe23",
+      "publicProjectionDigest": "fnv1a32:7f1c39bd",
+      "solverPacketDigest": "fnv1a32:93b9a7c9",
+      "hiddenTruthIncluded": false
+    }
+  ]
 }

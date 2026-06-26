@@ -74,6 +74,7 @@ const entries = [
   entry('environmentManifest', 'anchor.environment.manifest', 'environment-manifest-env-pkg-r1', null, K.ALPHA_CRITICAL, V.PUBLIC, F.PUBLIC_FAIR, 'anchor.environment-manifest.json'),
   entry('environmentArtifactMetadata', 'anchor.environment-artifact-metadata', 'environment-artifact-env-pkg-r1', null, K.ALPHA_CRITICAL, V.PUBLIC, F.PUBLIC_FAIR, 'anchor.environment-artifact-metadata.json'),
   entry('solverPacket', 'anchor.solverPacket', '2.0', 'schemas/solver-packet.schema.json', K.ALPHA_CRITICAL, V.FORECAST_ONLY, F.FORECAST_ONLY, 'anchor.solver-packet.json'),
+  entry('classicalPlannerBenchmarkBundle', 'anchor.classical-planner-benchmark-bundle', '1.0.0', 'schemas/classical-planner-benchmark-bundle.schema.json', K.ALPHA_CRITICAL, V.PUBLIC, F.FORECAST_ONLY, 'anchor.classical-planner-benchmark-bundle.json'),
   entry('externalSolverPlan', 'anchor.plan', '2.0', 'schemas/plan.schema.json', K.ALPHA_CRITICAL, V.PUBLIC, F.FORECAST_ONLY, 'anchor.external-plan.json', ['1.0']),
   entry('simulationSnapshot', 'anchor.simulation.snapshot', 'mission-simulator-snapshot-r2', null, K.ALPHA_CRITICAL, V.PUBLIC_OBSERVATION_ONLY, F.PUBLIC_FAIR, 'anchor.simulation-snapshot.json'),
   entry('result', 'anchor.result', '3.0', 'schemas/result.schema.json', K.ALPHA_CRITICAL, V.PUBLIC_OBSERVATION_ONLY, F.PUBLIC_FAIR, 'anchor.result.json'),

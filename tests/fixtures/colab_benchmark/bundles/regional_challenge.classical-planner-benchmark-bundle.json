@@ -1,0 +1,1229 @@
+{
+  "artifactType": "anchor.classical-planner-benchmark-bundle",
+  "artifactVersion": "1.0.0",
+  "bathymetry": {
+    "arrayLayout": "north->east bottomDepthMeters",
+    "bottomDepthMeters": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "depthConvention": "positive-down meters",
+    "landMask": [
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    ],
+    "note": "Compact fixture did not expose calibrated bathymetry; this public compatibility projection supplies a deterministic wet bottom deeper than all declared benchmark depth layers.",
+    "shape": [
+      6,
+      8
+    ],
+    "sourceDigest": "fnv1a32:a06eb9b5",
+    "sourceResolution": {
+      "eastCount": 8,
+      "northCount": 6
+    },
+    "sourceRole": "publicCompatibilityProjection",
+    "wetMask": [
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    ]
+  },
+  "benchmarkBundleDigest": "fnv1a32:a1c0fe23",
+  "bundleId": "regional_challenge-public-4d",
+  "candidateNodes": [],
+  "containsHiddenTruth": false,
+  "coordinateFrame": {
+    "description": "Local physical-meter grid derived from solver-packet grid cell size; not Three.js world coordinates.",
+    "id": "localLevelGridMeters",
+    "origin": {
+      "depthMeters": 0,
+      "eastMeters": 0,
+      "northMeters": 0,
+      "timeSeconds": 0
+    }
+  },
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "currents": {
+    "arrayLayout": "time->depth->north->east->[uEastMetersPerSecond,vNorthMetersPerSecond,wDownMetersPerSecond]",
+    "axes": [
+      "timeAxisSeconds",
+      "depthAxisMeters",
+      "northAxisMeters",
+      "eastAxisMeters"
+    ],
+    "depthStructure": "depthInvariantFromTopDownForecastFrame",
+    "fieldDigest": "fnv1a32:a20efff0",
+    "fieldId": "forecast-current",
+    "label": "Forecast Current",
+    "maskBehavior": "land and below-bottom current components set to zero in public projection",
+    "role": "forecastCurrent",
+    "shape": [
+      1,
+      1,
+      6,
+      8
+    ],
+    "sourceDigest": "fnv1a32:57bc5439",
+    "sourceRole": "publicForecast",
+    "temporalBoundaryBehavior": "clamp",
+    "units": {
+      "u": "m/s eastward",
+      "v": "m/s northward",
+      "w": "m/s downward"
+    },
+    "values": [
+      [
+        [
+          [
+            [
+              0.05,
+              0.02,
+              0
+            ],
+            [
+              0.05,
+              0.02,
+              0
+            ],
+            [
+              0.05,
+              0.02,
+              0
+            ],
+            [
+              0.05,
+              0.02,
+              0
+            ],
+            [
+              0.05,
+              0.02,
+              0
+            ],
+            [
+              0.05,
+              0.02,
+              0
+            ],
+            [
+              0.05,
+              0.02,
+              0
+            ],
+            [
+              0.05,
+              0.02,
+              0
+            ]
+          ],
+          [
+            [
+              0.04,
+              0.02,
+              0
+            ],
+            [
+              0.04,
+              0.02,
+              0
+            ],
+            [
+              0.04,
+              0.02,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0.04,
+              0.02,
+              0
+            ],
+            [
+              0.04,
+              0.02,
+              0
+            ],
+            [
+              0.04,
+              0.02,
+              0
+            ],
+            [
+              0.04,
+              0.02,
+              0
+            ]
+          ],
+          [
+            [
+              0.03,
+              0.01,
+              0
+            ],
+            [
+              0.03,
+              0.01,
+              0
+            ],
+            [
+              0.03,
+              0.01,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0.03,
+              0.01,
+              0
+            ],
+            [
+              0.03,
+              0.01,
+              0
+            ],
+            [
+              0.03,
+              0.01,
+              0
+            ],
+            [
+              0.03,
+              0.01,
+              0
+            ]
+          ],
+          [
+            [
+              0.02,
+              0,
+              0
+            ],
+            [
+              0.02,
+              0,
+              0
+            ],
+            [
+              0.02,
+              0,
+              0
+            ],
+            [
+              0.02,
+              0,
+              0
+            ],
+            [
+              0.02,
+              0,
+              0
+            ],
+            [
+              0.02,
+              0,
+              0
+            ],
+            [
+              0.02,
+              0,
+              0
+            ],
+            [
+              0.02,
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              0.01,
+              -0.02,
+              0
+            ],
+            [
+              0.01,
+              -0.02,
+              0
+            ],
+            [
+              0.01,
+              -0.02,
+              0
+            ],
+            [
+              0.01,
+              -0.02,
+              0
+            ],
+            [
+              0.01,
+              -0.02,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0.01,
+              -0.02,
+              0
+            ],
+            [
+              0.01,
+              -0.02,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              -0.03,
+              0
+            ],
+            [
+              0,
+              -0.03,
+              0
+            ],
+            [
+              0,
+              -0.03,
+              0
+            ],
+            [
+              0,
+              -0.03,
+              0
+            ],
+            [
+              0,
+              -0.03,
+              0
+            ],
+            [
+              0,
+              -0.03,
+              0
+            ],
+            [
+              0,
+              -0.03,
+              0
+            ],
+            [
+              0,
+              -0.03,
+              0
+            ]
+          ]
+        ]
+      ]
+    ]
+  },
+  "depthAxisMeters": [
+    0
+  ],
+  "depthConvention": "positive-down meters",
+  "eastAxisMeters": [
+    0,
+    250,
+    500,
+    750,
+    1000,
+    1250,
+    1500,
+    1750
+  ],
+  "environmentDigest": "fnv1a32:c01ab004",
+  "fairnessClass": "FORECAST_ONLY",
+  "fieldRoles": {
+    "bathymetry": "public 2.5D bottom-surface benchmark transport field",
+    "currents": "public forecast current vectors",
+    "landMask": "public land mask",
+    "missionGeometry": "public mission geometry and planner candidates",
+    "scalarFields": "public forecast scalar/science fields",
+    "wetMask": "public navigability mask"
+  },
+  "horizontalUnits": "meters",
+  "landMask": [
+    [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ],
+    [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ],
+    [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ],
+    [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  ],
+  "missionDigest": "fnv1a32:c01ab104",
+  "missionGeometry": {
+    "deploymentZones": [
+      {
+        "agentId": "glider_01",
+        "allowedCells": [],
+        "mode": "fixed",
+        "selectedStart": {
+          "eastMeters": 0,
+          "northMeters": 0
+        }
+      }
+    ],
+    "hazards": {
+      "arrayLayout": "north->east",
+      "axes": [
+        "northAxisMeters",
+        "eastAxisMeters"
+      ],
+      "fieldDigest": "fnv1a32:668d924b",
+      "fieldId": "public-hazards",
+      "role": "publicHazard",
+      "shape": [
+        6,
+        8
+      ],
+      "units": "dimensionless risk",
+      "values": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0.4,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "objectives": {
+      "sampleWeight": 100
+    },
+    "operationalDomain": {
+      "eastMaxMeters": 1750,
+      "eastMinMeters": 0,
+      "northMaxMeters": 1250,
+      "northMinMeters": 0
+    },
+    "samplingTargets": [],
+    "starts": [
+      {
+        "agentId": "glider_01",
+        "eastMeters": 0,
+        "northMeters": 0,
+        "source": "mission.agents.start"
+      }
+    ]
+  },
+  "northAxisMeters": [
+    0,
+    250,
+    500,
+    750,
+    1000,
+    1250
+  ],
+  "packageVersions": {
+    "benchmarkBundle": "colab-bench-r1.1",
+    "codecs": "anchor-codecs-codec-r1",
+    "validation": "scientific-validation-baseline-sci-valid-r2a"
+  },
+  "parityProbes": [
+    {
+      "depthMeters": 0,
+      "eastMeters": 0,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.053851648071,
+          "uEastMetersPerSecond": 0.05,
+          "vNorthMetersPerSecond": 0.02,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0
+        },
+        "wet": true
+      },
+      "northMeters": 0,
+      "probeId": "grid-surface-first-time",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 875,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.01767766953,
+          "uEastMetersPerSecond": 0.0175,
+          "vNorthMetersPerSecond": 0.0025,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.425
+        },
+        "wet": true
+      },
+      "northMeters": 625,
+      "probeId": "horizontal-interpolation-surface",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 1500,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.022360679775,
+          "uEastMetersPerSecond": 0.01,
+          "vNorthMetersPerSecond": -0.02,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.8
+        },
+        "wet": true
+      },
+      "northMeters": 1000,
+      "probeId": "depth-interpolation",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 1500,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.022360679775,
+          "uEastMetersPerSecond": 0.01,
+          "vNorthMetersPerSecond": -0.02,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.8
+        },
+        "wet": true
+      },
+      "northMeters": 1000,
+      "probeId": "time-interpolation",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 875,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.01767766953,
+          "uEastMetersPerSecond": 0.0175,
+          "vNorthMetersPerSecond": 0.0025,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.425
+        },
+        "wet": true
+      },
+      "northMeters": 625,
+      "probeId": "combined-xyzt-interpolation",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 1500,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.022360679775,
+          "uEastMetersPerSecond": 0.01,
+          "vNorthMetersPerSecond": -0.02,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.8
+        },
+        "wet": true
+      },
+      "northMeters": 1000,
+      "probeId": "surface-layer",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 1500,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.022360679775,
+          "uEastMetersPerSecond": 0.01,
+          "vNorthMetersPerSecond": -0.02,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.8
+        },
+        "wet": true
+      },
+      "northMeters": 1000,
+      "probeId": "intermediate-layer",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 1500,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.022360679775,
+          "uEastMetersPerSecond": 0.01,
+          "vNorthMetersPerSecond": -0.02,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.8
+        },
+        "wet": true
+      },
+      "northMeters": 1000,
+      "probeId": "deep-valid-layer",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 1500,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.022360679775,
+          "uEastMetersPerSecond": 0.01,
+          "vNorthMetersPerSecond": -0.02,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.8
+        },
+        "wet": true
+      },
+      "northMeters": 1000,
+      "probeId": "near-bottom-valid",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 1,
+      "eastMeters": 1500,
+      "expected": {
+        "belowBottom": true,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0.022360679775,
+          "uEastMetersPerSecond": 0.01,
+          "vNorthMetersPerSecond": -0.02,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": false,
+        "scalars": {
+          "science-value": 0.8
+        },
+        "wet": true
+      },
+      "northMeters": 1000,
+      "probeId": "below-bottom-rejection",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    },
+    {
+      "depthMeters": 0,
+      "eastMeters": 750,
+      "expected": {
+        "belowBottom": false,
+        "bottomDepthMeters": 0,
+        "current": {
+          "magnitudeMetersPerSecond": 0,
+          "uEastMetersPerSecond": 0,
+          "vNorthMetersPerSecond": 0,
+          "wDownMetersPerSecond": 0
+        },
+        "hazardValue": 0,
+        "land": true,
+        "scalars": {
+          "science-value": 0
+        },
+        "wet": false
+      },
+      "northMeters": 250,
+      "probeId": "land-rejection",
+      "timeSeconds": 0,
+      "tolerances": {
+        "bottomDepthMeters": 0.000001,
+        "currentMetersPerSecond": 1e-9,
+        "hazardValue": 1e-9,
+        "scalarValue": 1e-9
+      }
+    }
+  ],
+  "payloadDigest": "fnv1a32:a1c0fe23",
+  "producer": "ClassicalPlannerBenchmarkBundleExporter",
+  "publicProjectionDigest": "fnv1a32:7f1c39bd",
+  "scalarFields": [
+    {
+      "arrayLayout": "time->depth->north->east",
+      "axes": [
+        "timeAxisSeconds",
+        "depthAxisMeters",
+        "northAxisMeters",
+        "eastAxisMeters"
+      ],
+      "depthClassification": "depthInvariantFromTopDownForecastFrame",
+      "fieldDigest": "fnv1a32:51d5b3e6",
+      "fieldId": "science-value",
+      "integratedVersusDepthSpecific": "depth-invariant public forecast projection; not a substitute for a depth-specific hidden truth field",
+      "label": "Forecast Science Value / ROI",
+      "maskBehavior": "land and below-bottom scalar values set to zero in public projection",
+      "role": "forecastScienceValue",
+      "shape": [
+        1,
+        1,
+        6,
+        8
+      ],
+      "sourceDigest": "fnv1a32:31bd3510",
+      "sourceRole": "publicForecast",
+      "temporalBoundaryBehavior": "clamp",
+      "units": "dimensionless expected mission value",
+      "values": [
+        [
+          [
+            [
+              0,
+              0.1,
+              0.2,
+              0.3,
+              0.2,
+              0.1,
+              0.1,
+              0
+            ],
+            [
+              0,
+              0.2,
+              0.4,
+              0,
+              0.3,
+              0.5,
+              0.2,
+              0
+            ],
+            [
+              0,
+              0.3,
+              0.5,
+              0,
+              0.6,
+              0.2,
+              0.4,
+              0
+            ],
+            [
+              0,
+              0.2,
+              0.6,
+              0.4,
+              0.7,
+              0.5,
+              0.6,
+              0
+            ],
+            [
+              0,
+              0.1,
+              0.3,
+              0.5,
+              0.6,
+              0,
+              0.8,
+              0.2
+            ],
+            [
+              0,
+              0,
+              0.2,
+              0.3,
+              0.4,
+              0.5,
+              0.7,
+              0.1
+            ]
+          ]
+        ]
+      ]
+    }
+  ],
+  "schemaVersion": "1.0.0",
+  "scoreProfileDigest": "fnv1a32:1e7b3fe0",
+  "scoreProfileId": "balancedMission",
+  "scoreProfileVersion": "score-pkg-r1",
+  "solverPacketDigest": "fnv1a32:93b9a7c9",
+  "sourceMetadata": {
+    "alphaPositioning": "ANCHOR Alpha is a deterministic, scientifically constrained research-and-education sandbox for investigating adaptive underwater-glider mission planning. It supports reproducible comparison of human, classical, and learning-based planners. It is not an operational ocean forecast or certified vehicle-navigation system.",
+    "calibrated": false,
+    "notes": [
+      "Compact top-down public forecast fields are expanded across declared public depth axes only when the source is explicitly depth-invariant.",
+      "The bundle is for exported-data inspection and planner input; it is not the authoritative simulator or scorer."
+    ],
+    "sourceContainsHiddenTruth": false,
+    "sourceDepthCount": 1,
+    "sourceFixtureId": "regional_challenge",
+    "sourceGridShape": [
+      6,
+      8
+    ],
+    "sourcePacketId": "COLAB-BENCH-R1-REGIONAL-CHALLENGE",
+    "sourceProjection": "public forecast-only planning projection",
+    "sourceTimeCount": 1,
+    "synthetic": true,
+    "tagline": "Plan. Simulate. Compare. Learn."
+  },
+  "timeAxisSeconds": [
+    0
+  ],
+  "timeConvention": "seconds from mission start",
+  "type": "anchor.classical-planner-benchmark-bundle",
+  "validationBaselineDigest": "fnv1a32:dd016175",
+  "validationBaselineId": "scientific-validation-baseline-sci-valid-r2a",
+  "visibilityClass": "PUBLIC",
+  "wetMask": [
+    [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    [
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ],
+    [
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ],
+    [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    [
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true
+    ],
+    [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  ]
+}

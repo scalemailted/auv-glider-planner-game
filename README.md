@@ -1064,6 +1064,11 @@ See `docs/artifact_codec_and_schema_contract.md` and `packages/codecs/MODEL_CARD
 
 ## COLAB-BENCH-R1.1 Colab Benchmark Gate
 
-The classical-planner benchmark notebook now includes exported-data parity probes and writes `anchor_benchmark_output/colab_acceptance_report.json` when executed. The report can be checked with `node tools/js/validate_colab_benchmark_acceptance.mjs anchor_benchmark_output/colab_acceptance_report.json`.
+The classical-planner benchmark notebook now supports the public `anchor.classical-planner-benchmark-bundle`, reconstructs exported depth/time public fields in Python, and writes `anchor_benchmark_output/colab_execution_report.json` plus `anchor_benchmark_output/colab_execution_package.json`. Local finalization remains authoritative:
 
-Colab execution is not considered verified until a real Python/Colab run produces a passing acceptance report. Static audits, Pages delivery, and Node interoperability are preflight checks only.
+```bash
+node tools/js/finalize_colab_benchmark_acceptance.mjs anchor_benchmark_output/colab_execution_package.json
+npm.cmd run validate:colab-acceptance -- anchor_benchmark_output/colab_acceptance_report.json
+```
+
+Colab execution is not considered verified until a real Python/Colab run produces a package that passes local finalization and acceptance validation. Static audits, Pages delivery, and Node interoperability are preflight checks only. The correct current gate state without returned Colab artifacts is `BLOCKED_WAITING_FOR_COLAB_EXECUTION`.

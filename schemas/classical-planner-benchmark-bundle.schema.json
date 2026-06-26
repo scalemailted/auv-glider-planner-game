@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/classical-planner-benchmark-bundle.schema.json",
+  "title": "ANCHOR Classical Planner Benchmark Bundle",
+  "describes": "anchor.classical-planner-benchmark-bundle",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "type",
+    "environmentDigest",
+    "publicProjectionDigest",
+    "missionDigest",
+    "solverPacketDigest",
+    "coordinateFrame",
+    "eastAxisMeters",
+    "northAxisMeters",
+    "depthAxisMeters",
+    "timeAxisSeconds",
+    "bathymetry",
+    "wetMask",
+    "landMask",
+    "currents",
+    "scalarFields",
+    "missionGeometry",
+    "candidateNodes",
+    "parityProbes",
+    "visibilityClass",
+    "fairnessClass",
+    "containsHiddenTruth",
+    "payloadDigest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "artifactVersion": { "const": "1.0.0" },
+    "type": { "const": "anchor.classical-planner-benchmark-bundle" },
+    "artifactType": { "const": "anchor.classical-planner-benchmark-bundle" },
+    "visibilityClass": { "const": "PUBLIC" },
+    "fairnessClass": { "const": "FORECAST_ONLY" },
+    "containsHiddenTruth": { "const": false },
+    "horizontalUnits": { "const": "meters" },
+    "depthConvention": { "const": "positive-down meters" },
+    "timeConvention": { "const": "seconds from mission start" },
+    "eastAxisMeters": { "type": "array", "items": { "type": "number" }, "minItems": 1 },
+    "northAxisMeters": { "type": "array", "items": { "type": "number" }, "minItems": 1 },
+    "depthAxisMeters": { "type": "array", "items": { "type": "number" }, "minItems": 1 },
+    "timeAxisSeconds": { "type": "array", "items": { "type": "number" }, "minItems": 1 },
+    "bathymetry": {
+      "type": "object",
+      "required": ["shape", "arrayLayout", "bottomDepthMeters", "wetMask", "landMask", "sourceDigest"],
+      "properties": {
+        "shape": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+        "arrayLayout": { "type": "string" },
+        "bottomDepthMeters": { "type": "array" },
+        "wetMask": { "type": "array" },
+        "landMask": { "type": "array" },
+        "sourceRole": { "type": "string" },
+        "sourceDigest": { "type": "string" }
+      }
+    },
+    "currents": {
+      "type": "object",
+      "required": ["fieldId", "role", "units", "shape", "arrayLayout", "values", "fieldDigest"],
+      "properties": {
+        "fieldId": { "type": "string" },
+        "role": { "type": "string" },
+        "shape": { "type": "array", "items": { "type": "integer" }, "minItems": 4, "maxItems": 4 },
+        "arrayLayout": { "type": "string" },
+        "values": { "type": "array" },
+        "depthStructure": { "type": "string" },
+        "temporalBoundaryBehavior": { "type": "string" },
+        "fieldDigest": { "type": "string" }
+      }
+    },
+    "scalarFields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["fieldId", "role", "units", "shape", "arrayLayout", "values", "fieldDigest"],
+        "properties": {
+          "fieldId": { "type": "string" },
+          "role": { "type": "string" },
+          "shape": { "type": "array", "items": { "type": "integer" }, "minItems": 4, "maxItems": 4 },
+          "arrayLayout": { "type": "string" },
+          "values": { "type": "array" },
+          "integratedVersusDepthSpecific": { "type": "string" },
+          "fieldDigest": { "type": "string" }
+        }
+      }
+    },
+    "missionGeometry": { "type": "object" },
+    "candidateNodes": { "type": "array" },
+    "parityProbes": { "type": "array", "minItems": 1 },
+    "payloadDigest": { "type": "string" }
+  },
+  "additionalProperties": true,
+  "notes": "This public bundle is a forecast-only benchmark transport artifact. It exposes public planner-visible data for Python/Colab inspection and planning. It must not expose hidden truth or claim calibrated ocean forecast validity."
+}

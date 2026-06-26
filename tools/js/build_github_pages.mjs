@@ -68,11 +68,26 @@ const publicDocs = [
   'docs/examples/headless_replay_multi_agent.example.json',
   'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb',
   'tools/python/notebooks/anchor_external_solver_template.ipynb',
+  'tools/python/anchor_benchmark/__init__.py',
+  'tools/python/anchor_benchmark/benchmark.py',
+  'tools/python/anchor_benchmark/bundle.py',
+  'tools/python/anchor_benchmark/exports.py',
+  'tools/python/anchor_benchmark/graph.py',
+  'tools/python/anchor_benchmark/io.py',
+  'tools/python/anchor_benchmark/model.py',
+  'tools/python/anchor_benchmark/oracles.py',
+  'tools/python/anchor_benchmark/parity.py',
+  'tools/python/anchor_benchmark/planners.py',
+  'tools/python/anchor_benchmark/visualization.py',
   'tests/fixtures/colab_benchmark/manifest.json',
   'tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json',
   'tests/fixtures/colab_benchmark/small_science_orienteering_solver_packet.json',
   'tests/fixtures/colab_benchmark/time_varying_current_solver_packet.json',
   'tests/fixtures/colab_benchmark/regional_challenge_solver_packet.json',
+  'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json',
+  'tests/fixtures/colab_benchmark/bundles/small_science_orienteering.classical-planner-benchmark-bundle.json',
+  'tests/fixtures/colab_benchmark/bundles/time_varying_current.classical-planner-benchmark-bundle.json',
+  'tests/fixtures/colab_benchmark/bundles/regional_challenge.classical-planner-benchmark-bundle.json',
   'tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json'
 ];
 
@@ -88,7 +103,7 @@ for (const entry of copyRoots) {
 }
 await copyPublicDocs();
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
-for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'tests/fixtures/colab_benchmark/manifest.json']) {
+for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json', 'schemas/classical-planner-benchmark-bundle.schema.json', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'tools/python/anchor_benchmark/bundle.py', 'tests/fixtures/colab_benchmark/manifest.json', 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
 }
 const siteIndex = await readFile(path.join(out, 'index.html'), 'utf8');

@@ -13,6 +13,8 @@ const starterNotebookPath = 'tools/python/notebooks/anchor_external_solver_templ
 const fixtureManifestPath = 'tests/fixtures/colab_benchmark/manifest.json';
 const evaluatorPath = 'tools/js/evaluate_colab_benchmark_plan.mjs';
 const acceptanceValidatorPath = 'tools/js/validate_colab_benchmark_acceptance.mjs';
+const bundleExporterPath = 'tools/js/export_colab_benchmark_bundle.mjs';
+const finalizerPath = 'tools/js/finalize_colab_benchmark_acceptance.mjs';
 const pagesBuilderPath = 'tools/js/build_github_pages.mjs';
 
 const requiredNotebookHeadings = [
@@ -39,7 +41,7 @@ const requiredNotebookText = [
   'ANCHOR Alpha is a deterministic, scientifically constrained research-and-education sandbox for investigating adaptive underwater-glider mission planning. It supports reproducible comparison of human, classical, and learning-based planners. It is not an operational ocean forecast or certified vehicle-navigation system.',
   'Plan. Simulate. Compare. Learn.',
   'Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.',
-  'Visual agreement is an inspection aid. Canonical digest and numerical sample agreement are the authoritative parity evidence.',
+  'Visual agreement is an inspection aid. Canonical digests and numerical sample agreement are the authoritative parity evidence.',
   'An exact result is exact only for the stated candidate set, state representation, objective, and discretization.',
   'Dijkstra',
   'A*',
@@ -56,7 +58,9 @@ const requiredNotebookText = [
 
 const requiredConfigNames = [
   'DATA_ACQUISITION_MODE',
+  'BENCHMARK_BUNDLE_PATH',
   'SOLVER_PACKET_PATH',
+  'STATIC_BUNDLE_PATH',
   'STATIC_DOWNLOAD_BASE_URL',
   'BENCHMARK_FIXTURE_ID',
   'OUTPUT_DIR',
@@ -67,7 +71,8 @@ const requiredConfigNames = [
   'EXACT_ORACLE_SIZE_LIMIT',
   'REPEAT_COUNT',
   'TIMEOUT_PER_PLANNER_SECONDS',
-  'PROFILE_POLICY'
+  'PROFILE_POLICY',
+  'ACCEPTANCE_MODE'
 ];
 
 const assert = {
@@ -88,7 +93,12 @@ try {
   assertExists(fixtureManifestPath);
   assertExists(evaluatorPath);
   assertExists(acceptanceValidatorPath);
+  assertExists(bundleExporterPath);
+  assertExists(finalizerPath);
+  assertExists('src/core/io/ClassicalPlannerBenchmarkBundleExporter.js');
+  assertExists('schemas/classical-planner-benchmark-bundle.schema.json');
   assertExists('tools/python/anchor_benchmark/__init__.py');
+  assertExists('tools/python/anchor_benchmark/bundle.py');
   assertExists('tools/python/anchor_benchmark/parity.py');
   assertExists('tools/python/anchor_benchmark/planners.py');
   assertExists('tools/python/anchor_benchmark/oracles.py');
@@ -111,6 +121,7 @@ try {
   assert.equal(manifest.defaultFairnessClass, 'FORECAST_ONLY', 'fixture manifest default fairness');
   assert.equal(manifest.defaultVisibilityClass, 'FORECAST_ONLY', 'fixture manifest default visibility');
   assert.ok(Array.isArray(manifest.fixtures) && manifest.fixtures.length >= 4, 'fixture manifest must list four fixtures');
+  assert.ok(Array.isArray(manifest.benchmarkBundles) && manifest.benchmarkBundles.length >= 4, 'fixture manifest must list public benchmark bundles');
   for (const fixture of manifest.fixtures) {
     assertExists(fixture.path);
     const packet = readJson(fixture.path);
@@ -131,6 +142,22 @@ try {
     const decoded = decodeArtifact(packet, { kind: 'solverPacket' });
     assert.notEqual(decoded.status, DecodeStatus.REJECTED, `${fixture.fixtureId} codec decode`);
   }
+  for (const bundleEntry of manifest.benchmarkBundles ?? []) {
+    assertExists(bundleEntry.path);
+    const publicBundle = readJson(bundleEntry.path);
+    assert.equal(publicBundle.type, 'anchor.classical-planner-benchmark-bundle', `${bundleEntry.fixtureId} bundle type`);
+    assert.equal(publicBundle.visibilityClass, 'PUBLIC', `${bundleEntry.fixtureId} bundle visibility`);
+    assert.equal(publicBundle.fairnessClass, 'FORECAST_ONLY', `${bundleEntry.fixtureId} bundle fairness`);
+    assert.equal(publicBundle.containsHiddenTruth, false, `${bundleEntry.fixtureId} bundle excludes hidden truth`);
+    assert.ok(Array.isArray(publicBundle.depthAxisMeters) && publicBundle.depthAxisMeters.length >= 1, `${bundleEntry.fixtureId} bundle depth axis`);
+    assert.ok(Array.isArray(publicBundle.timeAxisSeconds) && publicBundle.timeAxisSeconds.length >= 1, `${bundleEntry.fixtureId} bundle time axis`);
+    assert.ok(publicBundle.currents?.arrayLayout?.includes('time->depth'), `${bundleEntry.fixtureId} current layout`);
+    assert.ok((publicBundle.scalarFields ?? []).some((field) => field.arrayLayout === 'time->depth->north->east'), `${bundleEntry.fixtureId} scalar layout`);
+    assert.ok(Array.isArray(publicBundle.parityProbes) && publicBundle.parityProbes.length >= 8, `${bundleEntry.fixtureId} bundle parity probes`);
+    assert.ok(!JSON.stringify(publicBundle).includes('T_hiddenTruth'), `${bundleEntry.fixtureId} bundle must not leak T_hiddenTruth`);
+    const decoded = decodeArtifact(publicBundle, { kind: 'classicalPlannerBenchmarkBundle' });
+    assert.notEqual(decoded.status, DecodeStatus.REJECTED, `${bundleEntry.fixtureId} bundle codec decode`);
+  }
   for (const planEntry of manifest.checkedInPlans ?? []) {
     assertExists(planEntry.path);
     assertExists(planEntry.solverPacketPath);
@@ -147,6 +174,8 @@ try {
     starterNotebookPath,
     fixtureManifestPath,
     'tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json',
+    'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json',
+    'tools/python/anchor_benchmark/bundle.py',
     'docs/classical_planner_benchmark_notebook.md'
   ]) {
     assert.ok(pagesBuilder.includes(requiredPath), `Pages builder must include ${requiredPath}`);
@@ -181,12 +210,19 @@ try {
   assert.ok(!fs.existsSync(path.join(tempDir, 'hidden_fields.json')), 'public evaluator output must not write hidden_fields.json');
   assert.ok((bundle.missionConfig?.hiddenFields ?? []).length === 0, 'public mission config must not list hidden fields');
   assert.ok(!bundleText.includes('rawOracleTensor'), 'public bundle must not leak raw oracle tensors');
-  const syntheticAcceptanceReport = buildSyntheticAcceptanceReport({ notebook, benchmarkRecord });
-  const acceptancePath = path.join(tempDir, 'synthetic_acceptance_report.json');
-  fs.writeFileSync(acceptancePath, `${JSON.stringify(syntheticAcceptanceReport, null, 2)}\n`, 'utf8');
-  const acceptanceResult = spawnSync(process.execPath, [acceptanceValidatorPath, acceptancePath], { cwd: root, encoding: 'utf8' });
+  const publicBundle = readJson('tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json');
+  const checkedInPlan = readJson('tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json');
+  const syntheticExecutionPackage = buildSyntheticExecutionPackage({ notebook, publicBundle, checkedInPlan });
+  const packagePath = path.join(tempDir, 'synthetic_colab_execution_package.json');
+  fs.writeFileSync(packagePath, `${JSON.stringify(syntheticExecutionPackage, null, 2)}\n`, 'utf8');
+  const finalizedPath = path.join(tempDir, 'colab_acceptance_report.json');
+  const finalizerResult = spawnSync(process.execPath, [finalizerPath, packagePath, '--out', finalizedPath, '--agent-id', 'glider_01'], { cwd: root, encoding: 'utf8' });
+  if (finalizerResult.status !== 0) {
+    throw new Error(`Acceptance finalizer failed synthetic package: ${finalizerResult.stderr || finalizerResult.stdout}`);
+  }
+  const acceptanceResult = spawnSync(process.execPath, [acceptanceValidatorPath, finalizedPath], { cwd: root, encoding: 'utf8' });
   if (acceptanceResult.status !== 0) {
-    throw new Error(`Acceptance validator failed synthetic report: ${acceptanceResult.stderr || acceptanceResult.stdout}`);
+    throw new Error(`Acceptance validator failed finalized synthetic report: ${acceptanceResult.stderr || acceptanceResult.stdout}`);
   }
   fs.rmSync(tempDir, { recursive: true, force: true });
 
@@ -195,9 +231,11 @@ try {
     notebookPath,
     fixtureCount: manifest.fixtures.length,
     checkedInPlanCount: manifest.checkedInPlans?.length ?? 0,
+    benchmarkBundleCount: manifest.benchmarkBundles?.length ?? 0,
     evaluator: evaluatorPath,
     acceptanceValidator: acceptanceValidatorPath,
-    pagesPolicy: 'includes notebook, starter notebook, fixtures, schemas, validation manifest, docs',
+    acceptanceFinalizer: finalizerPath,
+    pagesPolicy: 'includes notebook, starter notebook, public benchmark bundles, Python support, fixtures, schemas, validation manifest, docs',
     boundary: 'Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.'
   }, null, 2));
 } catch (error) {
@@ -256,15 +294,99 @@ function buildSyntheticAcceptanceReport({ notebook, benchmarkRecord }) {
     warnings: ['Synthetic validator smoke; not a real Colab acceptance report.'],
     failures: [],
     boundary: 'Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.',
-    notebookVersion: 'colab-bench-r1'
+    notebookVersion: 'colab-bench-r1.1'
   };
   report.reportDigest = stableDigest(reportWithoutDigest(report));
   return report;
 }
 
-function reportWithoutDigest(report) {
+function buildSyntheticExecutionPackage({ notebook, publicBundle, checkedInPlan }) {
+  const algorithms = {
+    dijkstra: { completed: true, optimalityStatus: 'EXACT_FOR_DECLARED_GRAPH', solveTimeSeconds: 0.001, cost: 1 },
+    astar: { completed: true, optimalityStatus: 'EXACT_IF_HEURISTIC_ADMISSIBLE', solveTimeSeconds: 0.001, cost: 1 },
+    dijkstraAstarCostDelta: { value: 0, status: 'PASS' },
+    weightedAstar: { completed: true, optimalityStatus: 'HEURISTIC', solveTimeSeconds: 0.001, cost: 1 },
+    greedyValuePerCost: { completed: true, optimalityStatus: 'HEURISTIC', solveTimeSeconds: 0.001, cost: 1 },
+    beamSearch: { completed: true, optimalityStatus: 'HEURISTIC', solveTimeSeconds: 0.001, cost: 1 },
+    timeExpandedAstar: { completed: true, optimalityStatus: 'EXACT_FOR_DECLARED_TIME_EXPANDED_GRAPH_IF_HEURISTIC_ADMISSIBLE', solveTimeSeconds: 0.001, cost: 1 },
+    exactSmallInstanceOracle: { completed: true, optimalityStatus: 'EXACT_FOR_DECLARED_BOUNDED_CANDIDATE_SET', solveTimeSeconds: 0.001, cost: 1 }
+  };
+  const dataParity = {
+    schema: 'PASS',
+    coordinates: 'PASS',
+    axes: 'PASS',
+    bathymetry: 'WARN',
+    masks: 'PASS',
+    currents: 'PASS',
+    currentDepths: 'PASS',
+    currentTimes: 'PASS',
+    scalars: 'PASS',
+    scalarDepths: 'PASS',
+    scalarTimes: 'PASS',
+    missionGeometry: 'PASS',
+    fieldDigests: 'PASS',
+    publicProjectionDigest: publicBundle.publicProjectionDigest,
+    probeCount: publicBundle.parityProbes?.length ?? 0,
+    failedProbeCount: 0
+  };
+  const executionReport = {
+    reportType: 'anchor.colab-execution-report',
+    reportVersion: '1.0.0',
+    status: 'PASS',
+    notebookDigest: stableDigest(notebook),
+    repositoryCommit: 'synthetic-finalizer-smoke',
+    pythonVersion: '3.11.0',
+    libraryVersions: { numpy: 'synthetic', pandas: 'synthetic', matplotlib: 'synthetic' },
+    validationBaselineId: publicBundle.validationBaselineId,
+    validationBaselineDigest: publicBundle.validationBaselineDigest,
+    benchmarkBundleDigest: publicBundle.benchmarkBundleDigest,
+    environmentDigest: publicBundle.environmentDigest,
+    publicProjectionDigest: publicBundle.publicProjectionDigest,
+    missionDigest: publicBundle.missionDigest,
+    dataParity,
+    algorithms,
+    exportedPlanDigests: [stableDigest(checkedInPlan)],
+    officialEvaluationStatus: 'PENDING_LOCAL_ANCHOR_REFEREE',
+    warnings: ['Synthetic finalizer smoke; not a real Colab acceptance package.'],
+    failures: [],
+    boundary: 'Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.',
+    notebookVersion: 'colab-bench-r1.1'
+  };
+  executionReport.reportDigest = stableDigest(reportWithoutDigest(executionReport));
+  const executionPackage = {
+    packageType: 'anchor.colab-execution-package',
+    packageVersion: '1.0.0',
+    executionReport,
+    benchmarkBundleIdentity: {
+      benchmarkBundleDigest: publicBundle.benchmarkBundleDigest,
+      publicProjectionDigest: publicBundle.publicProjectionDigest,
+      environmentDigest: publicBundle.environmentDigest,
+      missionDigest: publicBundle.missionDigest,
+      solverPacketDigest: publicBundle.solverPacketDigest
+    },
+    plans: [{
+      plannerId: 'astar',
+      plannerClass: 'classical',
+      fairnessClass: 'FORECAST_ONLY',
+      optimalityStatus: 'EXACT_IF_HEURISTIC_ADMISSIBLE',
+      plan: checkedInPlan
+    }],
+    plannerMetrics: algorithms,
+    parityProbeResults: { status: 'PASS', probeCount: publicBundle.parityProbes?.length ?? 0, failedProbeCount: 0 },
+    reproducibilityManifest: {
+      notebookVersion: 'colab-bench-r1.1',
+      benchmarkBundleDigest: publicBundle.benchmarkBundleDigest,
+      publicProjectionDigest: publicBundle.publicProjectionDigest,
+      generatedArtifactPaths: ['colab_execution_report.json', 'colab_execution_package.json']
+    }
+  };
+  executionPackage.packageDigest = stableDigest(reportWithoutDigest(executionPackage, 'packageDigest'));
+  return executionPackage;
+}
+
+function reportWithoutDigest(report, digestKey = 'reportDigest') {
   const copy = { ...report };
-  delete copy.reportDigest;
+  delete copy[digestKey];
   return copy;
 }
 
