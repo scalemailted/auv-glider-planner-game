@@ -21,7 +21,7 @@ Package extraction phases should remain narrow extractions, not rewrites. Curren
 - `SCORE-PKG-R1`: extracts official mission scoring, `ScoreProfile` definitions, `ScoreInput`/`ScoreResult` contracts, deterministic score digests, public-safe summaries, and benchmark/result score identity into `packages/scoring` while preserving existing scoring formulas and raw simulator metrics.
 - `SCI-VALID-R2A`: establishes `packages/validation`, checked-in validation reports/manifests, codec schemas, and the public Methods & Validation route. It presents evidence and limitations without changing scientific equations or claiming operational validation.
 - `COLAB-BENCH-R1`: adds a reproducible external classical-planner benchmark notebook, compact solver-packet fixtures, benchmark records, and Node authoritative evaluation while preserving the boundary: Colab proposes; ANCHOR validates, simulates, and scores.
-- `COLAB-BENCH-R1.1`: adds a public depth/time benchmark-data bundle, Python exported-data reconstruction, a Colab execution report/package, a local finalizer, and an acceptance validator. The execution gate remains blocked until a real Python/Colab run returns an execution package that passes local ANCHOR finalization and validation.
+- `COLAB-BENCH-R1.1`: adds a public depth/time benchmark-data bundle, Python exported-data reconstruction, a Colab execution report/package, a local finalizer, and an acceptance validator. Local Python execution and authoritative ANCHOR acceptance are verified; hosted Google Colab Run-all smoke remains pending.
 
 Package extraction gates: old `src/core/...` imports must continue through forwarding modules, artifact values and scoring must remain stable, and package audits must pass with no renderer/UI/browser dependencies.
 ## 1. Product Vision
@@ -38,7 +38,7 @@ Current foundation:
 - Node/OceanBox-JS artifacts for deterministic headless simulation, solver-packet roundtrip, and classroom analysis.
 - Colab/Python wrapper and artifact-analysis workflows.
 - COLAB-BENCH-R1 classical-planner benchmark notebook for transparent external planning, visualization, timing, exact bounded small-instance checks, and official ANCHOR evaluation.
-- COLAB-BENCH-R1.1 parity probes and acceptance-report validation; real Colab execution remains the required evidence before treating the notebook as verified.
+- COLAB-BENCH-R1.1 parity probes and acceptance-report validation are locally verified with Python 3.14.6; hosted Google Colab execution remains a distribution smoke before claiming `GOOGLE_COLAB_HOSTING_SMOKE_VERIFIED`.
 
 Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical headless runtime. Colab/Python workflows analyze artifacts or call Node; they do not reimplement the simulator.
 

@@ -66,7 +66,7 @@ node tools/js/finalize_colab_benchmark_acceptance.mjs anchor_benchmark_output/co
 npm.cmd run validate:colab-acceptance -- anchor_benchmark_output/colab_acceptance_report.json
 ```
 
-The validator requires forecast-only default fairness, official ANCHOR evaluation metadata, bundle and public-projection digests, parity-probe success, stable digests, no hidden-truth leakage, and no machine-local absolute paths in the report. If Python or Colab execution is unavailable, record `BLOCKED_WAITING_FOR_COLAB_EXECUTION` rather than marking the benchmark complete.
+The validator requires forecast-only default fairness, official ANCHOR evaluation metadata, bundle and public-projection digests, parity-probe success, stable digests, no hidden-truth leakage, and no machine-local absolute paths in the report. The current compact evidence fixture is `tests/fixtures/colab_benchmark/colab_bench_r1_1_local_acceptance.json`: local Python execution is verified, while hosted Google Colab Run-all smoke remains pending.
 
 ## SCORE-PKG-R1 Scoring Package Checks
 

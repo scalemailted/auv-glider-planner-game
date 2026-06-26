@@ -28,6 +28,7 @@ test(EXACT_TITLES[0], async ({ page }) => {
       '/auv-glider-planner-game/tests/fixtures/colab_benchmark/manifest.json',
       '/auv-glider-planner-game/tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json',
       '/auv-glider-planner-game/tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json',
+      '/auv-glider-planner-game/tests/fixtures/colab_benchmark/colab_bench_r1_1_local_acceptance.json',
       '/auv-glider-planner-game/tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json',
       '/auv-glider-planner-game/tools/python/anchor_benchmark/bundle.py',
       '/auv-glider-planner-game/schemas/solver-packet.schema.json',
@@ -55,6 +56,7 @@ test(EXACT_TITLES[0], async ({ page }) => {
     const packet = results.find((item) => item.path.endsWith('static_additive_routing_solver_packet.json'));
     const bundle = results.find((item) => item.path.endsWith('static_additive_routing.classical-planner-benchmark-bundle.json'));
     const plan = results.find((item) => item.path.endsWith('static_additive_astar.anchor.plan.json'));
+    const evidence = results.find((item) => item.path.endsWith('colab_bench_r1_1_local_acceptance.json'));
     const manifest = results.find((item) => item.path.endsWith('manifest.json') && item.path.includes('colab_benchmark'));
     const pythonBundle = results.find((item) => item.path.endsWith('tools/python/anchor_benchmark/bundle.py'));
     return {
@@ -64,6 +66,7 @@ test(EXACT_TITLES[0], async ({ page }) => {
       packetForecastOnly: packet.text.includes('"fairnessClass": "FORECAST_ONLY"'),
       bundleIsPublic4d: bundle.text.includes('"type": "anchor.classical-planner-benchmark-bundle"') && bundle.text.includes('"containsHiddenTruth": false') && bundle.text.includes('time->depth->north->east'),
       planIsAnchorPlan: plan.text.includes('"type": "anchor.plan"'),
+      evidenceIsLocalVerified: evidence.text.includes('"status": "LOCAL_PYTHON_EXECUTION_VERIFIED"') && evidence.text.includes('"googleColabHostingSmoke": "PENDING"'),
       manifestListsFixtures: manifest.text.includes('static_additive_routing') && manifest.text.includes('regional_challenge'),
       pythonSupportAvailable: pythonBundle.text.includes('def load_benchmark_bundle') && pythonBundle.text.toLowerCase().includes('reference data-inspection sampler')
     };
@@ -81,6 +84,7 @@ test(EXACT_TITLES[0], async ({ page }) => {
   expect(summary.packetForecastOnly).toBe(true);
   expect(summary.bundleIsPublic4d).toBe(true);
   expect(summary.planIsAnchorPlan).toBe(true);
+  expect(summary.evidenceIsLocalVerified).toBe(true);
   expect(summary.manifestListsFixtures).toBe(true);
   expect(summary.pythonSupportAvailable).toBe(true);
 });

@@ -106,6 +106,9 @@ class AnchorBenchmarkTests(unittest.TestCase):
         record = build_benchmark_record(problem, result, plan=plan)
         manifest = build_reproducibility_manifest(problem, [record])
         self.assertEqual(plan["type"], "anchor.plan")
+        waypoints = plan["agentPlans"][0]["waypoints"]
+        self.assertGreaterEqual(len(waypoints), 4)
+        self.assertEqual([(item["x"], item["y"]) for item in waypoints[:4]], [(1, 1), (2, 2), (3, 2), (3, 3)])
         self.assertEqual(record["type"], "anchor.benchmark.run-record")
         self.assertIn("solverPacketDigest", manifest)
 

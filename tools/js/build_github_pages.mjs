@@ -88,6 +88,7 @@ const publicDocs = [
   'tests/fixtures/colab_benchmark/bundles/small_science_orienteering.classical-planner-benchmark-bundle.json',
   'tests/fixtures/colab_benchmark/bundles/time_varying_current.classical-planner-benchmark-bundle.json',
   'tests/fixtures/colab_benchmark/bundles/regional_challenge.classical-planner-benchmark-bundle.json',
+  'tests/fixtures/colab_benchmark/colab_bench_r1_1_local_acceptance.json',
   'tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json'
 ];
 

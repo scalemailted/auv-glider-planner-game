@@ -1071,4 +1071,4 @@ node tools/js/finalize_colab_benchmark_acceptance.mjs anchor_benchmark_output/co
 npm.cmd run validate:colab-acceptance -- anchor_benchmark_output/colab_acceptance_report.json
 ```
 
-Colab execution is not considered verified until a real Python/Colab run produces a package that passes local finalization and acceptance validation. Static audits, Pages delivery, and Node interoperability are preflight checks only. The correct current gate state without returned Colab artifacts is `BLOCKED_WAITING_FOR_COLAB_EXECUTION`.
+Local Python execution is verified when the notebook runs cleanly, writes the execution package, and the local ANCHOR finalizer plus acceptance validator pass. The checked-in compact evidence is `tests/fixtures/colab_benchmark/colab_bench_r1_1_local_acceptance.json`, with `LOCAL_PYTHON_EXECUTION_VERIFIED` and `GO_FOR_ALPHA_R1_WITH_COLAB_HOSTING_SMOKE_PENDING`. Hosted Google Colab Run-all remains a separate distribution smoke before claiming `GOOGLE_COLAB_HOSTING_SMOKE_VERIFIED`.

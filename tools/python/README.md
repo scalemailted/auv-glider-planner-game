@@ -97,7 +97,7 @@ node tools/js/finalize_colab_benchmark_acceptance.mjs anchor_benchmark_output/co
 npm.cmd run validate:colab-acceptance -- anchor_benchmark_output/colab_acceptance_report.json
 ```
 
-If Python/Colab was not actually executed, the correct status is `BLOCKED_WAITING_FOR_COLAB_EXECUTION`. Static audits, Pages delivery, and Node checks are useful but do not replace notebook execution.
+If Python or Colab was not actually executed, do not mark the notebook workflow verified. The current checked-in local evidence is `../../tests/fixtures/colab_benchmark/colab_bench_r1_1_local_acceptance.json`: `LOCAL_PYTHON_EXECUTION_VERIFIED`, with hosted Google Colab Run-all smoke still pending as `GO_FOR_ALPHA_R1_WITH_COLAB_HOSTING_SMOKE_PENDING`.
 
 The support package is:
 

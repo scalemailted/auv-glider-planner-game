@@ -11,6 +11,7 @@ const root = process.cwd();
 const notebookPath = 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb';
 const starterNotebookPath = 'tools/python/notebooks/anchor_external_solver_template.ipynb';
 const fixtureManifestPath = 'tests/fixtures/colab_benchmark/manifest.json';
+const localAcceptanceEvidencePath = 'tests/fixtures/colab_benchmark/colab_bench_r1_1_local_acceptance.json';
 const evaluatorPath = 'tools/js/evaluate_colab_benchmark_plan.mjs';
 const acceptanceValidatorPath = 'tools/js/validate_colab_benchmark_acceptance.mjs';
 const bundleExporterPath = 'tools/js/export_colab_benchmark_bundle.mjs';
@@ -91,6 +92,7 @@ try {
   assertExists(notebookPath);
   assertExists(starterNotebookPath);
   assertExists(fixtureManifestPath);
+  assertExists(localAcceptanceEvidencePath);
   assertExists(evaluatorPath);
   assertExists(acceptanceValidatorPath);
   assertExists(bundleExporterPath);
@@ -122,6 +124,16 @@ try {
   assert.equal(manifest.defaultVisibilityClass, 'FORECAST_ONLY', 'fixture manifest default visibility');
   assert.ok(Array.isArray(manifest.fixtures) && manifest.fixtures.length >= 4, 'fixture manifest must list four fixtures');
   assert.ok(Array.isArray(manifest.benchmarkBundles) && manifest.benchmarkBundles.length >= 4, 'fixture manifest must list public benchmark bundles');
+  const localAcceptanceEvidence = readJson(localAcceptanceEvidencePath);
+  assert.equal(localAcceptanceEvidence.type, 'anchor.colab-benchmark.local-acceptance-evidence', 'local acceptance evidence type');
+  assert.equal(localAcceptanceEvidence.status, 'LOCAL_PYTHON_EXECUTION_VERIFIED', 'local Python execution evidence status');
+  assert.equal(localAcceptanceEvidence.googleColabHostingSmoke, 'PENDING', 'hosted Google Colab smoke remains pending');
+  assert.equal(localAcceptanceEvidence.conclusion, 'GO_FOR_ALPHA_R1_WITH_COLAB_HOSTING_SMOKE_PENDING', 'local acceptance conclusion');
+  assert.equal(localAcceptanceEvidence.fixture?.fairnessClass, 'FORECAST_ONLY', 'local evidence fairness class');
+  assert.equal(localAcceptanceEvidence.fixture?.hiddenTruthExported, false, 'local evidence hidden truth boundary');
+  assert.equal(localAcceptanceEvidence.parity?.failedProbeCount, 0, 'local evidence parity failures');
+  assert.equal(localAcceptanceEvidence.authoritativeEvaluation?.officialScore, 23.593559, 'local evidence official score');
+  assert.equal(localAcceptanceEvidence.evidenceDigest, stableDigest(reportWithoutDigest(localAcceptanceEvidence, 'evidenceDigest')), 'local evidence digest');
   for (const fixture of manifest.fixtures) {
     assertExists(fixture.path);
     const packet = readJson(fixture.path);
@@ -173,6 +185,7 @@ try {
     notebookPath,
     starterNotebookPath,
     fixtureManifestPath,
+    localAcceptanceEvidencePath,
     'tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json',
     'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json',
     'tools/python/anchor_benchmark/bundle.py',
@@ -232,6 +245,7 @@ try {
     fixtureCount: manifest.fixtures.length,
     checkedInPlanCount: manifest.checkedInPlans?.length ?? 0,
     benchmarkBundleCount: manifest.benchmarkBundles?.length ?? 0,
+    localAcceptanceEvidence: localAcceptanceEvidencePath,
     evaluator: evaluatorPath,
     acceptanceValidator: acceptanceValidatorPath,
     acceptanceFinalizer: finalizerPath,

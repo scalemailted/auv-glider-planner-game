@@ -6,6 +6,7 @@ import json
 import platform
 import shutil
 import subprocess
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,7 @@ def write_json(path: str | Path, value: Any) -> Path:
 
 
 def stable_json(value: Any) -> str:
-    return json.dumps(_normalize(value), separators=(",", ":"), sort_keys=True)
+    return _stable_stringify(_normalize(value))
 
 
 def stable_digest(value: Any, prefix: str = "fnv1a32") -> str:
@@ -110,6 +111,56 @@ def _normalize(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(key): _normalize(val) for key, val in sorted(value.items(), key=lambda item: str(item[0]))}
     return str(value)
+
+
+def _stable_stringify(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return _js_number_string(value)
+    if isinstance(value, list):
+        return "[" + ",".join(_stable_stringify(item) for item in value) + "]"
+    if isinstance(value, dict):
+        parts = []
+        for key in sorted(value.keys(), key=lambda item: str(item)):
+            parts.append(f"{_stable_stringify(str(key))}:{_stable_stringify(value[key])}")
+        return "{" + ",".join(parts) + "}"
+    return _stable_stringify(str(value))
+
+
+def _js_number_string(value: float) -> str:
+    if value != value or value in (float("inf"), float("-inf")):
+        return "null"
+    if value == 0:
+        return "0"
+    if value.is_integer() and abs(value) < 1e21:
+        return str(int(value))
+    text = repr(value)
+    abs_value = abs(value)
+    if 1e-6 <= abs_value < 1e21:
+        if "e" in text or "E" in text:
+            text = format(Decimal(text), "f")
+        if "." in text:
+            text = text.rstrip("0").rstrip(".")
+        return text
+    return _normalize_exponent(text)
+
+
+def _normalize_exponent(text: str) -> str:
+    if "e" not in text and "E" not in text:
+        text = f"{float(text):.15e}"
+    base, exponent = text.lower().split("e", 1)
+    if "." in base:
+        base = base.rstrip("0").rstrip(".")
+    exponent_value = int(exponent)
+    sign = "+" if exponent_value >= 0 else "-"
+    return f"{base}e{sign}{abs(exponent_value)}"
 
 
 def _fnv1a32(text: str) -> int:

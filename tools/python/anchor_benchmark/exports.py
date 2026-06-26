@@ -6,17 +6,19 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .io import BENCHMARK_BOUNDARY, NOTEBOOK_VERSION, stable_digest
-from .model import PlannerResult, PlanningProblem
+from .model import CandidateNode, PlannerResult, PlanningProblem
+
+
+MIN_RUNTIME_WAYPOINTS = 4
 
 
 def build_anchor_plan(problem: PlanningProblem, result: PlannerResult, *, agent_id: str | None = None) -> dict[str, Any]:
     packet = problem.packet
     agent = (problem.mission.get("agents") or [{}])[0]
     resolved_agent = agent_id or str(agent.get("id") or agent.get("agentId") or "glider_01")
+    expanded_nodes = _runtime_waypoint_nodes(problem, result)
     waypoints = []
-    for index, node in enumerate(result.route):
-        if node.candidate_id == problem.start_node_id:
-            continue
+    for index, node in enumerate(expanded_nodes, start=1):
         waypoints.append({
             "id": f"{result.planner_id}_wp_{index:03d}",
             "waypointId": f"{result.planner_id}_wp_{index:03d}",
@@ -56,6 +58,12 @@ def build_anchor_plan(problem: PlanningProblem, result: PlannerResult, *, agent_
             "notebookVersion": NOTEBOOK_VERSION,
             "solverPacketDigest": stable_digest(packet),
             "plannerResultDigest": stable_digest(_result_record(result)),
+            "runtimeWaypointExpansion": {
+                "minimumWaypointCount": MIN_RUNTIME_WAYPOINTS,
+                "sourceRouteCandidateIds": result.candidate_ids,
+                "exportedWaypointCount": len(waypoints),
+                "policy": "expand declared graph route to executable grid waypoints; continue through visible candidates when route is shorter than runtime contract",
+            },
             "boundary": BENCHMARK_BOUNDARY,
         },
         "agentPlans": [{
@@ -66,6 +74,143 @@ def build_anchor_plan(problem: PlanningProblem, result: PlannerResult, *, agent_
     }
     plan["meta"]["planDigest"] = stable_digest(plan)
     return plan
+
+
+def _runtime_waypoint_nodes(problem: PlanningProblem, result: PlannerResult) -> list[CandidateNode]:
+    nodes: list[CandidateNode] = []
+    current = _first_route_node(problem, result)
+    for target in result.route[1:]:
+        for x, y in _bresenham_cells(current.x, current.y, target.x, target.y)[1:]:
+            nodes.append(_waypoint_node(problem, x, y, source=f"{result.planner_id}:routeExpansion"))
+        current = target
+    used = {(node.x, node.y) for node in nodes}
+    used.add((_first_route_node(problem, result).x, _first_route_node(problem, result).y))
+    while len(nodes) < MIN_RUNTIME_WAYPOINTS:
+        destination = _next_visible_candidate(problem, used, current)
+        if destination is None:
+            destination = _next_valid_neighbor(problem, used, current)
+        if destination is None:
+            break
+        path = _manhattan_cells(current.x, current.y, destination.x, destination.y)
+        for x, y in path[1:]:
+            if (x, y) in used:
+                continue
+            waypoint = _waypoint_node(problem, x, y, source=f"{result.planner_id}:runtimeContinuation")
+            nodes.append(waypoint)
+            used.add((x, y))
+            current = waypoint
+        if (current.x, current.y) != (destination.x, destination.y):
+            current = destination
+        used.add((current.x, current.y))
+    return nodes
+
+
+def _first_route_node(problem: PlanningProblem, result: PlannerResult) -> CandidateNode:
+    if result.route:
+        return result.route[0]
+    for node in problem.candidates:
+        if node.candidate_id == problem.start_node_id:
+            return node
+    raise ValueError("Cannot export a plan without a route or start node.")
+
+
+def _next_visible_candidate(problem: PlanningProblem, used: set[tuple[int, int]], current: CandidateNode) -> CandidateNode | None:
+    candidates = [
+        node for node in problem.candidates
+        if node.candidate_id != problem.start_node_id and (node.x, node.y) not in used
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda node: (-node.value, _distance(current, node), node.y, node.x, node.candidate_id))
+    return candidates[0]
+
+
+def _next_valid_neighbor(problem: PlanningProblem, used: set[tuple[int, int]], current: CandidateNode) -> CandidateNode | None:
+    options = []
+    for dy, dx in ((0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+        x = current.x + dx
+        y = current.y + dy
+        if (x, y) in used or not _valid_cell(problem, x, y):
+            continue
+        options.append(_waypoint_node(problem, x, y, source="runtimeNeighborFill"))
+    options.sort(key=lambda node: (-node.value, node.y, node.x))
+    return options[0] if options else None
+
+
+def _waypoint_node(problem: PlanningProblem, x: int, y: int, *, source: str) -> CandidateNode:
+    return CandidateNode(
+        f"wp_{x}_{y}",
+        int(x),
+        int(y),
+        float(x) * problem.cell_size_meters,
+        float(y) * problem.cell_size_meters,
+        _cell_value(problem, x, y),
+        source,
+        {"cell": {"x": int(x), "y": int(y)}},
+    )
+
+
+def _valid_cell(problem: PlanningProblem, x: int, y: int) -> bool:
+    if x < 0 or y < 0 or x >= problem.width or y >= problem.height:
+        return False
+    terrain_value = _grid_value(problem.terrain, x, y, 1)
+    hazard_value = _grid_value(problem.hazards, x, y, 0)
+    return not bool(terrain_value) and float(hazard_value or 0) <= 0
+
+
+def _cell_value(problem: PlanningProblem, x: int, y: int) -> float:
+    value = _grid_value(problem.roi, x, y, 0)
+    if isinstance(value, dict):
+        raw = float(value.get("value", value.get("rewardValue", value.get("expectedValue", 0.0))) or 0.0)
+        probability = max(0.0, min(1.0, float(value.get("probability", 1.0) or 1.0)))
+        return float(value.get("expectedValue", raw * probability) or 0.0)
+    return float(value or 0.0)
+
+
+def _grid_value(grid: list[list[Any]], x: int, y: int, default: Any = None) -> Any:
+    if not isinstance(grid, list) or y < 0 or x < 0 or y >= len(grid) or x >= len(grid[y]):
+        return default
+    return grid[y][x]
+
+
+def _distance(source: CandidateNode, target: CandidateNode) -> float:
+    return ((source.x - target.x) ** 2 + (source.y - target.y) ** 2) ** 0.5
+
+
+def _bresenham_cells(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, int]]:
+    cells = []
+    dx = abs(x1 - x0)
+    dy = -abs(y1 - y0)
+    sx = 1 if x0 < x1 else -1
+    sy = 1 if y0 < y1 else -1
+    error = dx + dy
+    x = x0
+    y = y0
+    while True:
+        cells.append((x, y))
+        if x == x1 and y == y1:
+            break
+        twice = 2 * error
+        if twice >= dy:
+            error += dy
+            x += sx
+        if twice <= dx:
+            error += dx
+            y += sy
+    return cells
+
+
+def _manhattan_cells(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, int]]:
+    cells = [(x0, y0)]
+    x = x0
+    y = y0
+    while x != x1:
+        x += 1 if x < x1 else -1
+        cells.append((x, y))
+    while y != y1:
+        y += 1 if y < y1 else -1
+        cells.append((x, y))
+    return cells
 
 
 def build_benchmark_record(
@@ -189,4 +334,3 @@ def _result_record(result: PlannerResult) -> dict[str, Any]:
         "value": result.value,
         "optimalityStatus": result.optimality_status,
     }
-
