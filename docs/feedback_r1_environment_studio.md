@@ -1,6 +1,6 @@
-# ENV-STUDIO-R0 Feedback Response
+# ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converts Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. It is a requirements, contract, and thin-slice planning pass. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 adds the visible browser thin slice for that plan. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, or existing Alpha workflows.
 
 ## Feedback Classification
 
@@ -53,7 +53,6 @@ Implementation entry points:
 
 R0 intentionally does not:
 
-- add a visible Environment Studio route;
 - add freeform terrain sculpting;
 - regenerate currents or scalar fields from edited bathymetry;
 - modify generated environment equations;
@@ -63,9 +62,9 @@ R0 intentionally does not:
 - add WebGPU, NetCDF, backend services, or ML workflows;
 - create multiple editor apps.
 
-## R1 Thin Slice
+## What R1 Implements
 
-Recommended next phase:
+Implemented browser thin slice:
 
 ```text
 ENV-STUDIO-R1 - Unified Environment Studio Browser Thin Slice
@@ -75,10 +74,11 @@ Scope:
 
 1. Add one Simulation Lab entry: `Environment Studio`.
 2. Show a domain setup panel with width, height, resolution, depth layers, and time span.
-3. Show a deterministic bathymetry archetype selector using the R0 contract.
-4. Show a tile/mosaic preview as a low-risk read-only or limited-edit surface.
+3. Show deterministic bathymetry archetype and seed controls using the R0 contract.
+4. Show a compact tile preview and a simple 2x2 mosaic preview as a low-risk read-only surface.
 5. Export and import Environment Studio JSON artifacts with canonical digests.
 6. Show the validation report and dependency graph state.
-7. Do not run missions from edited environments until validation passes and R1 explicitly maps the Studio artifact into existing environment loaders.
+7. Publish `globalThis.ANCHOR_ENVIRONMENT_STUDIO_DEBUG` for route, digest, validation, dependency, and cleanup checks.
+8. Do not run missions from edited environments until a later adapter explicitly maps the Studio artifact into existing environment loaders.
 
-R1 should still avoid changing simulation, scoring, and scientific equations. It should focus on making the contract visible and round-trippable in the browser.
+R1 still avoids changing simulation, scoring, and scientific equations. It focuses on making the contract visible and round-trippable in the browser.

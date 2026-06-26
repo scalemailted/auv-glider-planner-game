@@ -102,6 +102,7 @@ export const SMOKE_SPEC_SPLIT_FILES = Object.freeze([
   "tests/e2e/colab_classical_benchmark.spec.js",
   "tests/e2e/alpha_r1_external_preview.spec.js",
   "tests/e2e/alpha_r1_1_acceptance.spec.js",
+  "tests/e2e/environment_studio_r1.spec.js",
   "tests/e2e/workspace_and_challenge_setup.spec.js",
   "tests/e2e/simulation_and_terrain.spec.js",
   "tests/e2e/scientific_validation_methods.spec.js"
@@ -196,7 +197,9 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Alpha Feedback Diagnostics and Error Recovery": "tests/e2e/alpha_r1_external_preview.spec.js",
   "Alpha Pages and Compact Layout": "tests/e2e/alpha_r1_external_preview.spec.js",
   "Alpha Browser Compatibility Critical Path": "tests/e2e/alpha_r1_1_acceptance.spec.js",
-  "ALPHA-R1 Full External Pilot Walkthrough": "tests/e2e/alpha_r1_1_acceptance.spec.js"
+  "ALPHA-R1 Full External Pilot Walkthrough": "tests/e2e/alpha_r1_1_acceptance.spec.js",
+  "Environment Studio Opens and Generates Valid Bathymetry": "tests/e2e/environment_studio_r1.spec.js",
+  "Environment Studio Mosaic Import Export and Cleanup": "tests/e2e/environment_studio_r1.spec.js"
 });
 
 const NODE_COVERAGE = Object.freeze({
@@ -210,6 +213,7 @@ const NODE_COVERAGE = Object.freeze({
   METHODS_VALIDATION: ['node tools/tests/scientific_validation.test.mjs'],
   CLASSICAL_PLANNER_NOTEBOOK: ['node tools/js/audit_colab_classical_benchmark.mjs'],
   EXTERNAL_ALPHA_PREVIEW: ['node tools/js/validate_alpha_release_manifest.mjs', 'node tools/js/audit_alpha_release_readiness.mjs', 'node tools/js/audit_alpha_r1_1_acceptance.mjs'],
+  ENVIRONMENT_STUDIO: ['node tools/js/smoke_environment_studio_contracts.mjs', 'node tools/js/smoke_environment_studio_project.mjs'],
   ENVIRONMENT_PACKAGE: ['npm.cmd run test:packages'],
   RESOURCE_LIFECYCLE: ['node tools/js/audit_three_vendor_git_tracking.mjs']
 });
@@ -257,6 +261,10 @@ export const CAPABILITIES = Object.freeze([
     'Environment Package Powers Generated Planning World',
     'Planning Execute Simulation Preserve One Environment Identity'
   ], NODE_COVERAGE.ENVIRONMENT_PACKAGE),
+  capability('ENVIRONMENT-STUDIO', 'Browser-side synthetic environment authoring, validation, and project import/export', false, false, true, [
+    'Environment Studio Opens and Generates Valid Bathymetry',
+    'Environment Studio Mosaic Import Export and Cleanup'
+  ], NODE_COVERAGE.ENVIRONMENT_STUDIO),
   capability('DIVE-PREDICTION', 'Planned dive, sampling target, and clearance', true, false, true, [
     'Surface Waypoints Produce a Predicted Three-Dimensional Dive',
     'Sampling Target Drives Predicted Dive Without Becoming a Navigation Point',

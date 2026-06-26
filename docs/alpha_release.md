@@ -176,9 +176,9 @@ Initial tracked items are `ALPHA-FB-001` Environment Studio authoring, `ALPHA-FB
 
 ## Environment Authoring Feedback
 
-Alpha tester requests for custom environment authoring are tracked as ENV-STUDIO-R0 feedback: `P2`, `BENCH`, `EDU`, and `SCI`, not as a current Alpha feature claim. The product decision is one unified **Environment Studio** under `Simulation Lab`, rather than separate bathymetry/current/scalar editors or a fifth Product Hub pillar.
+Alpha tester requests for custom environment authoring are tracked as Environment Studio feedback: `P2`, `BENCH`, `EDU`, and `SCI`, not as a current core Alpha gameplay claim. The product decision is one unified **Environment Studio** under `Simulation Lab`, rather than separate bathymetry/current/scalar editors or a fifth Product Hub pillar.
 
-Current R0 status: contracts, validation helpers, digests, hidden-truth checks, and documentation are defined. A visible browser Studio workflow remains a recommended ENV-STUDIO-R1 thin slice. See `docs/feedback_r1_environment_studio.md` and `docs/environment_studio_architecture.md`.
+Current R1 status: contracts, validation helpers, digests, hidden-truth checks, and documentation are defined, and a visible browser Studio thin slice can author a domain, generate deterministic bathymetry tiles, validate a simple mosaic, and import/export Environment Studio project JSON. Mission launch from edited Studio projects, current/scalar regeneration, scientific equation changes, scoring changes, and planner changes remain out of scope. See `docs/feedback_r1_environment_studio.md` and `docs/environment_studio_architecture.md`.
 
 ## Feedback And Diagnostics
 

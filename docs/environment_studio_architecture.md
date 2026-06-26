@@ -2,7 +2,7 @@
 
 Environment Studio is the planned unified authoring surface for deterministic synthetic ANCHOR environments. It should help instructors and researchers define a reproducible domain, choose or edit synthetic bathymetry, inspect generated field dependencies, validate artifacts, and export public-safe JSON.
 
-R0 implements contracts only. It does not ship a browser editor.
+R0 implemented contracts only. ENV-STUDIO-R1 adds a visible browser thin slice that makes those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations.
 
 ## Product Placement
 
@@ -16,7 +16,7 @@ It should not be a fifth Product Hub card and should not split into separate bat
 
 ## Architecture Layers
 
-The intended stack is:
+The current stack is:
 
 1. **Environment Studio UI**: browser panels, file import/export, preview, and validation display.
 2. **Editor contracts**: pure normalization, validation, dependency, and digest helpers in `src/core/editor/EnvironmentStudioContracts.js`.
@@ -52,7 +52,7 @@ Explicit rows/columns may be supplied by importers, but validation still enforce
 
 The archetype spec records the synthetic bathymetry family and deterministic parameters used before tile editing. It is not a nautical chart and must not claim calibrated survey or navigation status.
 
-Examples of future archetype families:
+R1 exposes these deterministic archetype families:
 
 - coastal shelf;
 - shelf canyon;
@@ -60,7 +60,7 @@ Examples of future archetype families:
 - basin with seamount;
 - teaching basin.
 
-R0 stores the archetype contract and digest. It does not retune bathymetry equations.
+R1 stores the archetype contract and digest, lets the browser select the family/seed, and generates compact deterministic bathymetry tiles through existing bathymetry package APIs. It does not retune bathymetry equations.
 
 ## Tile Manifest
 
@@ -83,7 +83,7 @@ The tile contract is designed so future UI edits can remain reproducible without
 
 R0 validates edge profile lengths and finite values. Mosaic seam validation compares adjacent tile edge profiles and enforces a maximum depth discontinuity.
 
-Future R1/R2 UI can use this to warn when adjacent authored tiles create unrealistic jumps. R0 does not yet solve or smooth seams; it only defines the reportable contract.
+The R1 UI uses this to report simple 2x2 mosaic seam status. It does not solve, smooth, or optimize seams; it only reports the contract result.
 
 ## Mosaic Manifest
 
@@ -110,7 +110,7 @@ Every authored artifact should preserve deterministic edit provenance:
 - target;
 - deterministic timestamp policy.
 
-R0 records provenance shape. R1 should expose it read-only in the validation/export panel before adding richer editing history.
+R1 exposes generated project provenance through the export contract and debug surface before adding richer editing history.
 
 ## Dependency Graph
 
@@ -139,7 +139,7 @@ For example, a bathymetry tile edit makes the tile current, the mosaic stale, an
 
 ## Validation Report
 
-The R0 validation report aggregates:
+The validation report aggregates:
 
 - domain checks;
 - tile checks;
@@ -154,9 +154,9 @@ The report itself has a canonical digest. It is public-safe and records `hiddenT
 
 ## Visibility And Claim Boundary
 
-Environment Studio public artifacts must not include hidden truth arrays or oracle-only fields. R0 rejects obvious hidden-truth keys and hidden visibility tiers.
+Environment Studio public artifacts must not include hidden truth arrays or oracle-only fields. The contract rejects obvious hidden-truth keys and hidden visibility tiers.
 
-All R0 artifacts carry the same boundary:
+All public Environment Studio artifacts carry the same boundary:
 
 - synthetic;
 - not a calibrated ocean product;
@@ -164,13 +164,13 @@ All R0 artifacts carry the same boundary:
 - not certified for navigation;
 - renderer/preview does not create scientific truth.
 
-## Import And Export Plan
+## Import And Export
 
-R1 import/export should use the R0 JSON contracts directly:
+R1 import/export uses the contract JSON directly:
 
 - import domain, tile, mosaic, dependency, and validation artifacts;
 - normalize before rendering;
-- validate before allowing export as a generated environment;
+- validate before export;
 - include canonical digests in downloads;
 - keep hidden truth out of public exports;
 - remain static-host compatible.
@@ -184,14 +184,14 @@ Environment Studio defaults should remain browser-friendly:
 - domain cell count is capped by contract;
 - tile count is capped by contract;
 - tile cell count is capped by contract;
-- validation is pure JavaScript and synchronous for R0-sized artifacts;
-- no WebGPU, backend service, or worker is required in R0.
+- validation is pure JavaScript and synchronous for R1-sized artifacts;
+- no WebGPU, backend service, or worker is required in R1.
 
-If future R1/R2 authoring needs larger domains, it should add progressive validation and explicit import limits before raising the caps.
+If future authoring needs larger domains, it should add progressive validation and explicit import limits before raising the caps.
 
 ## R1 Thin Slice
 
-Recommended R1 implementation:
+Implemented R1 browser thin slice:
 
 1. Add a Simulation Lab entry for Environment Studio.
 2. Render the domain form and derived grid counts.
@@ -199,7 +199,8 @@ Recommended R1 implementation:
 4. Render a compact tile/mosaic preview.
 5. Show dependency graph state.
 6. Show validation report status and digest.
-7. Export/import R0 JSON artifacts.
-8. Do not connect edited artifacts to mission simulation until validation and adapter tests pass.
+7. Export/import Environment Studio project JSON.
+8. Publish `globalThis.ANCHOR_ENVIRONMENT_STUDIO_DEBUG` for route, digest, validation, dependency, and cleanup checks.
+9. Do not connect edited artifacts to mission simulation until validation and adapter tests pass.
 
-R1 should add at most two browser workflows: open the Studio and round-trip a small Studio JSON artifact.
+R1 adds two focused browser workflows: open/generate a valid bathymetry tile and round-trip a small mosaic project JSON artifact.

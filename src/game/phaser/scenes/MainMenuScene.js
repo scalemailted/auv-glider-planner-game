@@ -50,6 +50,7 @@ const CHALLENGE_ACTIONS = [
   'Challenge Leaderboard'
 ];
 const SIMULATION_LAB_ACTIONS = [
+  'Environment Studio',
   'Sampling Process Lab',
   'Flow Fields Demo',
   'Coupled Fields Demo',
@@ -338,6 +339,11 @@ export class MainMenuScene extends PhaserScene {
           hubActionHtml('bathymetry-world-view', '3D Bathymetric World View', 'Render 2.5D water-column missions as synthetic bathymetry, transparent depth layers, route intent, and sampling points.'),
           hubActionHtml('renderer-architecture-preview', 'Renderer Architecture Preview', 'Inspect Phaser shell plus future 3D renderer boundary and fallback capabilities.')
         ])}
+        ${hubGroupHtml('Editor & Import Tools', [
+          hubActionHtml('environment-studio', 'Environment Studio', 'Define domain/resolution, generate synthetic bathymetry tiles, validate mosaics, and export public project JSON.', 'primary'),
+          hubActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.'),
+          hubActionHtml('load-json', 'Import / Export Tools', 'Load challenge, level, result, oracle, and custom JSON packages.')
+        ])}
         ${hubGroupHtml('Benchmark Modes', [
           hubActionHtml('benchmark-planner', 'Planner Benchmark', 'Objective fixed; player or solver chooses the route.', 'primary'),
           hubActionHtml('benchmark-adaptive', 'Adaptive Benchmark', 'Mission manager recommends objectives after observations; player or solver still routes.'),
@@ -347,9 +353,7 @@ export class MainMenuScene extends PhaserScene {
         ${hubGroupHtml('Headless / Solver Tools', [
           hubActionHtml('headless-bundle-viewer', 'Headless Bundle Viewer', 'Inspect Node/OceanBox-JS bundle artifacts.'),
           hubViewHtml('alpha-research', 'Researcher Quick Start', 'Export public packets and bundles, download notebooks, import candidate plans, and evaluate with ANCHOR.'),
-          hubActionHtml('dataset', 'External Solver Evaluation', 'Export datasets and solver packets.'),
-          hubActionHtml('load-json', 'Import / Export Tools', 'Load challenge, level, result, oracle, and custom JSON packages.'),
-          hubActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.')
+          hubActionHtml('dataset', 'External Solver Evaluation', 'Export datasets and solver packets.')
         ])}
       </div>
     `;
@@ -622,6 +626,7 @@ export class MainMenuScene extends PhaserScene {
       'greedy-race': () => this.startRandomChallenge('forecast', EXPERIENCE_MODES.challenge, { greedyRace: true }),
       deterministic: () => this.openChallengeSetup('perfectKnowledge', EXPERIENCE_MODES.simulationLab),
       stochastic: () => this.openChallengeSetup('forecast', EXPERIENCE_MODES.simulationLab),
+      'environment-studio': () => scene.start('EnvironmentStudioScene'),
       editor: () => scene.start('EnvironmentEditorScene'),
       'load-json': () => scene.start('LoadLevelJsonScene'),
       'headless-bundle-viewer': () => scene.start('HeadlessBundleViewerScene'),

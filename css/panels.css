@@ -1442,6 +1442,201 @@
   align-items: stretch;
 }
 
+.environment-studio-preview-host {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: auto;
+  overflow: auto;
+  padding: clamp(14px, 2vw, 24px);
+  background:
+    linear-gradient(180deg, rgba(3, 11, 21, 0.42), rgba(2, 8, 18, 0.64));
+}
+
+.environment-studio-route {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 1rem;
+  color: var(--text);
+}
+
+.environment-studio-route-header,
+.environment-studio-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem;
+  border: 1px solid rgba(141, 220, 242, .18);
+  border-radius: 8px;
+  background: rgba(8, 17, 31, .76);
+}
+
+.environment-studio-route-header h1 {
+  margin: .08rem 0 .22rem;
+  font-size: clamp(1.35rem, 2vw, 2rem);
+}
+
+.environment-studio-route-header p,
+.environment-studio-boundary span {
+  margin: 0;
+  color: var(--muted);
+}
+
+.environment-studio-digest {
+  display: grid;
+  gap: .15rem;
+  min-width: 9rem;
+  text-align: right;
+}
+
+.environment-studio-digest span {
+  color: var(--muted);
+  font-size: .75rem;
+  text-transform: uppercase;
+}
+
+.environment-studio-preview-grid {
+  min-height: 0;
+  display: grid;
+  align-items: stretch;
+}
+
+.environment-studio-single-tile-preview,
+.environment-studio-mosaic-preview {
+  display: grid;
+  gap: .8rem;
+}
+
+.environment-studio-single-tile-preview {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.environment-studio-mosaic-preview {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.environment-studio-tile-preview,
+.environment-studio-empty-preview {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(8rem, 1fr) auto;
+  gap: .5rem;
+  padding: .72rem;
+  border: 1px solid rgba(141, 220, 242, .18);
+  border-radius: 8px;
+  background: rgba(8, 17, 31, .74);
+}
+
+.environment-studio-tile-preview header,
+.environment-studio-tile-preview footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .55rem;
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.environment-studio-tile-preview strong {
+  color: var(--text);
+}
+
+.environment-studio-depth-grid {
+  min-height: 8rem;
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, .28);
+}
+
+.environment-studio-depth-grid span {
+  min-width: 4px;
+  min-height: 4px;
+}
+
+.environment-studio-empty-preview {
+  place-items: center;
+  text-align: center;
+}
+
+.environment-studio-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .75rem;
+}
+
+.environment-studio-table th,
+.environment-studio-table td {
+  padding: .35rem .25rem;
+  border-bottom: 1px solid rgba(141, 220, 242, .12);
+  text-align: left;
+  vertical-align: top;
+}
+
+.environment-studio-state {
+  display: inline-block;
+  padding: .12rem .28rem;
+  border-radius: 6px;
+  color: #06121f;
+  background: var(--muted);
+  font-size: .65rem;
+  font-weight: 900;
+}
+
+.environment-studio-state-current {
+  background: var(--success);
+}
+
+.environment-studio-state-stale,
+.environment-studio-state-requires_regeneration {
+  background: var(--warning);
+}
+
+.environment-studio-state-invalid {
+  color: #fff;
+  background: var(--danger);
+}
+
+.environment-studio-validation-list {
+  display: grid;
+  gap: .35rem;
+  margin-top: .75rem;
+}
+
+.environment-studio-validation-list div {
+  display: grid;
+  gap: .12rem;
+  padding: .45rem;
+  border: 1px solid rgba(141, 220, 242, .13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.environment-studio-validation-list strong {
+  color: var(--warning);
+  font-size: .68rem;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .environment-studio-mosaic-preview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .environment-studio-route-header,
+  .environment-studio-boundary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .environment-studio-digest {
+    text-align: left;
+  }
+}
+
 .mission-planning-tool-status {
   margin-top: .55rem;
 }

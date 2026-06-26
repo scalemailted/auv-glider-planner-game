@@ -24,6 +24,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Alpha Feedback Diagnostics and Error Recovery$/i,
       /^Alpha Pages and Compact Layout$/i,
       /^Alpha Browser Compatibility Critical Path$/i,
+      /^Environment Studio Opens and Generates Valid Bathymetry$/i,
+      /^Environment Studio Mosaic Import Export and Cleanup$/i,
       /^Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records$/i,
       /^Cold Repo Root Boot Reaches Main Menu Through Package Modules$/i,
       /^Cold Pages Subpath Boot Reaches Main Menu Through Package Modules$/i,

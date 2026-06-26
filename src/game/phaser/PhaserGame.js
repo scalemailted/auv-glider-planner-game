@@ -8,6 +8,7 @@ import { MissionBriefingScene } from './scenes/MissionBriefingScene.js';
 import { MissionWorkspaceScene } from './scenes/MissionWorkspaceScene.js';
 import { SimulationScene } from './scenes/SimulationScene.js';
 import { DebriefScene } from './scenes/DebriefScene.js';
+import { EnvironmentStudioScene } from './scenes/EnvironmentStudioScene.js';
 import { EnvironmentEditorScene } from './scenes/EnvironmentEditorScene.js';
 import { DatasetExportScene } from './scenes/DatasetExportScene.js';
 import { FlowFieldDemoScene } from './scenes/FlowFieldDemoScene.js';
@@ -62,6 +63,7 @@ export class PhaserGameApp {
         MissionWorkspaceScene,
         SimulationScene,
         DebriefScene,
+        EnvironmentStudioScene,
         EnvironmentEditorScene,
         DatasetExportScene,
         FlowFieldDemoScene,
@@ -259,6 +261,7 @@ function sceneKey(name) {
     briefing: 'MissionBriefingScene',
     simulation: 'SimulationScene',
     debrief: 'DebriefScene',
+    environmentStudio: 'EnvironmentStudioScene',
     levelEditor: 'EnvironmentEditorScene',
     datasetExport: 'DatasetExportScene',
     flowDemo: 'FlowFieldDemoScene',
