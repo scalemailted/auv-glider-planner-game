@@ -2,7 +2,7 @@
 
 Environment Studio is the planned unified authoring surface for deterministic synthetic ANCHOR environments. It should help instructors and researchers define a reproducible domain, choose or edit synthetic bathymetry, inspect generated field dependencies, validate artifacts, and export public-safe JSON.
 
-R0 implemented contracts only. ENV-STUDIO-R1 adds a visible browser thin slice that makes those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations.
+R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgrades that thin slice into a regional bathymetry authoring workflow with a global region recipe, 3D bathymetry preview, contextual inspector, multi-archetype regional generation, source-grid versus preview-mesh metadata, feature summaries, and multi-glider suitability heuristics.
 
 ## Product Placement
 
@@ -24,6 +24,14 @@ The current stack is:
 4. **Runtime consumers**: mission workspace, headless runtime, benchmark export, and browser viewers.
 
 Environment Studio UI owns interaction. Scientific packages own scientific artifacts and samplers. Simulation and scoring remain authoritative elsewhere.
+
+Environment Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain:
+
+```text
+bottomDepthMeters = h(x,y)
+```
+
+It is not a volumetric geology editor. It does not create caves, tunnels, overhangs, arbitrary freeform solid geology, or calibrated regional survey products.
 
 ## Domain Spec
 
@@ -83,7 +91,7 @@ The tile contract is designed so future UI edits can remain reproducible without
 
 R0 validates edge profile lengths and finite values. Mosaic seam validation compares adjacent tile edge profiles and enforces a maximum depth discontinuity.
 
-The R1 UI uses this to report simple 2x2 mosaic seam status. It does not solve, smooth, or optimize seams; it only reports the contract result.
+The R1 UI used this to report simple 2x2 mosaic seam status. R1.1 generates a deterministic multi-archetype regional 2x2 mosaic and blends shared edge profiles so regional seams remain inspectable and reproducible. It does not implement sculpting brushes or freeform terrain editing.
 
 ## Mosaic Manifest
 
@@ -177,6 +185,18 @@ R1 import/export uses the contract JSON directly:
 
 Later phases may add an adapter from a validated Environment Studio mosaic to the existing generated environment artifact pipeline. That adapter must be explicit and tested, not inferred from UI state.
 
+## Regional Preview Metadata
+
+R1.1 separates:
+
+- `sourceGridShape`: the canonical bathymetry grid exported in Studio projects and bathymetry artifacts;
+- `previewGridShape`: the decimated display mesh used by the browser preview;
+- `previewDecimation`: the deterministic LOD factor and budget rationale.
+
+Large domains use preview decimation for interactivity. Exported source grids remain deterministic and reproducible.
+
+The 3D browser preview is a visual inspection surface over public bathymetry artifacts. It does not create scientific truth, regenerate currents or scalar fields, alter hotspots, or change mission scoring.
+
 ## Performance Budget
 
 Environment Studio defaults should remain browser-friendly:
@@ -187,7 +207,7 @@ Environment Studio defaults should remain browser-friendly:
 - validation is pure JavaScript and synchronous for R1-sized artifacts;
 - no WebGPU, backend service, or worker is required in R1.
 
-If future authoring needs larger domains, it should add progressive validation and explicit import limits before raising the caps.
+R1.1 regional presets may use larger source grids within the same browser-safe source-cell cap. Preview meshes are decimated to a separate preview-cell budget so large domains do not freeze the browser.
 
 ## R1 Thin Slice
 
@@ -204,3 +224,15 @@ Implemented R1 browser thin slice:
 9. Do not connect edited artifacts to mission simulation until validation and adapter tests pass.
 
 R1 adds two focused browser workflows: open/generate a valid bathymetry tile and round-trip a small mosaic project JSON artifact.
+
+## R1.1 Regional Authoring
+
+Implemented R1.1 browser workflow:
+
+1. Show Environment Scale, Domain & Resolution, Regional Layout Template, Regional Feature Mix, Randomization, Validation & Mission Suitability, Generated Field Status, and Import / Export / Launch sections.
+2. Default the center preview to 3D Bathymetry while keeping top-down depth, seam, slope, wet/land, cross-section, and suitability diagnostics available.
+3. Use a contextual right-panel inspector for selected region, tile, seam, feature summary, validation issue, and dependency state.
+4. Generate mixed regional bathymetry with at least three feature families by default.
+5. Preserve regional recipe, feature mix, tile provenance, source-grid shape, preview-grid shape, decimation, feature summary, suitability checks, validation report, and dependency state in project export/import.
+
+Current/scalar/hotspot regeneration, sculpting, real patch import, and launch-to-planning are staged follow-ups. Current synthetic bathymetry is scientifically constrained and validation-aware, but not a calibrated real-ocean bathymetry product.

@@ -1,6 +1,6 @@
 # ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 adds the visible browser thin slice for that plan. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responds to `ALPHA-FB-006` by upgrading the editor from flat 2D tile swatches into a regional bathymetry authoring workflow with 3D preview and contextual inspection. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, benchmark fairness, or existing Alpha workflows.
 
 ## Feedback Classification
 
@@ -82,3 +82,26 @@ Scope:
 8. Do not run missions from edited environments until a later adapter explicitly maps the Studio artifact into existing environment loaders.
 
 R1 still avoids changing simulation, scoring, and scientific equations. It focuses on making the contract visible and round-trippable in the browser.
+
+## What R1.1 Implements
+
+Implemented regional authoring upgrade:
+
+```text
+ENV-STUDIO-R1.1 - Regional Bathymetry Authoring Inputs and 3D Preview
+```
+
+Scope:
+
+1. Left panel controls for Environment Scale, Domain & Resolution, Regional Layout Template, Regional Feature Mix, Randomization, Validation & Mission Suitability, Generated Field Status, and Import / Export / Launch.
+2. Default 3D Bathymetry center preview over the canonical 2.5D bottom surface `bottomDepthMeters = h(x,y)`.
+3. Top-down depth, seam, slope, wet/land, cross-section, and multi-glider suitability diagnostic modes.
+4. Contextual right-panel inspector for selected region, tile, seam, validation issue, dependency, and feature summary.
+5. Multi-archetype regional generation with per-tile role, archetype, seed, seam-blend provenance, feature summary, and multi-glider suitability checks.
+6. Project export/import fields for environment type, mission scale, intended gliders, regional template, coastline orientation, open-ocean boundaries, feature mix, randomization locks, preview mode, source grid, preview mesh, decimation, feature summary, suitability, validation, and dependency state.
+
+R1.1 still uses deterministic synthetic bathymetry. It is scientifically constrained and validation-aware, but it is not a calibrated regional forecast, operational bathymetry, named-region survey product, or certified navigation product.
+
+## Staged Follow-Ups
+
+Current/scalar/hotspot regeneration, launch-to-planning, provenance-preserving sculpting, real patch import, and reference comparison remain staged follow-ups. The R1.1 UI marks those controls as planned or deferred rather than silently claiming they exist.

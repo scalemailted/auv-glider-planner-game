@@ -125,6 +125,32 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-006",
+      "title": "Environment Studio needs regional 3D bathymetry authoring, not flat 2D tile swatches.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / Environment Studio",
+      "summary": "Alpha review found that the R1 editor still appears like a flat 2D tile board and is too dominated by localized shore/shelf tiles. Users want to author larger mission-scale synthetic regions, including gulf-like basins, shelves, canyons, islands, seamounts, river-mouth zones, ridges, sills, and deep-water mission opportunities suitable for multiple gliders.",
+      "decision": "Accepted for ENV-STUDIO-R1.1 regional input model, 3D preview, contextual inspector, and multi-archetype regional generator controls.",
+      "proposedPhase": "ENV-STUDIO-R1.1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Environment Studio remains one unified editor under Simulation Lab.",
+        "Regional bathymetry authoring exposes 3D preview, source-grid versus preview-mesh metadata, and multi-archetype provenance.",
+        "The phase does not change simulation, scoring, current generation, scalar generation, benchmark fairness, or Product Hub pillars."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

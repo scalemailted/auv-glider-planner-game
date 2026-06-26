@@ -10,7 +10,9 @@ const BASE = 'http://127.0.0.1:9391';
 
 export const EXACT_TITLES = [
   'Environment Studio Opens and Generates Valid Bathymetry',
-  'Environment Studio Mosaic Import Export and Cleanup'
+  'Environment Studio Mosaic Import Export and Cleanup',
+  'Environment Studio Regional Authoring Inputs',
+  'Environment Studio Contextual Inspector and Export'
 ];
 
 test.setTimeout(180000);
@@ -102,6 +104,90 @@ test(EXACT_TITLES[1], async ({ page }) => {
     previewRendererCount: 0,
     simulationChanged: false,
     scoringChanged: false
+  });
+  browserErrors.assertClean();
+});
+
+test(EXACT_TITLES[2], async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
+  await openEnvironmentStudio(page);
+
+  await expect(page.locator('#mission-console')).toContainText('Environment Scale');
+  await expect(page.locator('#mission-console')).toContainText('Domain & Resolution');
+  await expect(page.locator('#mission-console')).toContainText('Regional Layout Template');
+  await expect(page.locator('#mission-console')).toContainText('Regional Feature Mix');
+  await page.locator('#env-studio-profile').selectOption('semiEnclosedGulf');
+  await page.locator('#env-studio-cell-size').fill('1500');
+  await page.locator('#env-studio-preview-detail').selectOption('low');
+  await page.locator('#mission-console [data-action="env-studio-apply-domain"]').click();
+  await page.locator('#mission-console [data-action="env-studio-create-mosaic"]').click();
+
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.tileCount ?? 0), { timeout: 15000 }).toBe(4);
+  await expect(page.locator('#env-studio-preview-mode')).toHaveValue('bathymetry3d');
+  await expect(page.locator('.environment-studio-terrain-preview')).toBeVisible();
+  await expect(page.locator('.environment-studio-preview-meta')).toContainText('Source Grid');
+  await expect(page.locator('.environment-studio-preview-meta')).toContainText('Preview Mesh');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Feature Summary');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Multi-Glider Suitability');
+
+  const debug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+  expect(debug.environmentType).toBe('semiEnclosedGulf');
+  expect(debug.previewMode).toBe('bathymetry3d');
+  expect(debug.sourceGridShape.cellCount).toBeGreaterThan(debug.previewGridShape.cellCount);
+  expect(debug.previewDecimation.factor).toBeGreaterThan(1);
+  expect(new Set(debug.tileArchetypes).size).toBeGreaterThanOrEqual(3);
+  expect(debug.regionalFeatureSummary.featureDiversityScore).toBeGreaterThan(0);
+  expect(['PASS', 'WARN']).toContain(debug.multiGliderSuitability.status);
+  expect(debug.hiddenTruthExposed).toBe(false);
+  expect(debug.simulationChanged).toBe(false);
+  expect(debug.scoringChanged).toBe(false);
+  browserErrors.assertClean();
+});
+
+test(EXACT_TITLES[3], async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
+  await openEnvironmentStudio(page);
+
+  await page.locator('#env-studio-profile').selectOption('largeRegionalSurvey');
+  await page.locator('#mission-console [data-action="env-studio-create-mosaic"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.tileCount ?? 0), { timeout: 15000 }).toBe(4);
+
+  await page.locator('.environment-studio-tile-preview').first().click();
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Tile');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Feature Role');
+
+  await page.locator('#env-studio-preview-mode').selectOption('seamDiagnostics');
+  await expect(page.locator('.environment-studio-mode-panel')).toContainText('Seam Diagnostics');
+  await page.locator('.environment-studio-mode-panel [data-env-studio-select-type="seam"]').first().click();
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Seam');
+
+  const exported = await downloadStudioProject(page);
+  const originalDigest = exported.data.projectDigest;
+  expect(exported.data.previewMode).toBe('seamDiagnostics');
+  expect(exported.data.regionalFeatureSummary.featureDiversityScore).toBeGreaterThan(0);
+  expect(exported.data.multiGliderSuitability.status).toMatch(/PASS|WARN/);
+  await page.locator('#env-studio-import-file').setInputFiles(exported.path);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.projectDigest ?? null), { timeout: 15000 }).toBe(originalDigest);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.previewMode ?? null), { timeout: 15000 }).toBe('seamDiagnostics');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.regionalFeatureSummary?.featureDiversityScore ?? 0)).toBeGreaterThan(0);
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await waitForAnchorRoute(page, 'main-menu');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.routeActive === false), { timeout: 15000 }).toBe(true);
+  await expect(page.locator('[data-environment-studio-preview-host]')).toHaveCount(0);
+  const cleanup = await page.evaluate(() => ({
+    activeRafCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.activeRafCount,
+    previewRendererCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.previewRendererCount,
+    terrainPreviewRafCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.terrainPreviewRafCount,
+    terrainPreviewRendererCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.terrainPreviewRendererCount,
+    stalePreviewObjects: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.stalePreviewObjects
+  }));
+  expect(cleanup).toEqual({
+    activeRafCount: 0,
+    previewRendererCount: 0,
+    terrainPreviewRafCount: 0,
+    terrainPreviewRendererCount: 0,
+    stalePreviewObjects: 0
   });
   browserErrors.assertClean();
 });

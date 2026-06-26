@@ -1503,6 +1503,95 @@
   align-items: stretch;
 }
 
+.environment-studio-preview-mode {
+  display: grid;
+  gap: .28rem;
+  min-width: 12rem;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 800;
+}
+
+.environment-studio-preview-mode select {
+  width: 100%;
+  color: var(--text);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(141, 220, 242, .22);
+  border-radius: 6px;
+  padding: .42rem .5rem;
+}
+
+.environment-studio-mode-panel,
+.environment-studio-terrain-preview {
+  min-height: 0;
+  display: grid;
+  gap: .8rem;
+}
+
+.environment-studio-preview-meta,
+.environment-studio-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: .5rem;
+}
+
+.environment-studio-3d-svg,
+.environment-studio-profile-svg {
+  width: 100%;
+  height: auto;
+  border: 1px solid rgba(141, 220, 242, .18);
+  border-radius: 8px;
+  background: rgba(2, 8, 18, .82);
+}
+
+.environment-studio-3d-svg polyline {
+  fill: none;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  opacity: .88;
+}
+
+.environment-studio-3d-svg text,
+.environment-studio-profile-svg text {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.environment-studio-profile-svg polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.environment-studio-depth-ramp {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .35rem;
+}
+
+.environment-studio-depth-ramp span {
+  min-height: 1.65rem;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #ecf8ff;
+  font-size: .68rem;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55);
+}
+
+.environment-studio-source-diagnostics {
+  display: grid;
+  gap: .6rem;
+}
+
+.environment-studio-source-diagnostics h2,
+.environment-studio-mode-panel h2 {
+  margin: .15rem 0;
+  font-size: 1rem;
+}
+
 .environment-studio-single-tile-preview,
 .environment-studio-mosaic-preview {
   display: grid;
@@ -1527,6 +1616,17 @@
   border: 1px solid rgba(141, 220, 242, .18);
   border-radius: 8px;
   background: rgba(8, 17, 31, .74);
+}
+
+.environment-studio-tile-preview {
+  cursor: pointer;
+}
+
+.environment-studio-tile-preview:focus-visible,
+.environment-studio-table tr[role="button"]:focus-visible,
+.environment-studio-validation-list button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .environment-studio-tile-preview header,
@@ -1591,7 +1691,8 @@
 }
 
 .environment-studio-state-stale,
-.environment-studio-state-requires_regeneration {
+.environment-studio-state-requires_regeneration,
+.environment-studio-state-needs_validation {
   background: var(--warning);
 }
 
@@ -1615,10 +1716,86 @@
   background: rgba(255, 255, 255, .035);
 }
 
-.environment-studio-validation-list strong {
+.environment-studio-validation-list button {
+  display: grid;
+  gap: .12rem;
+  width: 100%;
+  padding: .45rem;
+  color: inherit;
+  text-align: left;
+  border: 1px solid rgba(141, 220, 242, .13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.environment-studio-validation-list strong,
+.environment-studio-validation-list button strong {
   color: var(--warning);
   font-size: .68rem;
   text-transform: uppercase;
+}
+
+.environment-studio-checkbox-grid,
+.environment-studio-tile-config-list,
+.environment-studio-action-list,
+.environment-studio-cross-sections {
+  display: grid;
+  gap: .45rem;
+}
+
+.environment-studio-checkbox-grid {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.environment-studio-checkbox-grid label {
+  display: flex;
+  align-items: center;
+  gap: .38rem;
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.environment-studio-tile-config-list {
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+}
+
+.environment-studio-panel-kicker {
+  margin-top: .8rem;
+}
+
+.environment-studio-suitability {
+  display: grid;
+  gap: .22rem;
+  padding: .6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(141, 220, 242, .18);
+  background: rgba(8, 17, 31, .62);
+}
+
+.environment-studio-suitability strong {
+  font-size: .9rem;
+}
+
+.environment-studio-suitability-pass strong {
+  color: var(--success);
+}
+
+.environment-studio-suitability-warn strong {
+  color: var(--warning);
+}
+
+.environment-studio-suitability-fail strong {
+  color: var(--danger);
+}
+
+.environment-studio-action-list button {
+  color: var(--text);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(141, 220, 242, .18);
+  border-radius: 6px;
+  padding: .42rem .5rem;
+  text-align: left;
 }
 
 @media (max-width: 900px) {
