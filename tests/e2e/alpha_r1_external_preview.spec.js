@@ -80,13 +80,34 @@ test('Alpha Researcher Quick Start', async ({ page }) => {
   await expect(page.locator('#main-menu-hub')).toContainText('Local Python Execution');
   await expect(page.locator('#main-menu-hub')).toContainText('Google Colab Hosting Smoke: PENDING');
   await expect(page.locator('#main-menu-hub')).toContainText('Official A* score 23.593559');
+  await expect(page.locator('#main-menu-hub')).toContainText('The notebook proposes plans. ANCHOR validates, simulates, and scores them.');
+  await expect(page.locator('#main-menu-hub')).toContainText('Users do not need to download the full ANCHOR source repository for normal Alpha use.');
+
+  const launchpad = page.locator('[data-alpha-notebook-launchpad]');
+  await expect(launchpad).toBeVisible();
+  await expect(launchpad).toContainText('External Solver Notebook');
+  await expect(launchpad).toContainText('Open Full Notebook in Google Colab');
+  await expect(launchpad).toContainText('A public GitHub notebook URL is required for one-click Colab launch.');
+  await expect(launchpad).toContainText('Download Full Benchmark Notebook');
+  await expect(launchpad).toContainText('Download Starter Notebook');
+  await expect(launchpad).toContainText('Download Public Benchmark Bundle');
+  await expect(launchpad).toContainText('Copy Notebook Data URL');
+  await expect(launchpad).toContainText('Copy Local Finalizer Command');
+  await expect(launchpad).toContainText('anchor.classical-planner-benchmark-bundle');
+  await expect(launchpad).toContainText('containsHiddenTruth');
+  await expect(launchpad).toContainText('false');
+  await expect(launchpad).toContainText('FORECAST_ONLY');
+  await expect(launchpad.locator('a[download]').filter({ hasText: 'Download Full Benchmark Notebook' })).toHaveAttribute('href', /anchor_classical_planner_benchmark\.ipynb/);
+  await expect(launchpad.locator('a[download]').filter({ hasText: 'Download Starter Notebook' })).toHaveAttribute('href', /anchor_external_solver_template\.ipynb/);
+  await expect(launchpad.locator('a[download]').filter({ hasText: 'Download Public Benchmark Bundle' })).toHaveAttribute('href', /static_additive_routing\.classical-planner-benchmark-bundle\.json/);
 
   const paths = [
     'tools/python/notebooks/anchor_external_solver_template.ipynb',
     'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb',
     'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json',
     'tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json',
-    'alpha/release-manifest.json'
+    'alpha/release-manifest.json',
+    'alpha/feedback-ledger.json'
   ];
   const fetchResults = await page.evaluate(async (items) => Promise.all(items.map(async (path) => {
     const response = await fetch(path);
@@ -98,6 +119,9 @@ test('Alpha Researcher Quick Start', async ({ page }) => {
     expect(result.bytes, result.path).toBeGreaterThan(100);
   }
   expect(fetchResults.find((item) => item.path.endsWith('release-manifest.json')).text).toContain('"googleColabHostingSmoke": "PENDING"');
+  expect(fetchResults.find((item) => item.path.endsWith('feedback-ledger.json')).text).toContain('"ALPHA-FB-002"');
+  expect(fetchResults.find((item) => item.path.endsWith('classical-planner-benchmark-bundle.json')).text).toContain('"containsHiddenTruth": false');
+  expect(fetchResults.find((item) => item.path.endsWith('classical-planner-benchmark-bundle.json')).text).not.toContain('T_hiddenTruth');
 });
 
 test('Alpha Feedback Diagnostics and Error Recovery', async ({ page }) => {
@@ -157,8 +181,11 @@ test('Alpha Pages and Compact Layout', async ({ page }) => {
     const paths = [
       '/auv-glider-planner-game/alpha/release-manifest.json',
       '/auv-glider-planner-game/alpha/scenario-catalog.json',
+      '/auv-glider-planner-game/alpha/feedback-ledger.json',
       '/auv-glider-planner-game/docs/alpha_release.md',
-      '/auv-glider-planner-game/tools/python/notebooks/anchor_classical_planner_benchmark.ipynb'
+      '/auv-glider-planner-game/tools/python/notebooks/anchor_classical_planner_benchmark.ipynb',
+      '/auv-glider-planner-game/tools/python/notebooks/anchor_external_solver_template.ipynb',
+      '/auv-glider-planner-game/tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json'
     ];
     return Promise.all(paths.map(async (path) => {
       const response = await fetch(path);

@@ -20,6 +20,55 @@ export const ALPHA_STATUS = Object.freeze({
   conclusion: 'ALPHA_R1_ACCEPTANCE_PACKAGE_READY'
 });
 
+export const ALPHA_NOTEBOOK_LAUNCH_CONFIG = Object.freeze({
+  fullNotebookPath: 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb',
+  starterNotebookPath: 'tools/python/notebooks/anchor_external_solver_template.ipynb',
+  pagesFullNotebookUrl: 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb',
+  pagesStarterNotebookUrl: 'tools/python/notebooks/anchor_external_solver_template.ipynb',
+  benchmarkBundlePath: 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json',
+  benchmarkBundleUrl: 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json',
+  checkedInPlanPath: 'tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json',
+  publicGitHubRepositoryUrl: null,
+  publicGitHubOwner: null,
+  publicGitHubRepo: 'auv-glider-planner-game',
+  publicGitHubBranch: 'master',
+  githubColabUrl: null,
+  localPythonExecutionStatus: ALPHA_STATUS.localPythonExecution,
+  authoritativeFinalizationStatus: ALPHA_STATUS.authoritativeAnchorFinalization,
+  googleColabHostingSmokeStatus: ALPHA_STATUS.googleColabHostingSmoke,
+  fairnessDefault: 'FORECAST_ONLY',
+  publicBundle: {
+    artifactType: 'anchor.classical-planner-benchmark-bundle',
+    artifactVersion: '1.0.0',
+    visibility: 'PUBLIC / FORECAST_ONLY',
+    containsHiddenTruth: false,
+    validationBaselineDigest: ALPHA_STATUS.validationBaselineDigest,
+    scoreProfileId: 'balancedMission',
+    scoreProfileDigest: 'fnv1a32:1e7b3fe0'
+  },
+  localFinalizerCommand: 'node tools/js/finalize_colab_benchmark_acceptance.mjs anchor_benchmark_output/colab_execution_package.json',
+  localAcceptanceCommand: 'npm.cmd run validate:colab-acceptance -- anchor_benchmark_output/colab_acceptance_report.json'
+});
+
+export function alphaNotebookLaunchSummary(config = ALPHA_NOTEBOOK_LAUNCH_CONFIG) {
+  return {
+    fullNotebookPath: config.fullNotebookPath,
+    starterNotebookPath: config.starterNotebookPath,
+    pagesFullNotebookUrl: config.pagesFullNotebookUrl,
+    pagesStarterNotebookUrl: config.pagesStarterNotebookUrl,
+    benchmarkBundleUrl: config.benchmarkBundleUrl,
+    checkedInPlanPath: config.checkedInPlanPath,
+    githubColabUrl: config.githubColabUrl,
+    oneClickColabEnabled: Boolean(config.githubColabUrl),
+    fallbackRequired: !config.githubColabUrl,
+    localPythonExecutionStatus: config.localPythonExecutionStatus,
+    authoritativeFinalizationStatus: config.authoritativeFinalizationStatus,
+    googleColabHostingSmokeStatus: config.googleColabHostingSmokeStatus,
+    fairnessDefault: config.fairnessDefault,
+    publicBundle: { ...config.publicBundle }
+  };
+}
+
 export const ALPHA_LIMITATIONS = Object.freeze([
   limitation('synthetic-environments', 'Synthetic benchmark environments', 'SUPPORTED_WITH_QUALIFIER', 'Alpha missions are deterministic synthetic benchmarks for education and reproducible comparison, not calibrated named-region forecasts.', 'docs/scientific_validation_and_methods.md'),
   limitation('not-operational-forecast', 'Not an operational forecast', 'UNSUPPORTED_FOR_OPERATIONAL_USE', 'The current models are scientifically constrained and verified for software behavior, but they are not operational ocean forecasts.', 'docs/scientific_validation_and_methods.md'),
@@ -195,6 +244,7 @@ export function alphaReleaseDebugPayload(state = {}) {
     authoritativeAnchorFinalization: ALPHA_STATUS.authoritativeAnchorFinalization,
     googleColabHostingSmoke: ALPHA_STATUS.googleColabHostingSmoke,
     ownerReviewStatus: ALPHA_STATUS.ownerReviewStatus,
+    notebookLaunch: alphaNotebookLaunchSummary(),
     releaseRecommendation: ALPHA_STATUS.releaseRecommendation,
     hiddenTruthExposed: false,
     changesScienceModels: false,

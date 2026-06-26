@@ -22,7 +22,7 @@
     "test:e2e:groups": "node tools/js/run_playwright_groups.mjs --profile=full",
     "test:e2e:monolithic": "node ./node_modules/@playwright/test/cli.js test --reporter=line --workers=1 --output=test-results/.playwright-monolithic-temp",
     "test:e2e:list": "node ./node_modules/@playwright/test/cli.js test --list",
-    "audit:alpha-release": "node tools/js/validate_alpha_release_manifest.mjs && node tools/js/audit_alpha_release_readiness.mjs && node tools/js/audit_alpha_r1_1_acceptance.mjs",
+    "audit:alpha-release": "node tools/js/validate_alpha_release_manifest.mjs && node tools/js/audit_alpha_release_readiness.mjs && node tools/js/audit_alpha_r1_1_acceptance.mjs && node tools/js/audit_alpha_feedback_ops.mjs",
     "audit:colab-benchmark": "node tools/js/audit_colab_classical_benchmark.mjs",
     "export:colab-benchmark-bundles": "node tools/js/export_colab_benchmark_bundle.mjs --all-fixtures",
     "finalize:colab-acceptance": "node tools/js/finalize_colab_benchmark_acceptance.mjs",

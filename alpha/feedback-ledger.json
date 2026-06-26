@@ -1,0 +1,130 @@
+{
+  "artifactType": "anchor.alpha-feedback-ledger",
+  "artifactVersion": "1.0.0",
+  "phase": "FEEDBACK-OPS-R1",
+  "releaseId": "alpha-r1-external-research-education-preview",
+  "taxonomy": {
+    "severities": {
+      "P0": "App cannot load, mission cannot complete, hidden-truth leak, data corruption, or official result mismatch.",
+      "P1": "Serious incorrect behavior, major scientific misrepresentation, major accessibility blocker, or reproducibility failure.",
+      "P2": "Significant workflow, usability, teaching, benchmark, or performance gap.",
+      "P3": "Polish, wording, layout, or preference."
+    },
+    "categories": {
+      "SCI": "Scientific model, assumption, evidence, unit, or validation concern.",
+      "EDU": "Teaching, onboarding, explanation, terminology, or misconception concern.",
+      "BENCH": "Benchmark artifact, fairness, notebook, solver packet, import/export, reproducibility, timing, or result-parity concern.",
+      "UX": "User interaction, navigation, discoverability, layout, or workflow friction.",
+      "OPS": "Pilot operations, feedback intake, checklist, release, or support process.",
+      "PERF": "Rendering, boot, frame timing, memory, or resource lifecycle.",
+      "ACCESS": "Keyboard, focus, contrast, semantics, reduced motion, or screen-reader issue."
+    },
+    "validStatuses": [
+      "triaged",
+      "accepted-for-design",
+      "accepted-for-implementation",
+      "tracked",
+      "blocked",
+      "resolved",
+      "deferred",
+      "ignored"
+    ]
+  },
+  "items": [
+    {
+      "feedbackId": "ALPHA-FB-001",
+      "title": "Environment Studio domain, resolution, tile bathymetry, editable terrain",
+      "source": "alpha tester",
+      "status": "accepted-for-design",
+      "category": [
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / Environment Authoring",
+      "summary": "Alpha testers want a unified editor for defining spatial domain size, resolution, bathymetry generation, regional bathymetry tiles, editable or deformed terrain, and import/export.",
+      "decision": "Accepted for ENV-STUDIO-R0 architecture and contracts.",
+      "proposedPhase": "ENV-STUDIO-R0",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Environment-authoring requirements are tracked without adding a fifth Product Hub pillar.",
+        "Contracts remain separate from simulation, scoring, and scientific-model changes.",
+        "Future visible editor work can reference one stable feedback item."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-002",
+      "title": "Researcher Notebook Launchpad from inside ANCHOR",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "BENCH",
+        "UX"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / External Solver Evaluation / Researcher Quick Start",
+      "summary": "Alpha testers are unsure whether they must download the full source project and upload the notebook manually. ANCHOR should provide an in-app launch and download page for the external solver notebooks and benchmark bundle.",
+      "decision": "Accepted for COLAB-LAUNCH-R1 / FEEDBACK-OPS-R1.",
+      "proposedPhase": "FEEDBACK-OPS-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Researcher Quick Start exposes the full notebook, starter notebook, public bundle, and finalizer command.",
+        "The app states that users do not need the full source repository for normal Alpha use.",
+        "The hosted Colab button is enabled only when a public GitHub notebook URL is configured."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-003",
+      "title": "Hosted Google Colab smoke pending",
+      "source": "alpha tester",
+      "status": "tracked",
+      "category": [
+        "BENCH"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "External Solver Notebook / Google Colab",
+      "summary": "Local Python notebook execution and authoritative ANCHOR finalization are verified, but a real hosted Google Colab Run All smoke remains pending.",
+      "decision": "Track separately from local notebook verification.",
+      "proposedPhase": "COLAB-HOSTING-SMOKE",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Hosted Google Colab status remains PENDING until a real hosted run is completed.",
+        "Documentation distinguishes local Python verification from hosted Colab verification.",
+        "No release surface claims hosted Colab verification without evidence."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-004",
+      "title": "Feedback and diagnostic package taxonomy",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "OPS"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Alpha Feedback and Diagnostics",
+      "summary": "Alpha feedback should be categorized consistently as P0/P1/P2/P3 and SCI, EDU, BENCH, OPS, UX, PERF, or ACCESS.",
+      "decision": "Use feedback ledger as the source of truth.",
+      "proposedPhase": "FEEDBACK-OPS-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Feedback IDs are stable and parseable.",
+        "Statuses and category tags are auditable.",
+        "P0/P1 items cannot be silently marked ignored."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    }
+  ]
+}

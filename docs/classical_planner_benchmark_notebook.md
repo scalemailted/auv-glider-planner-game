@@ -16,6 +16,24 @@ Current local gate status is `LOCAL_PYTHON_EXECUTION_VERIFIED`: Python 3.14.6 ex
 
 Google Colab hosting smoke remains `PENDING` until a real hosted run returns `colab_execution_report.json`, `colab_execution_package.json`, and `reproducibility_manifest.json`, and those artifacts pass local finalization plus validation.
 
+## Using The Notebook From ANCHOR
+
+Use `Simulation Lab -> Researcher Quick Start -> External Solver Notebook` as the Alpha launchpad. It links the full benchmark notebook, starter notebook, public benchmark bundle, and local finalizer command.
+
+The notebook proposes plans. ANCHOR validates, simulates, and scores them. Users do not need to download the full ANCHOR source repository for normal Alpha use.
+
+When a public GitHub notebook URL is configured, the launchpad can open Google Colab in a new tab with the full notebook. If no public URL is configured, use the fallback workflow:
+
+1. Download the full benchmark notebook or starter notebook.
+2. Open `colab.research.google.com`.
+3. Upload the notebook.
+4. Upload or load the public benchmark bundle.
+5. Run all notebook cells.
+6. Export the returned plan/package.
+7. Return to ANCHOR for authoritative validation, simulation, scoring, and final acceptance.
+
+The default public bundle is `tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json`. It is `PUBLIC / FORECAST_ONLY`, records `containsHiddenTruth=false`, and includes validation-baseline plus ScoreProfile identity. Hosted Google Colab smoke remains `PENDING` until the owner completes the real hosted run.
+
 ## Public Planning-Data Audit
 
 1. Web Planning consumes public terrain/wet-land masks, hazards, forecast current frames, public scalar/ROI fields, starts/deployments, candidate nodes, mission geometry, validation metadata, and scoring metadata.

@@ -57,6 +57,22 @@ Status:
 
 Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.
 
+## Using The External Solver Notebook
+
+From `Simulation Lab -> Researcher Quick Start`, use the `External Solver Notebook` launchpad. The notebook proposes plans. ANCHOR validates, simulates, and scores them.
+
+Users do not need to download the full ANCHOR source repository for normal Alpha use. The launchpad provides:
+
+- the full benchmark notebook;
+- the starter notebook;
+- the public benchmark bundle;
+- the local ANCHOR finalizer command;
+- status for local Python execution, ANCHOR finalization, hosted Google Colab smoke, and `FORECAST_ONLY` fairness.
+
+If a public GitHub notebook URL is configured, the Colab button opens Google Colab in a new browser tab. If it is not configured, use the fallback workflow: download the notebook, open `colab.research.google.com`, upload the notebook, upload or load the public benchmark bundle, run all cells, export the plan/package, and return to ANCHOR for official validation, simulation, and scoring.
+
+The public bundle shown in the launchpad is `tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json`. It is `PUBLIC / FORECAST_ONLY`, records `containsHiddenTruth=false`, and carries validation-baseline and ScoreProfile identity.
+
 ## Google Colab Hosted Smoke Owner Checklist
 
 Codex cannot mark hosted Google Colab as verified without a real authenticated hosted runtime. The owner-run checklist is:
@@ -145,6 +161,18 @@ Use the existing feedback categories and map them to roadmap severity or concern
 - `SCI`: Model, scientific assumption, evidence, units, or claim concern.
 - `EDU`: Teaching sequence, terminology, explanation, or misconception concern.
 - `BENCH`: Artifact, fairness, notebook, timing, plan import, or result parity concern.
+- `UX`: Navigation, discoverability, layout, interaction, or workflow-friction concern.
+- `OPS`: Pilot operations, feedback intake, checklist, release, or support process concern.
+- `PERF`: Rendering, boot, frame timing, memory, or resource-lifecycle concern.
+- `ACCESS`: Keyboard, focus, contrast, semantics, reduced motion, or screen-reader concern.
+
+The structured feedback ledger is:
+
+```text
+alpha/feedback-ledger.json
+```
+
+Initial tracked items are `ALPHA-FB-001` Environment Studio authoring, `ALPHA-FB-002` Researcher Notebook Launchpad, `ALPHA-FB-003` hosted Google Colab smoke pending, and `ALPHA-FB-004` feedback/diagnostic taxonomy. P0/P1 items must not be ignored.
 
 ## Environment Authoring Feedback
 

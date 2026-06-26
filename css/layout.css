@@ -1215,6 +1215,49 @@ body.main-menu-shell #center-column {
   line-height: 1.42;
 }
 
+.alpha-callout p + p {
+  margin-top: .55rem;
+}
+
+.alpha-notebook-actions {
+  margin-top: .85rem;
+}
+
+.alpha-notebook-steps {
+  margin: .9rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.alpha-artifact-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: .55rem;
+  margin: .9rem 0 0;
+}
+
+.alpha-artifact-facts div {
+  padding: .55rem .65rem;
+  border: 1px solid rgba(141, 220, 242, 0.16);
+  border-radius: 8px;
+  background: rgba(5, 14, 26, 0.54);
+}
+
+.alpha-artifact-facts dt {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.alpha-artifact-facts dd {
+  margin: .18rem 0 0;
+  color: #eef6ff;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 .alpha-step-card a,
 .alpha-limitation-card a {
   margin-top: .6rem;

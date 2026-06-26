@@ -10,6 +10,8 @@ The project is also an **AUV Glider Planner Game** for teaching long-horizon pla
 
 ALPHA-R1 packages this existing system as a controlled external research-and-education preview. See [ANCHOR Alpha Release](docs/alpha_release.md) for guided onboarding, researcher quick start, known limitations, feedback/diagnostic export, release-manifest identity, and the Google Colab hosting-smoke status.
 
+Alpha researchers can use `Simulation Lab -> Researcher Quick Start -> External Solver Notebook` to download the full benchmark notebook, starter notebook, public benchmark bundle, and local finalizer command. Users do not need to download the full ANCHOR source repository for normal Alpha use. One-click Google Colab launch is enabled only when a public GitHub notebook URL is configured; otherwise the app shows the download/upload fallback.
+
 The benchmark target now explicitly includes mission feasibility: planned vs realized trajectory, mission duration, distance traveled, battery/energy, bathymetry/depth constraints, payload/sensor cost, surfacing/communication events, and optional Node/OceanBox-JS motion cost graph / adjacency matrix exports. See [Mission Feasibility Simulator and Scientific Benchmark Requirements](docs/mission_feasibility_simulator_requirements.md).
 
 WORLD-R1 adds a renderer-neutral multiscale mission-domain contract. Physical operational extent, planning lattice, bathymetry/source-field resolution, render LOD, and simulation time are now named separately for regional synthetic missions; legacy grid levels still load through a compatibility profile. See [WORLD-R1 Multiscale Operational Domain Audit](docs/multiscale_operational_domain_audit.md) and [Regional Mission Scale and Resolution](docs/regional_mission_scale_and_resolution.md).

@@ -25,6 +25,7 @@ import { resetMissionShellForMainMenu, publishSceneIsolationDebug } from '../../
 import {
   ALPHA_LIMITATIONS,
   ALPHA_ONBOARDING_OPTIONS,
+  ALPHA_NOTEBOOK_LAUNCH_CONFIG,
   ALPHA_POSITIONING,
   ALPHA_RELEASE_ID,
   ALPHA_RELEASE_VERSION,
@@ -395,21 +396,88 @@ export class MainMenuScene extends PhaserScene {
   }
 
   alphaResearcherQuickStartHtml() {
+    const notebook = ALPHA_NOTEBOOK_LAUNCH_CONFIG;
+    const bundle = notebook.publicBundle;
+    const colabLaunch = notebook.githubColabUrl
+      ? `<a class="hub-action-card primary" href="${escapeAttr(notebook.githubColabUrl)}" target="_blank" rel="noopener noreferrer">
+          <strong>Open Full Notebook in Google Colab</strong>
+          <small>Opens in a new browser tab.</small>
+        </a>`
+      : `<button type="button" class="hub-action-card disabled" disabled aria-disabled="true">
+          <strong>Open Full Notebook in Google Colab</strong>
+          <small>A public GitHub notebook URL is required for one-click Colab launch. Download the notebook and upload it to Colab, or configure the public repository URL.</small>
+        </button>`;
     return `
       ${hubBackHtml()}
       <div class="hub-submenu-header">
         <p class="main-menu-kicker">Simulation Lab / External Solver Evaluation</p>
         <h2>Researcher Quick Start</h2>
-        <p class="hub-lede">Notebook proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.</p>
+        <p class="hub-lede">The notebook proposes plans. ANCHOR validates, simulates, and scores them.</p>
       </div>
       ${this.alphaStatusStripHtml()}
+      <section class="alpha-callout" data-alpha-notebook-launchpad>
+        <p class="main-menu-kicker">External Solver Notebook</p>
+        <h3>Open or download the planner notebook and public benchmark bundle</h3>
+        <p>The notebook reconstructs the public FORECAST_ONLY planning bundle, runs transparent classical planner examples, and exports an anchor.plan file for ANCHOR to validate.</p>
+        <p>Users do not need to download the full ANCHOR source repository for normal Alpha use.</p>
+        <div class="alpha-status-strip" aria-label="Notebook launch status">
+          <div><span>Local Python Execution</span><strong>${escapeHtml(notebook.localPythonExecutionStatus)}</strong></div>
+          <div><span>ANCHOR Finalization</span><strong>${escapeHtml(notebook.authoritativeFinalizationStatus)}</strong></div>
+          <div><span>Google Colab Hosting Smoke</span><strong class="status-pending">${escapeHtml(notebook.googleColabHostingSmokeStatus)}</strong></div>
+          <div><span>Fairness Default</span><strong>${escapeHtml(notebook.fairnessDefault)}</strong></div>
+        </div>
+        <div class="hub-menu-items alpha-notebook-actions">
+          ${colabLaunch}
+          <a class="hub-action-card" href="${escapeAttr(notebook.pagesFullNotebookUrl)}" download>
+            <strong>Download Full Benchmark Notebook</strong>
+            <small>${escapeHtml(notebook.fullNotebookPath)}</small>
+          </a>
+          <a class="hub-action-card" href="${escapeAttr(notebook.pagesStarterNotebookUrl)}" download>
+            <strong>Download Starter Notebook</strong>
+            <small>${escapeHtml(notebook.starterNotebookPath)}</small>
+          </a>
+          <a class="hub-action-card" href="${escapeAttr(notebook.benchmarkBundleUrl)}" download>
+            <strong>Download Public Benchmark Bundle</strong>
+            <small>PUBLIC / FORECAST_ONLY bundle for notebook upload or static URL loading.</small>
+          </a>
+          <button type="button" class="hub-action-card" data-action="alpha-copy-notebook-data-url">
+            <strong>Copy Notebook Data URL</strong>
+            <small>Copy the Pages/static URL for the public benchmark bundle.</small>
+          </button>
+          <button type="button" class="hub-action-card" data-action="alpha-copy-local-finalizer-command">
+            <strong>Copy Local Finalizer Command</strong>
+            <small>Copy the command that lets ANCHOR evaluate the returned Colab package.</small>
+          </button>
+        </div>
+        <ol class="alpha-notebook-steps">
+          <li>Export or download a public benchmark bundle.</li>
+          <li>Open the benchmark notebook.</li>
+          <li>Upload or load the bundle.</li>
+          <li>Run all notebook cells.</li>
+          <li>Export an anchor.plan file.</li>
+          <li>Return to ANCHOR.</li>
+          <li>Import the plan.</li>
+          <li>Execute the mission.</li>
+          <li>Compare the official ScoreResult.</li>
+        </ol>
+        <p>Google Colab execution is a hosted runtime. Local Python execution has been verified; hosted Google Colab smoke may remain pending until explicitly run.</p>
+        <dl class="alpha-artifact-facts">
+          <div><dt>Artifact type</dt><dd>${escapeHtml(bundle.artifactType)}</dd></div>
+          <div><dt>Artifact version</dt><dd>${escapeHtml(bundle.artifactVersion)}</dd></div>
+          <div><dt>Visibility</dt><dd>${escapeHtml(bundle.visibility)}</dd></div>
+          <div><dt>containsHiddenTruth</dt><dd>${escapeHtml(String(bundle.containsHiddenTruth))}</dd></div>
+          <div><dt>Validation baseline</dt><dd>${escapeHtml(bundle.validationBaselineDigest)}</dd></div>
+          <div><dt>ScoreProfile</dt><dd>${escapeHtml(`${bundle.scoreProfileId} ${bundle.scoreProfileDigest}`)}</dd></div>
+        </dl>
+        <p data-alpha-notebook-launch-status aria-live="polite">Notebook launchpad ready. No hidden truth is exposed.</p>
+      </section>
       <div class="alpha-workflow-grid" data-alpha-researcher-quick-start>
         ${alphaStepHtml('1', 'Select public benchmark mission', 'Use the Alpha Research Benchmark: static_additive_routing, FORECAST_ONLY, hidden truth disabled.')}
         ${alphaStepHtml('2', 'Export public artifacts', 'Use Simulation Lab exports for solver packets or public benchmark bundles. Hidden truth is excluded by default.')}
-        ${alphaLinkStepHtml('3', 'Download starter notebook', 'tools/python/notebooks/anchor_external_solver_template.ipynb', 'Starter notebook')}
-        ${alphaLinkStepHtml('4', 'Download full benchmark notebook', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'Full benchmark notebook')}
-        ${alphaLinkStepHtml('5', 'Download public bundle fixture', 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json', 'Public benchmark bundle')}
-        ${alphaLinkStepHtml('6', 'Import checked-in external plan', 'tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json', 'A* anchor.plan example')}
+        ${alphaLinkStepHtml('3', 'Download starter notebook', notebook.pagesStarterNotebookUrl, 'Starter notebook')}
+        ${alphaLinkStepHtml('4', 'Download full benchmark notebook', notebook.pagesFullNotebookUrl, 'Full benchmark notebook')}
+        ${alphaLinkStepHtml('5', 'Download public bundle fixture', notebook.benchmarkBundleUrl, 'Public benchmark bundle')}
+        ${alphaLinkStepHtml('6', 'Import checked-in external plan', notebook.checkedInPlanPath, 'A* anchor.plan example')}
         ${alphaStepHtml('7', 'Evaluate with ANCHOR', `Official A* score ${ALPHA_STATUS.checkedInAstarOfficialScore}; local acceptance digest ${ALPHA_STATUS.localAcceptanceDigest}.`)}
         ${alphaStepHtml('8', 'Hosted Colab status', 'Google Colab Hosting Smoke: PENDING until a real hosted Run all is completed.')}
       </div>
@@ -519,6 +587,8 @@ export class MainMenuScene extends PhaserScene {
         this.leaveMainMenuHub();
         scene.start('MethodsValidationScene');
       },
+      'alpha-copy-notebook-data-url': () => this.copyAlphaNotebookDataUrl(),
+      'alpha-copy-local-finalizer-command': () => this.copyAlphaLocalFinalizerCommand(),
       'alpha-download-feedback': () => this.downloadAlphaFeedbackPackage(),
       'alpha-copy-feedback-summary': () => this.copyAlphaFeedbackSummary(),
       'alpha-trigger-error': () => {
@@ -605,6 +675,32 @@ export class MainMenuScene extends PhaserScene {
     try { return globalThis.localStorage?.getItem?.(ALPHA_ONBOARDING_STORAGE_KEY) === 'true'; } catch { return true; }
   }
 
+  alphaAbsoluteUrl(path) {
+    const value = String(path ?? '');
+    try {
+      const href = globalThis.location?.href;
+      if (href) return new URL(value, href).toString();
+    } catch {
+      return value;
+    }
+    return value.startsWith('/') ? value : `./${value}`;
+  }
+
+  copyAlphaNotebookDataUrl() {
+    const url = this.alphaAbsoluteUrl(ALPHA_NOTEBOOK_LAUNCH_CONFIG.benchmarkBundleUrl);
+    this.copyTextOrDownload(url, 'anchor-alpha-public-benchmark-bundle-url.txt');
+    this.setAlphaNotebookStatus(`Copied public benchmark bundle URL: ${url}`);
+  }
+
+  copyAlphaLocalFinalizerCommand() {
+    const text = [
+      ALPHA_NOTEBOOK_LAUNCH_CONFIG.localFinalizerCommand,
+      ALPHA_NOTEBOOK_LAUNCH_CONFIG.localAcceptanceCommand
+    ].join('\n');
+    this.copyTextOrDownload(text, 'anchor-alpha-local-finalizer-command.txt');
+    this.setAlphaNotebookStatus('Copied local ANCHOR finalizer and acceptance validation commands.');
+  }
+
   readAlphaFeedbackForm() {
     const form = this.app?.elements?.overlay?.modalRoot?.querySelector?.('[data-alpha-feedback-form]');
     if (!form) return {};
@@ -661,6 +757,11 @@ export class MainMenuScene extends PhaserScene {
   setAlphaFeedbackStatus(message) {
     const status = this.app?.elements?.overlay?.modalRoot?.querySelector?.('[data-alpha-feedback-status]');
     if (status) status.querySelector('p').textContent = message;
+  }
+
+  setAlphaNotebookStatus(message) {
+    const status = this.app?.elements?.overlay?.modalRoot?.querySelector?.('[data-alpha-notebook-launch-status]');
+    if (status) status.textContent = message;
   }
 
   updateDebugObject(active = true, alphaState = {}) {

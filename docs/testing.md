@@ -68,6 +68,18 @@ npm.cmd run validate:colab-acceptance -- anchor_benchmark_output/colab_acceptanc
 
 The validator requires forecast-only default fairness, official ANCHOR evaluation metadata, bundle and public-projection digests, parity-probe success, stable digests, no hidden-truth leakage, and no machine-local absolute paths in the report. The current compact evidence fixture is `tests/fixtures/colab_benchmark/colab_bench_r1_1_local_acceptance.json`: local Python execution is verified, while hosted Google Colab Run-all smoke remains pending.
 
+## FEEDBACK-OPS-R1 Alpha Feedback And Notebook Launchpad Checks
+
+Run these after changing the Alpha feedback ledger, Researcher Quick Start launchpad, notebook links, public benchmark bundle exposure, or Pages notebook delivery policy:
+
+```bash
+node tools/js/audit_alpha_feedback_ops.mjs
+npm.cmd run audit:alpha-release
+node ./node_modules/@playwright/test/cli.js test tests/e2e/alpha_r1_external_preview.spec.js --grep "Alpha Researcher Quick Start" --reporter=line --workers=1
+```
+
+The audit verifies `alpha/feedback-ledger.json`, feedback IDs/statuses, notebook launch config, notebook and bundle paths, Pages copy policy, hosted Colab status, `FORECAST_ONLY` public-bundle metadata, and hidden-truth exclusion. The browser smoke verifies the launchpad copy, disabled Colab fallback when no public GitHub URL is configured, notebook and bundle links, and the no-full-source-repository workflow.
+
 ## SCORE-PKG-R1 Scoring Package Checks
 
 Run these after changing `packages/scoring`, score forwarders, result/debrief score metadata, benchmark score adapters, or leaderboard score metadata:
