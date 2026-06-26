@@ -16,7 +16,6 @@ class Solver():
         self.terrain = world["terrain"]
         self.timeLimit = 15
         self.paths = []
-        self.depth = 1
         self.frames = world["level"]["layers"]["truth"]["frames"]
         self.preparedFrames = {}
         self.nowRoi = None
@@ -114,17 +113,29 @@ class Solver():
         oldX = startCell[0]
         oldY = startCell[1]
         liveDistance = timed
+        distance = 0
+        energy_cost = 0
         for cellX, cellY in self.bresenham_line(startCell[0], startCell[1], ratedCell[0], ratedCell[1]):
             if startCell != (cellX, cellY):
-                liveDistance += self.find_dist((cellX - oldX), (cellY - oldY))
+                tempdist = self.find_dist((cellX - oldX), (cellY - oldY))
+                liveDistance += tempdist
+                total = abs(cellX - oldX) + abs(cellY - oldY)
+                dirX = (1 if cellX < oldX else -1) * ((cellX - oldX)/total)
+                dirY = (1 if cellY < oldY else -1) * ((cellY - oldY)/total)
+                energy_cost += self.find_energy_cost(dirX, dirY, (oldX, oldY))
+                distance+=tempdist
                 # print(liveDistance)
                 self.update_frames(liveDistance if liveDistance < 12.5 else 12)
 
             if cellX != -1:
                 if traversedCells.count((cellX, cellY)) != 0:
-                    score += self.nowRoi[cellY][cellX]
+                    if self.hazards[cellX][cellY] != 1:
+                        score += self.nowRoi[cellY][cellX]
+                    else:
+                        score += (self.nowRoi[cellY][cellX] - 1.5)
             else:
                 return -1, -1
+        score -= energy_cost*0.05
         return score/distance, distance
     def find_dist(self, x, y):
         return max(0.0, math.hypot(x, y))
@@ -149,6 +160,29 @@ class Solver():
             if e2 <= dx:
                 err += dx
                 y0 += sy
+    def find_energy_cost(self, dirX, dirY, start):
+        driftGain = 0.5
+        try:
+            perpX = -(1/dirX)
+        except:
+            perpX = 0
+        try:
+            perpY = -(1/dirY)
+        except:
+            perpY = 0
+        along = self.current[start[0]][start[1]][0] * dirX + self.current[start[0]][start[1]][0] * dirY 
+        perp = self.current[start[0]][start[1]][0] * perpX + self.current[start[0]][start[1]][0] * perpY
+        penalty = 1
+        if along > 0:
+            penalty += along * driftGain * 0.72
+        else:
+            penalty -= along * driftGain * 0.38      
+        penalty += perp * driftGain * 0.28
+        return self.clamp(penalty, 0.45, 2.6)
+            
+
+    def clamp(self, value, min, max):
+        return value if value > min and value < max else min if value < min else max
 file = my_io.load_solver_packet(r"C:\Users\wabbi\OneDrive\Documents\GitHub\auv-glider-planner-game\tools\pythonfolder\anchor_headless\anchor.solver-packet (4).json")
 
 world=world.build_headless_world(file)
