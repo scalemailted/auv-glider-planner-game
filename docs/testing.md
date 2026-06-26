@@ -1335,6 +1335,19 @@ node ./node_modules/@playwright/test/cli.js test tests/e2e/env_pkg_r1_environmen
 
 These gates assert package dependency purity, browser/worker-safe imports, deterministic manifests/artifacts, duplicate-field rejection, hidden-truth role checks, component digest aggregation, cross-artifact validation, local-meter frame compatibility warnings, physical-coordinate bathymetry/current/scalar sampling, generated-environment adapter metadata, browser/Node sample parity, and Pages-subpath package loading. They do not retune bathymetry, current, or scalar values; they do not change visibility policy, observation noise, Simulation, scoring, rendering, or mission outcomes.
 
+## ENV-STUDIO-R0 Environment Studio Contract Gates
+
+Run these after changing Environment Studio contracts, feedback docs, future Studio import/export JSON, or future Studio validation panels:
+
+```bash
+node tools/js/smoke_environment_studio_contracts.mjs
+npm.cmd run test:packages
+```
+
+The smoke asserts domain spec normalization, derived rows/columns, browser-friendly cell-count limits, bathymetry archetype specs, tile manifest validation, edge profile validation, mosaic manifest validation, seam validation, dependency graph state transitions, validation report digests, hidden-truth rejection, and codec-friendly canonical JSON.
+
+R0 has no visible Environment Studio browser route. Add browser smoke/release workflows only when ENV-STUDIO-R1 adds the Simulation Lab entry and import/export UI. Environment Studio tests must not change simulation, scoring, generated mission semantics, current/scalar equations, or Alpha Product Hub pillar count.
+
 ## Codec Package Gates
 
 Package validation now includes `smoke_codec_package_contracts.mjs`, `audit_codec_schema_alignment.mjs`, and codec dependency/browser/worker-safety audits. The Python standard-library interop smoke is `tools/python/smoke_anchor_codec_interop.py`.

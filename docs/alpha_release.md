@@ -146,6 +146,12 @@ Use the existing feedback categories and map them to roadmap severity or concern
 - `EDU`: Teaching sequence, terminology, explanation, or misconception concern.
 - `BENCH`: Artifact, fairness, notebook, timing, plan import, or result parity concern.
 
+## Environment Authoring Feedback
+
+Alpha tester requests for custom environment authoring are tracked as ENV-STUDIO-R0 feedback: `P2`, `BENCH`, `EDU`, and `SCI`, not as a current Alpha feature claim. The product decision is one unified **Environment Studio** under `Simulation Lab`, rather than separate bathymetry/current/scalar editors or a fifth Product Hub pillar.
+
+Current R0 status: contracts, validation helpers, digests, hidden-truth checks, and documentation are defined. A visible browser Studio workflow remains a recommended ENV-STUDIO-R1 thin slice. See `docs/feedback_r1_environment_studio.md` and `docs/environment_studio_architecture.md`.
+
 ## Feedback And Diagnostics
 
 Use Product Hub `Feedback & Diagnostics` to create a local JSON feedback package. The package includes safe context such as release id, version, route, browser/platform, viewport, scenario/mission identifiers, public digests, validation baseline digest, package versions, quality profile, and structured warnings.
