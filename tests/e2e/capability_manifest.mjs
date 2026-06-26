@@ -78,7 +78,8 @@ export const RELEASE_TEST_TITLES = Object.freeze([
   'Alpha First-Run Guided Mission',
   'Alpha Researcher Quick Start',
   'Alpha Feedback Diagnostics and Error Recovery',
-  'Alpha Pages and Compact Layout'
+  'Alpha Pages and Compact Layout',
+  'Alpha Browser Compatibility Critical Path'
 ]);
 
 export const FULL_GROUP_LIMITS = Object.freeze({
@@ -100,6 +101,7 @@ export const SMOKE_SPEC_SPLIT_FILES = Object.freeze([
   "tests/e2e/codec_r1_artifact_codecs.spec.js",
   "tests/e2e/colab_classical_benchmark.spec.js",
   "tests/e2e/alpha_r1_external_preview.spec.js",
+  "tests/e2e/alpha_r1_1_acceptance.spec.js",
   "tests/e2e/workspace_and_challenge_setup.spec.js",
   "tests/e2e/simulation_and_terrain.spec.js",
   "tests/e2e/scientific_validation_methods.spec.js"
@@ -192,7 +194,9 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Alpha First-Run Guided Mission": "tests/e2e/alpha_r1_external_preview.spec.js",
   "Alpha Researcher Quick Start": "tests/e2e/alpha_r1_external_preview.spec.js",
   "Alpha Feedback Diagnostics and Error Recovery": "tests/e2e/alpha_r1_external_preview.spec.js",
-  "Alpha Pages and Compact Layout": "tests/e2e/alpha_r1_external_preview.spec.js"
+  "Alpha Pages and Compact Layout": "tests/e2e/alpha_r1_external_preview.spec.js",
+  "Alpha Browser Compatibility Critical Path": "tests/e2e/alpha_r1_1_acceptance.spec.js",
+  "ALPHA-R1 Full External Pilot Walkthrough": "tests/e2e/alpha_r1_1_acceptance.spec.js"
 });
 
 const NODE_COVERAGE = Object.freeze({
@@ -205,7 +209,7 @@ const NODE_COVERAGE = Object.freeze({
   IMPORT_EXPORT: ['npm.cmd run test:packages'],
   METHODS_VALIDATION: ['node tools/tests/scientific_validation.test.mjs'],
   CLASSICAL_PLANNER_NOTEBOOK: ['node tools/js/audit_colab_classical_benchmark.mjs'],
-  EXTERNAL_ALPHA_PREVIEW: ['node tools/js/validate_alpha_release_manifest.mjs', 'node tools/js/audit_alpha_release_readiness.mjs'],
+  EXTERNAL_ALPHA_PREVIEW: ['node tools/js/validate_alpha_release_manifest.mjs', 'node tools/js/audit_alpha_release_readiness.mjs', 'node tools/js/audit_alpha_r1_1_acceptance.mjs'],
   ENVIRONMENT_PACKAGE: ['npm.cmd run test:packages'],
   RESOURCE_LIFECYCLE: ['node tools/js/audit_three_vendor_git_tracking.mjs']
 });
@@ -321,7 +325,8 @@ export const CAPABILITIES = Object.freeze([
     'Alpha First-Run Guided Mission',
     'Alpha Researcher Quick Start',
     'Alpha Feedback Diagnostics and Error Recovery',
-    'Alpha Pages and Compact Layout'
+    'Alpha Pages and Compact Layout',
+    'Alpha Browser Compatibility Critical Path'
   ], NODE_COVERAGE.EXTERNAL_ALPHA_PREVIEW),
   capability('RESOURCE-LIFECYCLE', 'One renderer, one RAF, and cleanup invariants', true, false, true, [
     'Repeated App Boot and Teardown Leave No Runtime Processes',

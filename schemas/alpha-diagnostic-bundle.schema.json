@@ -15,8 +15,32 @@
   "properties": {
     "artifactType": { "const": "anchor.alpha-diagnostic-bundle" },
     "artifactVersion": { "const": "1.0.0" },
-    "release": { "type": "object" },
-    "safeContext": { "type": "object" },
+    "release": {
+      "type": "object",
+      "required": [
+        "releaseId",
+        "releaseVersion",
+        "validationBaselineDigest",
+        "localAcceptanceDigest",
+        "googleColabHostingSmoke",
+        "ownerReviewStatus",
+        "releaseRecommendation"
+      ]
+    },
+    "safeContext": {
+      "type": "object",
+      "required": ["browser", "build", "scenario", "identities", "resources", "warnings"],
+      "properties": {
+        "build": {
+          "type": "object",
+          "required": ["applicationCommit", "buildHead", "applicationVersion", "packageVersions"]
+        },
+        "identities": {
+          "type": "object",
+          "required": ["validationBaselineDigest", "localAcceptanceDigest"]
+        }
+      }
+    },
     "feedback": { "type": "object" },
     "error": { "type": ["object", "null"] },
     "privacy": { "type": "object" },

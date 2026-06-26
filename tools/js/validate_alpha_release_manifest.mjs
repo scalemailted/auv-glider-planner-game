@@ -20,6 +20,15 @@ assert.equal(manifest.classicalPlannerNotebook?.localAcceptanceDigest, 'fnv1a32:
 assert.equal(manifest.classicalPlannerNotebook?.googleColabHostingSmoke, 'PENDING');
 assert.equal(Number(manifest.classicalPlannerNotebook?.checkedInAstarOfficialScore), 23.593559);
 assert.equal(manifest.scoring?.profileDigest, 'fnv1a32:1e7b3fe0');
+assert.equal(manifest.acceptance?.phase, 'ALPHA-R1.1');
+assert.equal(manifest.acceptance?.ownerReviewStatus, 'PENDING');
+assert.equal(manifest.acceptance?.notebookVerification?.localPythonExecution, 'VERIFIED');
+assert.equal(manifest.acceptance?.notebookVerification?.authoritativeAnchorFinalization, 'VERIFIED');
+assert.equal(manifest.acceptance?.notebookVerification?.pagesNotebookDelivery, 'VERIFIED');
+assert.equal(manifest.acceptance?.notebookVerification?.googleColabHostingSmoke, 'PENDING');
+assert.equal(manifest.acceptance?.releaseRecommendation, 'ALPHA_R1_ACCEPTANCE_PACKAGE_READY');
+assert.deepEqual(manifest.acceptance?.knownP0P1Issues, []);
+assert.equal(manifest.supportedBrowsers?.find((entry) => /Mobile|tablet/i.test(entry.browser))?.status, 'NOT_TESTED');
 assert.ok(Array.isArray(manifest.curatedScenarios) && manifest.curatedScenarios.length >= 6);
 assert.ok(Array.isArray(manifest.knownLimitations) && manifest.knownLimitations.some((item) => /not an operational ocean forecast/i.test(item)));
 assert.equal(manifest.releaseDigest, expectedDigest);
@@ -31,5 +40,7 @@ console.log(JSON.stringify({
   releaseVersion: manifest.releaseVersion,
   releaseDigest: manifest.releaseDigest,
   validationBaselineDigest: manifest.validationBaseline.digest,
-  googleColabHostingSmoke: manifest.classicalPlannerNotebook.googleColabHostingSmoke
+  googleColabHostingSmoke: manifest.classicalPlannerNotebook.googleColabHostingSmoke,
+  ownerReviewStatus: manifest.acceptance.ownerReviewStatus,
+  releaseRecommendation: manifest.acceptance.releaseRecommendation
 }, null, 2));

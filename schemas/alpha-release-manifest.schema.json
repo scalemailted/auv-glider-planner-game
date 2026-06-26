@@ -16,6 +16,7 @@
     "validationBaseline",
     "classicalPlannerNotebook",
     "scoring",
+    "acceptance",
     "knownLimitations",
     "claimBoundary",
     "releaseDigest"
@@ -40,6 +41,42 @@
     "scoring": {
       "type": "object",
       "required": ["profileId", "profileVersion", "profileDigest"]
+    },
+    "acceptance": {
+      "type": "object",
+      "required": [
+        "phase",
+        "ownerReviewStatus",
+        "browserSupportMatrix",
+        "notebookVerification",
+        "scenarioCatalog",
+        "criticalPathAcceptance",
+        "knownP0P1Issues",
+        "releaseRecommendation"
+      ],
+      "properties": {
+        "phase": { "const": "ALPHA-R1.1" },
+        "ownerReviewStatus": { "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "browserSupportMatrix": { "type": "array" },
+        "notebookVerification": {
+          "type": "object",
+          "required": [
+            "localPythonExecution",
+            "authoritativeAnchorFinalization",
+            "pagesNotebookDelivery",
+            "googleColabHostingSmoke"
+          ]
+        },
+        "knownP0P1Issues": { "type": "array" },
+        "releaseRecommendation": {
+          "enum": [
+            "ALPHA_R1_ACCEPTANCE_PACKAGE_READY",
+            "ALPHA_R1_LIMITED_PILOT_READY",
+            "ALPHA_R1_EXTERNAL_PILOT_READY",
+            "NO_GO_FOR_ALPHA_PILOT"
+          ]
+        }
+      }
     },
     "knownLimitations": {
       "type": "array",

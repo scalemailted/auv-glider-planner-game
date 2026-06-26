@@ -4,10 +4,10 @@
 
 | Profile | Tests |
 |---|---:|
-| smoke | 15 |
-| release | 48 |
-| visual | 12 |
-| full | 76 |
+| smoke | 17 |
+| release | 59 |
+| visual | 13 |
+| full | 80 |
 
 ## Capability Matrix
 

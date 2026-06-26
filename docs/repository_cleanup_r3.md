@@ -59,10 +59,10 @@ REPO-CLEAN-R3 is a physical E2E decomposition and legacy pruning audit pass. It 
 
 ## Validation Tiers
 
-- Smoke profile: 15 tests.
-- Release profile: 48 tests.
-- Full nonvisual profile: 76 tests.
-- Visual profile: 12 tests.
+- Smoke profile: 17 tests.
+- Release profile: 59 tests.
+- Full nonvisual profile: 80 tests.
+- Visual profile: 13 tests.
 
 ## Required R3 Statements
 

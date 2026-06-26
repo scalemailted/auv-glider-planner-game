@@ -1,6 +1,6 @@
 import { canonicalJsonDigest } from '../../../packages/codecs/src/index.js';
 
-export const ALPHA_RELEASE_MODULE_VERSION = 'alpha-r1-release-workflows';
+export const ALPHA_RELEASE_MODULE_VERSION = 'alpha-r1-1-release-acceptance';
 export const ALPHA_RELEASE_ID = 'alpha-r1-external-research-education-preview';
 export const ALPHA_RELEASE_VERSION = '0.1.0-alpha.1';
 export const ALPHA_POSITIONING = 'ANCHOR Alpha is a deterministic, scientifically constrained research-and-education sandbox for investigating adaptive underwater-glider mission planning. It supports reproducible comparison of human, classical, and learning-based planners. It is not an operational ocean forecast or certified vehicle-navigation system.';
@@ -14,7 +14,10 @@ export const ALPHA_STATUS = Object.freeze({
   validationBaselineDigest: 'fnv1a32:dd016175',
   localAcceptanceDigest: 'fnv1a32:9a73d341',
   checkedInAstarOfficialScore: 23.593559,
-  conclusion: 'GO_FOR_ALPHA_R1_WITH_COLAB_HOSTING_SMOKE_PENDING'
+  ownerReviewStatus: 'PENDING',
+  pagesNotebookDelivery: 'VERIFIED',
+  releaseRecommendation: 'ALPHA_R1_ACCEPTANCE_PACKAGE_READY',
+  conclusion: 'ALPHA_R1_ACCEPTANCE_PACKAGE_READY'
 });
 
 export const ALPHA_LIMITATIONS = Object.freeze([
@@ -65,11 +68,17 @@ export function alphaReleaseSummary(manifest = null) {
     releaseId: manifest?.releaseId ?? ALPHA_RELEASE_ID,
     releaseVersion: manifest?.releaseVersion ?? ALPHA_RELEASE_VERSION,
     releaseChannel: manifest?.releaseChannel ?? 'alpha',
+    applicationCommit: manifest?.applicationCommit ?? null,
+    buildHead: manifest?.buildIdentity?.head ?? manifest?.applicationCommit ?? null,
+    applicationVersion: manifest?.buildIdentity?.applicationVersion ?? null,
     tagline: manifest?.tagline ?? ALPHA_TAGLINE,
     claimBoundary: manifest?.claimBoundary ?? ALPHA_POSITIONING,
+    packageVersions: manifest?.packageVersions ?? {},
     validationBaselineDigest: manifest?.validationBaseline?.digest ?? ALPHA_STATUS.validationBaselineDigest,
     localAcceptanceDigest: manifest?.classicalPlannerNotebook?.localAcceptanceDigest ?? ALPHA_STATUS.localAcceptanceDigest,
-    googleColabHostingSmoke: manifest?.classicalPlannerNotebook?.googleColabHostingSmoke ?? ALPHA_STATUS.googleColabHostingSmoke
+    googleColabHostingSmoke: manifest?.classicalPlannerNotebook?.googleColabHostingSmoke ?? ALPHA_STATUS.googleColabHostingSmoke,
+    ownerReviewStatus: manifest?.acceptance?.ownerReviewStatus ?? ALPHA_STATUS.ownerReviewStatus,
+    releaseRecommendation: manifest?.acceptance?.releaseRecommendation ?? ALPHA_STATUS.releaseRecommendation
   };
 }
 
@@ -100,6 +109,12 @@ export function buildAlphaDiagnosticBundle({
       viewport: browser.viewport ?? viewportSummary(),
       devicePixelRatio: browser.devicePixelRatio ?? globalThis.devicePixelRatio ?? null
     },
+    build: {
+      applicationCommit: release.applicationCommit,
+      buildHead: release.buildHead,
+      applicationVersion: release.applicationVersion,
+      packageVersions: release.packageVersions
+    },
     scenario: {
       scenarioId: appState?.currentScenario?.levelId ?? appState?.level?.levelId ?? appState?.level?.id ?? null,
       missionId: appState?.currentScenario?.missionId ?? appState?.mission?.missionId ?? appState?.mission?.id ?? null,
@@ -110,7 +125,8 @@ export function buildAlphaDiagnosticBundle({
       planDigest: debug.planDigest ?? globalThis.ANCHOR_EXECUTION_DEBUG?.enginePlanDigest ?? globalThis.ANCHOR_EXECUTION_DEBUG?.launchPlanDigest ?? null,
       resultDigest: debug.resultDigest ?? globalThis.ANCHOR_EXECUTION_DEBUG?.resultDigest ?? appState?.result?.resultDigest ?? null,
       scoreResultDigest: debug.scoreResultDigest ?? appState?.result?.scoreResult?.resultDigest ?? null,
-      validationBaselineDigest: release.validationBaselineDigest
+      validationBaselineDigest: release.validationBaselineDigest,
+      localAcceptanceDigest: release.localAcceptanceDigest
     },
     resources: resourceSummary(debug),
     warnings: collectStructuredWarnings(debug)
@@ -178,6 +194,8 @@ export function alphaReleaseDebugPayload(state = {}) {
     localPythonExecution: ALPHA_STATUS.localPythonExecution,
     authoritativeAnchorFinalization: ALPHA_STATUS.authoritativeAnchorFinalization,
     googleColabHostingSmoke: ALPHA_STATUS.googleColabHostingSmoke,
+    ownerReviewStatus: ALPHA_STATUS.ownerReviewStatus,
+    releaseRecommendation: ALPHA_STATUS.releaseRecommendation,
     hiddenTruthExposed: false,
     changesScienceModels: false,
     changesScoring: false,
@@ -214,11 +232,11 @@ function sanitizeFeedback(feedback = {}) {
   return {
     category: pickString(feedback.category, 80),
     severity: pickString(feedback.severity, 80),
-    title: pickString(feedback.title, 180),
-    observedBehavior: pickString(feedback.observedBehavior, 4000),
-    expectedBehavior: pickString(feedback.expectedBehavior, 4000),
-    reproductionSteps: pickString(feedback.reproductionSteps, 4000),
-    optionalNotes: pickString(feedback.optionalNotes, 4000)
+    title: sanitizeFreeText(feedback.title, 180),
+    observedBehavior: sanitizeFreeText(feedback.observedBehavior, 4000),
+    expectedBehavior: sanitizeFreeText(feedback.expectedBehavior, 4000),
+    reproductionSteps: sanitizeFreeText(feedback.reproductionSteps, 4000),
+    optionalNotes: sanitizeFreeText(feedback.optionalNotes, 4000)
   };
 }
 
@@ -234,8 +252,8 @@ function sanitizeError(error = null) {
 
 function sanitizePublicContext(context) {
   return JSON.parse(JSON.stringify(context, (key, value) => {
-    if (/hidden|truth|oracle|cookie|localStorage|clipboard|history|fileContent/i.test(key)) return undefined;
-    if (typeof value === 'string') return removeLocalPaths(value);
+    if (/hidden|truth|oracle|cookie|localStorage|clipboard|history|fileContent|token|password|credential/i.test(key)) return undefined;
+    if (typeof value === 'string') return removeSensitiveText(value);
     return value;
   }));
 }
@@ -278,6 +296,16 @@ function viewportSummary() {
 function pickString(value, maxLength) {
   const text = String(value ?? '').trim();
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
+}
+
+function sanitizeFreeText(value, maxLength) {
+  return pickString(removeSensitiveText(value), maxLength);
+}
+
+function removeSensitiveText(text) {
+  return removeLocalPaths(text)
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+    .replace(/\b(?:token|password|credential)\s*[:=]\s*[^\s"'<>]+/gi, '[redacted-secret]');
 }
 
 function removeLocalPaths(text) {

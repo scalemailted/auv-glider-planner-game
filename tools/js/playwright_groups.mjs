@@ -23,6 +23,7 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Alpha Researcher Quick Start$/i,
       /^Alpha Feedback Diagnostics and Error Recovery$/i,
       /^Alpha Pages and Compact Layout$/i,
+      /^Alpha Browser Compatibility Critical Path$/i,
       /^Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records$/i,
       /^Cold Repo Root Boot Reaches Main Menu Through Package Modules$/i,
       /^Cold Pages Subpath Boot Reaches Main Menu Through Package Modules$/i,
@@ -290,7 +291,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^FLOW-R2A\.5 Full Headed Production 4D Current Dynamics Walkthrough$/i,
       /^FLOW-R2A\.5\.1 Full Headed Environment Time and Layer Walkthrough$/i,
       /^FLOW-RUNTIME-R1\.1 Full Headed Manual Planning Timeline Walkthrough$/i,
-      /^FLOW-RUNTIME-R1 Full Headed Canonical Current Evolution Walkthrough$/i
+      /^FLOW-RUNTIME-R1 Full Headed Canonical Current Evolution Walkthrough$/i,
+      /^ALPHA-R1 Full External Pilot Walkthrough$/i
     ]
   }
 ]);

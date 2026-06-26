@@ -8,7 +8,8 @@ const files = [
   'schemas/alpha-release-manifest.schema.json',
   'schemas/alpha-diagnostic-bundle.schema.json',
   'docs/alpha_release.md',
-  'tests/e2e/alpha_r1_external_preview.spec.js'
+  'tests/e2e/alpha_r1_external_preview.spec.js',
+  'tests/e2e/alpha_r1_1_acceptance.spec.js'
 ];
 
 for (const file of files) assert.ok(existsSync(file), `${file} exists`);
@@ -22,6 +23,9 @@ assert.equal(manifest.releaseDigest, canonicalJsonDigest(releaseWithoutDigest), 
 assert.equal(manifest.validationBaseline.digest, 'fnv1a32:dd016175', 'validation baseline digest');
 assert.equal(manifest.classicalPlannerNotebook.localAcceptanceDigest, 'fnv1a32:9a73d341', 'notebook local acceptance digest');
 assert.equal(manifest.classicalPlannerNotebook.googleColabHostingSmoke, 'PENDING', 'Colab hosting smoke remains pending');
+assert.equal(manifest.acceptance?.ownerReviewStatus, 'PENDING', 'owner review remains pending');
+assert.equal(manifest.acceptance?.releaseRecommendation, 'ALPHA_R1_ACCEPTANCE_PACKAGE_READY', 'R1.1 acceptance-package recommendation');
+assert.equal(manifest.supportedBrowsers.find((entry) => /Mobile|tablet/i.test(entry.browser))?.status, 'NOT_TESTED', 'mobile/tablet support is not inferred from compact desktop');
 assert.equal(catalog.entries.length, 6, 'scenario catalog entry count');
 assert.ok(catalog.entries.some((entry) => entry.scenarioId === 'alpha-research-benchmark' && entry.supportsNotebookRoundTrip === true), 'research benchmark catalog entry');
 assert.ok(artifactKindByType('anchor.alpha-release-manifest').some((entry) => entry.kind === 'alphaReleaseManifest'), 'release manifest registered');
@@ -31,6 +35,7 @@ const source = readFileSync('src/core/alpha/AlphaRelease.js', 'utf8');
 assert.ok(source.includes('hiddenTruthIncluded: false'), 'diagnostic bundle marks hidden truth excluded');
 assert.ok(source.includes('automaticallyTransmitted: false'), 'diagnostics are not transmitted automatically');
 assert.ok(source.includes('googleColabHostingSmoke'), 'Colab status is represented separately');
+assert.ok(source.includes('packageVersions'), 'diagnostic bundle includes safe package identity metadata');
 
 console.log(JSON.stringify({
   ok: true,
@@ -38,7 +43,9 @@ console.log(JSON.stringify({
   scenarioCount: catalog.entries.length,
   validationBaselineDigest: manifest.validationBaseline.digest,
   localAcceptanceDigest: manifest.classicalPlannerNotebook.localAcceptanceDigest,
-  googleColabHostingSmoke: manifest.classicalPlannerNotebook.googleColabHostingSmoke
+  googleColabHostingSmoke: manifest.classicalPlannerNotebook.googleColabHostingSmoke,
+  ownerReviewStatus: manifest.acceptance.ownerReviewStatus,
+  releaseRecommendation: manifest.acceptance.releaseRecommendation
 }, null, 2));
 
 function readJson(file) {

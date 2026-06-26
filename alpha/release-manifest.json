@@ -4,11 +4,11 @@
   "releaseId": "alpha-r1-external-research-education-preview",
   "releaseVersion": "0.1.0-alpha.1",
   "releaseChannel": "alpha",
-  "applicationCommit": "78a1ddc42426f6eb60386086689d2d9fd50244df",
+  "applicationCommit": "b65b30cb2aca2df39bbbd3cb44fe702986456fac",
   "buildIdentity": {
     "source": "local-checkout",
-    "head": "78a1ddc42426f6eb60386086689d2d9fd50244df",
-    "worktreePolicy": "alpha-r1-may-be-uncommitted-after-manifest-generation",
+    "head": "b65b30cb2aca2df39bbbd3cb44fe702986456fac",
+    "worktreePolicy": "alpha-r1-1-acceptance-may-be-uncommitted-until-owner-review",
     "applicationVersion": "0.1.0"
   },
   "defaultRuntimeShell": "phaser-transitional-shell",
@@ -78,18 +78,18 @@
     },
     {
       "browser": "Firefox current",
-      "status": "NOT_TESTED",
-      "evidence": "No ALPHA-R1 Firefox run recorded yet."
+      "status": "SUPPORTED",
+      "evidence": "ALPHA-R1.1 compact critical path passed in Playwright Firefox."
     },
     {
       "browser": "WebKit / Safari current",
       "status": "NOT_TESTED",
-      "evidence": "No ALPHA-R1 WebKit run recorded yet."
+      "evidence": "ALPHA-R1.1 Playwright WebKit compact run was attempted but did not complete with a passing test artifact; Safari is not inferred from WebKit."
     },
     {
       "browser": "Mobile / tablet browsers",
-      "status": "SUPPORTED_WITH_LIMITATIONS",
-      "evidence": "Compact desktop layout is tested; touch-first mobile workflow is not certified."
+      "status": "NOT_TESTED",
+      "evidence": "Compact desktop layout is tested separately; touch-first mobile and tablet workflows are not certified."
     }
   ],
   "supportedViewports": [
@@ -102,6 +102,110 @@
       "status": "SUPPORTED_WITH_LIMITATIONS"
     }
   ],
+  "acceptance": {
+    "phase": "ALPHA-R1.1",
+    "ownerReviewStatus": "PENDING",
+    "ownerReviewPackage": {
+      "path": "test-results/alpha-r1-owner-review/",
+      "workflowTitle": "ALPHA-R1 Full External Pilot Walkthrough",
+      "screenshots": [
+        "01-product-hub-alpha.png",
+        "02-first-run-onboarding.png",
+        "03-guided-mission-deployment.png",
+        "04-waypoint-segment-profile.png",
+        "05-depth-and-current-inspection.png",
+        "06-predicted-dive-trajectory.png",
+        "07-simulation-realized-dive.png",
+        "08-surfacing-decision.png",
+        "09-replan-workflow.png",
+        "10-debrief-score-explanation.png",
+        "11-replay-review.png",
+        "12-methods-validation-overview.png",
+        "13-methods-validation-technical-detail.png",
+        "14-researcher-quick-start.png",
+        "15-notebook-and-bundle-access.png",
+        "16-external-plan-result.png",
+        "17-feedback-diagnostics.png",
+        "18-compact-desktop.png",
+        "19-final-product-hub-cleanup.png"
+      ],
+      "summaryFiles": [
+        "qa-summary.json",
+        "release-manifest-snapshot.json",
+        "accessibility-summary.json",
+        "browser-support-summary.json",
+        "performance-summary.json",
+        "resource-cleanup-summary.json",
+        "known-limitations-snapshot.json"
+      ]
+    },
+    "browserSupportMatrix": [
+      {
+        "browser": "Chromium / Chrome / Edge current",
+        "status": "SUPPORTED",
+        "evidence": "Playwright Chromium smoke, release, Pages, and ALPHA-R1.1 owner-review gates."
+      },
+      {
+        "browser": "Firefox current",
+        "status": "SUPPORTED",
+        "evidence": "ALPHA-R1.1 compact critical path passed in Playwright Firefox."
+      },
+      {
+        "browser": "WebKit current",
+        "status": "NOT_TESTED",
+        "evidence": "ALPHA-R1.1 compact critical path was attempted in Playwright WebKit and exited nonzero without a passing artifact."
+      },
+      {
+        "browser": "Safari current",
+        "status": "NOT_TESTED",
+        "evidence": "Safari support is not inferred from Playwright WebKit."
+      },
+      {
+        "browser": "Mobile / tablet browsers",
+        "status": "NOT_TESTED",
+        "evidence": "Responsive desktop layout does not establish mobile or tablet support."
+      }
+    ],
+    "accessibilityBaseline": {
+      "status": "PASS",
+      "scope": "critical Alpha browser path smoke; no WCAG conformance claim"
+    },
+    "performanceBaseline": {
+      "status": "PASS",
+      "scope": "current accepted quality profile across Product Hub, Planning, Simulation, Replay Review, Methods, and cleanup"
+    },
+    "resourceCleanup": {
+      "status": "PASS",
+      "requiredFinalState": {
+        "activeThreeRenderers": 0,
+        "activeThreeRafs": 0,
+        "missionCanvases": 0,
+        "staleRouteRoots": 0,
+        "staleModals": 0,
+        "terrainObjects": 0,
+        "currentGlyphObjects": 0,
+        "validationObjects": 0
+      }
+    },
+    "notebookVerification": {
+      "localPythonExecution": "VERIFIED",
+      "authoritativeAnchorFinalization": "VERIFIED",
+      "pagesNotebookDelivery": "VERIFIED",
+      "googleColabHostingSmoke": "PENDING"
+    },
+    "scenarioCatalog": {
+      "path": "alpha/scenario-catalog.json",
+      "digest": "fnv1a32:be894960",
+      "entryCount": 6
+    },
+    "criticalPathAcceptance": {
+      "workflowTitle": "Alpha Browser Compatibility Critical Path",
+      "status": "PASS_CHROMIUM_FIREFOX_WEBKIT_UNVERIFIED",
+      "digest": "fnv1a32:18af4425"
+    },
+    "knownP0P1Issues": [],
+    "releaseRecommendation": "ALPHA_R1_ACCEPTANCE_PACKAGE_READY"
+  },
   "knownLimitations": [
     "Synthetic benchmark environments only; not an operational ocean forecast.",
     "Not certified navigation or a vehicle-command system.",
@@ -120,5 +224,5 @@
     "exportFormats": "docs/export_formats.md",
     "testing": "docs/testing.md"
   },
-  "releaseDigest": "fnv1a32:4e23931e"
+  "releaseDigest": "fnv1a32:ba01ca3c"
 }
