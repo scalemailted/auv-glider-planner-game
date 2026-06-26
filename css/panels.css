@@ -1521,6 +1521,85 @@
   padding: .42rem .5rem;
 }
 
+.environment-studio-basic-panel {
+  border-color: rgba(85, 214, 190, .28);
+  background: rgba(10, 35, 42, .52);
+}
+
+.environment-studio-collapsible {
+  display: grid;
+  gap: .55rem;
+}
+
+.environment-studio-collapsible summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .16rem;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 900;
+}
+
+.environment-studio-collapsible summary small {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+.environment-studio-collapsible-body {
+  display: grid;
+  gap: .65rem;
+  padding-top: .6rem;
+}
+
+.environment-studio-secondary-panel {
+  border-style: dashed;
+  opacity: .82;
+}
+
+.environment-studio-secondary-panel h2 {
+  font-size: .9rem;
+}
+
+.environment-studio-camera-controls {
+  min-width: min(100%, 20rem);
+  display: grid;
+  gap: .35rem;
+}
+
+.environment-studio-camera-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+
+.environment-studio-camera-row button,
+.environment-studio-feature-records button {
+  color: var(--text);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(141, 220, 242, .2);
+  border-radius: 6px;
+  padding: .35rem .48rem;
+  font-size: .7rem;
+  font-weight: 800;
+}
+
+.environment-studio-camera-row button.active,
+.environment-studio-feature-records button.active {
+  border-color: rgba(85, 214, 190, .62);
+  background: rgba(85, 214, 190, .16);
+}
+
+.environment-studio-camera-slider {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) minmax(7rem, 1fr) auto;
+  align-items: center;
+  gap: .45rem;
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 800;
+}
+
 .environment-studio-mode-panel,
 .environment-studio-terrain-preview {
   min-height: 0;
@@ -1558,6 +1637,44 @@
   font-weight: 800;
 }
 
+.environment-studio-feature-label circle {
+  fill: var(--accent);
+  stroke: rgba(2, 8, 18, .86);
+  stroke-width: 2;
+}
+
+.environment-studio-feature-label.selected circle {
+  fill: var(--warning);
+}
+
+.environment-studio-feature-label text {
+  fill: #f8fcff;
+  paint-order: stroke;
+  stroke: rgba(2, 8, 18, .8);
+  stroke-width: 3px;
+}
+
+.environment-studio-atlas-svg rect,
+.environment-studio-atlas-svg ellipse {
+  stroke: rgba(255, 255, 255, .08);
+  stroke-width: 1;
+}
+
+.environment-studio-atlas-window {
+  fill: rgba(249, 225, 108, .12);
+  stroke: var(--warning);
+  stroke-width: 3;
+  stroke-dasharray: 8 5;
+}
+
+.environment-studio-atlas-current-hints path {
+  fill: none;
+  stroke: rgba(85, 214, 190, .8);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 12 8;
+}
+
 .environment-studio-profile-svg polyline {
   fill: none;
   stroke: var(--accent);
@@ -1584,6 +1701,17 @@
 .environment-studio-source-diagnostics {
   display: grid;
   gap: .6rem;
+  padding: .6rem;
+  border: 1px solid rgba(141, 220, 242, .14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.environment-studio-source-diagnostics summary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: .86rem;
+  font-weight: 900;
 }
 
 .environment-studio-source-diagnostics h2,
@@ -1758,6 +1886,23 @@
 
 .environment-studio-tile-config-list {
   grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+}
+
+.environment-studio-feature-records {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: .45rem;
+}
+
+.environment-studio-feature-records button {
+  display: grid;
+  gap: .16rem;
+  text-align: left;
+}
+
+.environment-studio-feature-records button span {
+  color: var(--muted);
+  font-size: .68rem;
 }
 
 .environment-studio-panel-kicker {

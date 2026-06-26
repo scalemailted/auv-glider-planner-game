@@ -1,6 +1,6 @@
 # ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responds to `ALPHA-FB-006` by upgrading the editor from flat 2D tile swatches into a regional bathymetry authoring workflow with 3D preview and contextual inspection. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, benchmark fairness, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1 responds to `ALPHA-FB-008` by changing the first interaction model: mission authors start from a Synthetic Ocean Atlas and selected operational window, not low-level terrain-feature controls. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, benchmark fairness, or existing Alpha workflows.
 
 ## Feedback Classification
 
@@ -101,6 +101,24 @@ Scope:
 6. Project export/import fields for environment type, mission scale, intended gliders, regional template, coastline orientation, open-ocean boundaries, feature mix, randomization locks, preview mode, source grid, preview mesh, decimation, feature summary, suitability, validation, and dependency state.
 
 R1.1 still uses deterministic synthetic bathymetry. It is scientifically constrained and validation-aware, but it is not a calibrated regional forecast, operational bathymetry, named-region survey product, or certified navigation product.
+
+## What ENV-ATLAS-R1 Implements
+
+Implemented atlas-front-door pivot:
+
+```text
+ENV-ATLAS-R1 - Synthetic Ocean Atlas and Operational Window Selection
+```
+
+Scope:
+
+1. Environment Studio opens to a Synthetic Ocean Atlas stage by default.
+2. Users choose an atlas preset and operational window example such as Coastal Shelf Survey, Semi-Enclosed Gulf Survey, Island Chain Survey, Shelf Break + Canyon Survey, River Mouth Plume Survey, Strait / Sill Survey, or Open Ocean Eddy Survey.
+3. The selected window infers context, domain size, source/preview resolution, glider count, mission duration, bathymetry regime, current/scalar regime hints, boundary sides, feature mix, and validation profile.
+4. Generate 3D Region creates an `anchor.regional-mission-recipe` and then uses the existing R1.1 regional bathymetry generator path.
+5. Advanced feature/tile controls remain available as provenance and tuning mechanisms after region generation, not as the default first screen.
+
+The atlas is synthetic, reference-informed, and benchmark-oriented. It is not a real Earth map, calibrated real-ocean data, operational forecast, or navigation product.
 
 ## Staged Follow-Ups
 

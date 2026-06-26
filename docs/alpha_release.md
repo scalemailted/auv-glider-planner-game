@@ -172,13 +172,13 @@ The structured feedback ledger is:
 alpha/feedback-ledger.json
 ```
 
-Initial tracked items are `ALPHA-FB-001` Environment Studio authoring, `ALPHA-FB-002` Researcher Notebook Launchpad, `ALPHA-FB-003` hosted Google Colab smoke pending, `ALPHA-FB-004` feedback/diagnostic taxonomy, and `ALPHA-FB-006` regional 3D bathymetry authoring. P0/P1 items must not be ignored.
+Initial tracked items are `ALPHA-FB-001` Environment Studio authoring, `ALPHA-FB-002` Researcher Notebook Launchpad, `ALPHA-FB-003` hosted Google Colab smoke pending, `ALPHA-FB-004` feedback/diagnostic taxonomy, `ALPHA-FB-006` regional 3D bathymetry authoring, and `ALPHA-FB-008` Synthetic Ocean Atlas operational-window selection. P0/P1 items must not be ignored.
 
 ## Environment Authoring Feedback
 
 Alpha tester requests for custom environment authoring are tracked as Environment Studio feedback: `P2`, `BENCH`, `EDU`, and `SCI`, not as a current core Alpha gameplay claim. The product decision is one unified **Environment Studio** under `Simulation Lab`, rather than separate bathymetry/current/scalar editors or a fifth Product Hub pillar.
 
-Current R1.1 status: contracts, validation helpers, digests, hidden-truth checks, and documentation are defined, and the browser Studio can author a regional bathymetry recipe, generate deterministic multi-archetype synthetic bathymetry, inspect a 3D preview plus diagnostics, validate seam/dependency state, compute mission-design feature/suitability heuristics, and import/export Environment Studio project JSON. Mission launch from edited Studio projects, current/scalar/hotspot regeneration, sculpting, real patch import, scientific equation changes, scoring changes, and planner changes remain out of scope. See `docs/feedback_r1_environment_studio.md` and `docs/environment_studio_architecture.md`.
+Current ENV-ATLAS-R1 status: contracts, validation helpers, digests, hidden-truth checks, and documentation are defined, and the browser Studio opens to a Synthetic Ocean Atlas stage. Users select an operational window, inspect inferred regional context and current/scalar regime hints, generate a Regional Mission Recipe, then generate deterministic regional 3D bathymetry detail using the existing Studio path. Mission launch from edited Studio projects, current/scalar/hotspot regeneration, sculpting, real patch import, scientific equation changes, scoring changes, and planner changes remain out of scope. See `docs/feedback_r1_environment_studio.md` and `docs/environment_studio_architecture.md`.
 
 ## Feedback And Diagnostics
 

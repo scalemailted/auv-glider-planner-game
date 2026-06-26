@@ -2,7 +2,7 @@
 
 Environment Studio is the planned unified authoring surface for deterministic synthetic ANCHOR environments. It should help instructors and researchers define a reproducible domain, choose or edit synthetic bathymetry, inspect generated field dependencies, validate artifacts, and export public-safe JSON.
 
-R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgrades that thin slice into a regional bathymetry authoring workflow with a global region recipe, 3D bathymetry preview, contextual inspector, multi-archetype regional generation, source-grid versus preview-mesh metadata, feature summaries, and multi-glider suitability heuristics.
+R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1 pivots the front door away from low-level feature controls: Environment Studio now starts from a **Synthetic Ocean Atlas**, a selected operational window, and a derived Regional Mission Recipe before generating regional bathymetry detail.
 
 ## Product Placement
 
@@ -32,6 +32,22 @@ bottomDepthMeters = h(x,y)
 ```
 
 It is not a volumetric geology editor. It does not create caves, tunnels, overhangs, arbitrary freeform solid geology, or calibrated regional survey products.
+
+## ENV-ATLAS-R1 Front Door
+
+The primary workflow is now:
+
+```text
+Synthetic Ocean Atlas
+-> selected operational window
+-> inferred regional mission recipe
+-> generated regional 3D bathymetry detail
+-> dependency/validation/export
+```
+
+The atlas is not a real Earth map. It is a deterministic synthetic context map for selecting benchmark-oriented operational windows. Atlas coordinates are normalized `x=0..1`, `y=0..1` in R1. The selected window records detected context such as coast/shelf, gulf/basin, island chain, shelf break, deep basin, strait/sill, river mouth, and open ocean. It also records recommended domain size, source/preview resolution, intended gliders, mission duration, bathymetry regime, current/scalar regime hints, open boundary sides, and validation profile.
+
+The derived `anchor.regional-mission-recipe` is the bridge into the existing Environment Studio generator. It does not claim that currents, scalar fields, hotspots, starts, or benchmark bundles have been regenerated. Those downstream artifacts remain `REQUIRES_REGENERATION`, `NOT_GENERATED`, or `NEEDS_VALIDATION` until explicit adapters update them.
 
 ## Domain Spec
 
@@ -236,3 +252,16 @@ Implemented R1.1 browser workflow:
 5. Preserve regional recipe, feature mix, tile provenance, source-grid shape, preview-grid shape, decimation, feature summary, suitability checks, validation report, and dependency state in project export/import.
 
 Current/scalar/hotspot regeneration, sculpting, real patch import, and launch-to-planning are staged follow-ups. Current synthetic bathymetry is scientifically constrained and validation-aware, but not a calibrated real-ocean bathymetry product.
+
+## ENV-ATLAS-R1 Atlas Workflow
+
+Implemented atlas pivot:
+
+1. Default Environment Studio stage is **Atlas Window**.
+2. The left panel exposes Mission Region controls: region source, atlas preset, window example, mission scale, intended gliders, mission duration, atlas seed, and Generate 3D Region.
+3. The center panel renders a deterministic SVG Synthetic Ocean Atlas with context zones and a selected operational window rectangle.
+4. The right panel shows the Selected Operational Window, detected context, recommended domain/gliders/duration, bathymetry regime, current/scalar regime hints, boundary sides, and expected artifact states.
+5. Generate 3D Region creates a Regional Mission Recipe and uses the existing regional bathymetry generator path.
+6. Feature-mix controls, source-tile provenance, validation, and dependency diagnostics remain available as secondary regional-detail mechanisms rather than the first visible model.
+
+ENV-ATLAS-R1 does not change scientific generation equations, mission simulation, official scoring, planner behavior, benchmark fairness, or existing Alpha workflows.

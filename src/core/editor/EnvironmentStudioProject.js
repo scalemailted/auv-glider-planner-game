@@ -32,6 +32,12 @@ import {
   validateNoHiddenTruth,
   validateTileSeams
 } from './EnvironmentStudioContracts.js';
+import {
+  createRegionalMissionRecipe,
+  createSyntheticOceanAtlas,
+  environmentStudioOptionsFromRegionalRecipe,
+  normalizeOperationalWindow
+} from './SyntheticOceanAtlas.js';
 
 export const ENVIRONMENT_STUDIO_PROJECT_TYPE = 'anchor.environment-studio-project';
 export const ENVIRONMENT_STUDIO_PROJECT_VERSION = '1.0.0';
@@ -89,6 +95,28 @@ export const ENVIRONMENT_STUDIO_PREVIEW_DETAILS = Object.freeze([
   { id: 'medium', label: 'Medium', maxPreviewCells: 1400 },
   { id: 'high', label: 'High', maxPreviewCells: 2600 }
 ]);
+
+export const ENVIRONMENT_STUDIO_PANEL_SECTIONS = Object.freeze([
+  { id: 'basic', label: 'Basic Authoring', defaultExpanded: true },
+  { id: 'advanced', label: 'Advanced Region Controls', defaultExpanded: false },
+  { id: 'diagnostics', label: 'Diagnostics', defaultExpanded: false }
+]);
+
+export const ENVIRONMENT_STUDIO_CAMERA_PRESETS = Object.freeze([
+  { id: 'oblique', label: 'Oblique' },
+  { id: 'topDown', label: 'Top-down' },
+  { id: 'crossSection', label: 'Cross-section' }
+]);
+
+const DEFAULT_PREVIEW_CAMERA_STATE = Object.freeze({
+  preset: 'oblique',
+  yawDegrees: -32,
+  pitchDegrees: 54,
+  panX: 0,
+  panY: 0,
+  zoom: 1,
+  verticalExaggeration: 1.6
+});
 
 export const ENVIRONMENT_STUDIO_DEFAULT_TILE_CONFIGS = Object.freeze([
   { id: 'northwest', label: 'Northwest', tileCoordinate: { row: 0, column: 0 }, archetypeId: 'riverMouthDelta', seedOffset: 'nw', featureRole: 'coastal shelf / river-mouth region' },
@@ -325,6 +353,19 @@ export const ENVIRONMENT_STUDIO_BATHYMETRY_ARCHETYPES = Object.freeze([
 export function createEnvironmentStudioSession(options = {}) {
   const profile = domainProfileById(options.profileId ?? options.domainProfileId);
   const recipe = normalizeRegionalRecipe(options, profile);
+  const atlas = normalizeAtlas(options.atlas ?? {
+    presetId: options.atlasPreset ?? options.atlasPresetId,
+    seed: options.atlasSeed ?? options.seed ?? recipe.randomization?.worldSeed
+  });
+  const selectedOperationalWindow = normalizeOperationalWindow(options.selectedOperationalWindow ?? options.selectedWindow ?? {
+    windowPresetId: options.windowPresetId ?? 'semiEnclosedGulfSurvey',
+    selectedBy: 'preset'
+  }, atlas);
+  const regionalMissionRecipe = normalizeRegionalMissionRecipe(options.regionalMissionRecipe ?? {
+    atlas,
+    selectedWindow: selectedOperationalWindow,
+    seed: options.seed ?? recipe.randomization?.worldSeed
+  });
   const domainSpec = normalizeEnvironmentStudioDomainSpec({
     id: options.domainId ?? 'environment-studio-domain',
     meta: {
@@ -384,8 +425,17 @@ export function createEnvironmentStudioSession(options = {}) {
     openOceanBoundaries: recipe.openOceanBoundaries,
     featureMix: recipe.featureMix,
     randomization: recipe.randomization,
+    studioStage: normalizeStudioStage(options.studioStage),
+    atlas,
+    atlasPreset: atlas.atlasPreset,
+    atlasSeed: atlas.seed,
+    selectedOperationalWindow,
+    regionalMissionRecipe,
     previewMode: previewModeById(options.previewMode ?? recipe.previewMode).id,
     previewDetail: previewDetailById(options.previewDetail ?? recipe.previewDetail).id,
+    simplifiedPanelState: normalizeSimplifiedPanelState(options.simplifiedPanelState),
+    expandedAdvancedSections: normalizeExpandedAdvancedSections(options.expandedAdvancedSections),
+    previewCameraState: normalizePreviewCameraState(options.previewCameraState),
     tileConfigs: normalizeTileConfigs(options.tileConfigs ?? recipe.tileConfigs, { seed: options.seed ?? 'env-studio-r1', featureMix: recipe.featureMix, regionalTemplate: recipe.regionalTemplate }),
     selectedObject: normalizeSelectedObject(options.selectedObject),
     archetypeId: archetype.id,
@@ -484,6 +534,148 @@ export function setEnvironmentStudioPreviewMode(sessionInput = {}, previewModeId
   });
 }
 
+export function setEnvironmentStudioPreviewCameraState(sessionInput = {}, patch = {}) {
+  const session = normalizeSession(sessionInput);
+  return refreshEnvironmentStudioSession({
+    ...session,
+    previewCameraState: normalizePreviewCameraState({
+      ...session.previewCameraState,
+      ...(patch ?? {})
+    }),
+    lastAction: 'preview-camera-changed'
+  });
+}
+
+export function setEnvironmentStudioAtlasPreset(sessionInput = {}, atlasPreset = 'mixedRegionalWorld', options = {}) {
+  const session = normalizeSession(sessionInput);
+  const atlas = normalizeAtlas({
+    presetId: atlasPreset,
+    seed: options.seed ?? session.atlasSeed ?? session.seed
+  });
+  const selectedOperationalWindow = normalizeOperationalWindow({
+    ...(session.selectedOperationalWindow ?? {}),
+    selectedBy: 'preset-retained'
+  }, atlas);
+  const regionalMissionRecipe = createRegionalMissionRecipe({
+    atlas,
+    selectedWindow: selectedOperationalWindow,
+    seed: `${atlas.seed}:${selectedOperationalWindow.windowId}`
+  });
+  return refreshEnvironmentStudioSession({
+    ...session,
+    studioStage: 'atlasWindow',
+    atlas,
+    atlasPreset: atlas.atlasPreset,
+    atlasSeed: atlas.seed,
+    selectedOperationalWindow,
+    regionalMissionRecipe,
+    lastAction: 'atlas-preset-changed'
+  });
+}
+
+export function selectEnvironmentStudioOperationalWindow(sessionInput = {}, windowPresetId = 'semiEnclosedGulfSurvey') {
+  const session = normalizeSession(sessionInput);
+  const selectedOperationalWindow = normalizeOperationalWindow({ windowPresetId, selectedBy: 'preset' }, session.atlas);
+  const regionalMissionRecipe = createRegionalMissionRecipe({
+    atlas: session.atlas,
+    selectedWindow: selectedOperationalWindow,
+    seed: `${session.atlasSeed}:${selectedOperationalWindow.windowId}`
+  });
+  return refreshEnvironmentStudioSession({
+    ...session,
+    studioStage: 'atlasWindow',
+    selectedOperationalWindow,
+    regionalMissionRecipe,
+    lastAction: 'operational-window-selected'
+  });
+}
+
+export function patchEnvironmentStudioOperationalWindow(sessionInput = {}, patch = {}) {
+  const session = normalizeSession(sessionInput);
+  const selectedOperationalWindow = normalizeOperationalWindow({
+    ...(session.selectedOperationalWindow ?? {}),
+    ...patch,
+    selectedBy: patch.selectedBy ?? 'controls'
+  }, session.atlas);
+  const regionalMissionRecipe = createRegionalMissionRecipe({
+    atlas: session.atlas,
+    selectedWindow: selectedOperationalWindow,
+    seed: `${session.atlasSeed}:${selectedOperationalWindow.windowId}`
+  });
+  return refreshEnvironmentStudioSession({
+    ...session,
+    studioStage: 'atlasWindow',
+    selectedOperationalWindow,
+    regionalMissionRecipe,
+    lastAction: 'operational-window-adjusted'
+  });
+}
+
+export function randomizeEnvironmentStudioAtlasSeed(sessionInput = {}) {
+  const session = normalizeSession(sessionInput);
+  const nextSeed = `${session.atlasPreset}:${stableToken(canonicalJsonDigest({
+    previous: session.atlasSeed,
+    window: session.selectedOperationalWindow?.windowDigest,
+    project: session.projectId
+  }))}`;
+  return setEnvironmentStudioAtlasPreset(session, session.atlasPreset, { seed: nextSeed });
+}
+
+export function generateEnvironmentStudioRegionFromAtlasWindow(sessionInput = {}, options = {}) {
+  const session = normalizeSession(sessionInput);
+  const atlas = normalizeAtlas(options.atlas ?? session.atlas);
+  const selectedOperationalWindow = options.selectedOperationalWindow?.windowDigest
+    ? options.selectedOperationalWindow
+    : normalizeOperationalWindow(options.selectedOperationalWindow ?? session.selectedOperationalWindow, atlas);
+  const regionalMissionRecipe = createRegionalMissionRecipe({
+    atlas,
+    selectedWindow: selectedOperationalWindow,
+    seed: options.seed ?? `${atlas.seed}:${selectedOperationalWindow.windowId}`
+  });
+  const recipeOptions = environmentStudioOptionsFromRegionalRecipe(regionalMissionRecipe);
+  const prepared = createEnvironmentStudioSession({
+    ...recipeOptions,
+    projectId: session.projectId,
+    atlas,
+    atlasPreset: atlas.atlasPreset,
+    atlasSeed: atlas.seed,
+    selectedOperationalWindow,
+    regionalMissionRecipe,
+    studioStage: 'regionalDetail',
+    selectedObject: { type: 'region', id: 'region' },
+    previewMode: 'bathymetry3d',
+    previewCameraState: session.previewCameraState,
+    simplifiedPanelState: session.simplifiedPanelState,
+    expandedAdvancedSections: session.expandedAdvancedSections
+  });
+  return createEnvironmentStudioMosaic(prepared, { seed: regionalMissionRecipe.randomSeed });
+}
+
+export function environmentStudioPanelViewModel(sessionInput = {}) {
+  const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
+  const state = normalizeSimplifiedPanelState(session.simplifiedPanelState);
+  const expandedAdvancedSections = normalizeExpandedAdvancedSections(session.expandedAdvancedSections);
+  return {
+    type: 'anchor.environment-studio.panel-view-model',
+    sections: ENVIRONMENT_STUDIO_PANEL_SECTIONS.map((section) => ({
+      ...section,
+      expanded: section.id === 'basic'
+        ? state.basicExpanded !== false
+        : section.id === 'advanced'
+          ? state.advancedExpanded === true
+          : state.diagnosticsExpanded === true
+    })),
+    expandedAdvancedSections,
+    sourceTilesVisibleByDefault: false,
+    primaryWorkflow: 'basic-authoring',
+    diagnosticsHiddenByDefault: state.diagnosticsExpanded !== true,
+    advancedHiddenByDefault: state.advancedExpanded !== true,
+    primaryPreviewLabel: 'Regional 3D Bathymetry Preview',
+    previewCameraState: session.previewCameraState,
+    previewBudget: session.previewBudget
+  };
+}
+
 export function updateEnvironmentStudioRegionalRecipe(sessionInput = {}, patch = {}) {
   const session = normalizeSession(sessionInput);
   const profile = domainProfileById(patch.environmentType ?? patch.profileId ?? session.environmentType ?? session.profileId);
@@ -573,6 +765,7 @@ export function createEnvironmentStudioMosaic(sessionInput = {}, options = {}) {
       maxDepthMeters: session.domainSpec.vertical.maxDepthMeters
     }).depthMeters
   }));
+  shapeRegionalMosaicFeatures(tileSources, session);
   blendRegionalTileEdges(tileSources);
   const tiles = tileSources.map(({ config, archetype, depthMeters }) => {
     const bathymetry = createBathymetryField({
@@ -615,6 +808,7 @@ export function createEnvironmentStudioMosaic(sessionInput = {}, options = {}) {
       deterministicSeed: seed,
       operations: [
         { id: 'create-2x2-regional-mosaic', type: 'deterministic-multi-archetype-regional-mosaic', target: 'bathymetryTiles' },
+        { id: 'shape-regional-basin-features', type: 'deterministic-region-scale-feature-overlay', target: 'bottomDepthMeters' },
         { id: 'blend-shared-tile-edges', type: 'edge-profile-blend', target: 'tileSeams' }
       ]
     }
@@ -673,12 +867,20 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     openOceanBoundaries: session.openOceanBoundaries,
     featureMix: session.featureMix,
     randomization: session.randomization,
+    studioStage: session.studioStage,
+    atlas: session.atlas,
+    atlasPreset: session.atlasPreset,
+    atlasSeed: session.atlasSeed,
+    selectedOperationalWindow: session.selectedOperationalWindow,
+    regionalMissionRecipe: session.regionalMissionRecipe,
     previewMode: session.previewMode,
     previewDetail: session.previewDetail,
     sourceGridShape: session.sourceGridShape,
     previewGridShape: session.previewGridShape,
     previewDecimation: session.previewDecimation,
+    previewBudget: session.previewBudget,
     regionalFeatureSummary: session.regionalFeatureSummary,
+    featureRecords: session.featureRecords,
     multiGliderSuitability: session.multiGliderSuitability,
     selectedObject: session.selectedObject,
     domainSpec: session.domainSpec,
@@ -698,9 +900,15 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
       certifiedForNavigation: false,
       hiddenTruthExposed: false
     },
+    noncanonicalUiMetadata: {
+      simplifiedPanelState: session.simplifiedPanelState,
+      expandedAdvancedSections: session.expandedAdvancedSections,
+      previewCameraState: session.previewCameraState,
+      note: 'UI metadata preserves authoring panel/camera state only. It is not a simulation, scoring, hidden-truth, or renderer-state input.'
+    },
     packageVersions: environmentStudioPackageVersions()
   };
-  return withDigest(projectBase, 'projectDigest');
+  return withProjectDigest(projectBase, 'projectDigest');
 }
 
 export function normalizeEnvironmentStudioProject(input = {}) {
@@ -721,8 +929,17 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     openOceanBoundaries: source.openOceanBoundaries,
     featureMix: source.featureMix,
     randomization: source.randomization,
+    studioStage: source.studioStage,
+    atlas: source.atlas,
+    atlasPreset: source.atlasPreset,
+    atlasSeed: source.atlasSeed,
+    selectedOperationalWindow: source.selectedOperationalWindow,
+    regionalMissionRecipe: source.regionalMissionRecipe,
     previewMode: source.previewMode,
     previewDetail: source.previewDetail,
+    simplifiedPanelState: source.noncanonicalUiMetadata?.simplifiedPanelState ?? source.simplifiedPanelState,
+    expandedAdvancedSections: source.noncanonicalUiMetadata?.expandedAdvancedSections ?? source.expandedAdvancedSections,
+    previewCameraState: source.noncanonicalUiMetadata?.previewCameraState ?? source.previewCameraState,
     tileConfigs: source.tileConfigs,
     selectedObject: source.selectedObject
   });
@@ -754,7 +971,7 @@ export function validateEnvironmentStudioProject(input = {}) {
   const rawHiddenReport = validateNoHiddenTruth(input);
   const project = normalizeEnvironmentStudioProject(input);
   const validationReport = validationReportForState(projectStateFromProject(project), rawHiddenReport);
-  const validated = withDigest({ ...project, validationReport }, 'projectDigest');
+  const validated = withProjectDigest({ ...project, validationReport }, 'projectDigest');
   return {
     valid: validationReport.status !== ENVIRONMENT_STUDIO_STATUS.FAIL,
     status: validationReport.status,
@@ -781,14 +998,18 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
   const previewDecimation = derivePreviewDecimation(sourceGridShape, session.previewDetail);
   const previewGridShape = derivePreviewGridShape(sourceGridShape, previewDecimation);
   const regionalFeatureSummary = computeRegionalFeatureSummary(session, sourceGridShape);
-  const multiGliderSuitability = computeMultiGliderSuitability(session, regionalFeatureSummary, sourceGridShape);
+  const featureRecords = computeRegionalFeatureRecords(session, regionalFeatureSummary);
+  const previewBudget = computePreviewBudget(sourceGridShape, previewGridShape, previewDecimation);
+  const multiGliderSuitability = computeMultiGliderSuitability(session, regionalFeatureSummary, sourceGridShape, previewBudget);
   const dependencyGraph = dependencyGraphForState(session);
   const validationReport = validationReportForState({
     ...session,
     sourceGridShape,
     previewGridShape,
     previewDecimation,
+    previewBudget,
     regionalFeatureSummary,
+    featureRecords,
     multiGliderSuitability,
     dependencyGraph
   });
@@ -797,7 +1018,9 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
     sourceGridShape,
     previewGridShape,
     previewDecimation,
+    previewBudget,
     regionalFeatureSummary,
+    featureRecords,
     multiGliderSuitability,
     dependencyGraph,
     validationReport
@@ -810,12 +1033,14 @@ export function environmentStudioInspectorViewModel(sessionInput = {}) {
   if (selected.type === 'tile') {
     const tile = session.tiles.find((entry) => entry.id === selected.id) ?? session.tiles[0] ?? null;
     return {
-      type: 'Selected Tile',
+      type: 'Selected Source Tile',
       objectType: 'tile',
       objectId: tile?.id ?? selected.id,
-      title: tile?.id ?? 'Tile not generated',
+      title: tile ? `${tile.id} provenance component` : 'Tile not generated',
       status: tile ? tile.diagnostics?.validationStatus ?? 'CURRENT' : 'NOT_GENERATED',
       properties: tile ? [
+        ['Legacy Label', 'Selected Tile'],
+        ['Source Tile Meaning', 'Provenance component for the synthetic regional surface, not a depth slab.'],
         ['Tile ID', tile.id],
         ['Archetype', archetypeById(tile.archetypeId).label],
         ['Feature Role', tile.featureRole],
@@ -899,18 +1124,29 @@ export function environmentStudioInspectorViewModel(sessionInput = {}) {
     };
   }
   if (selected.type === 'feature') {
+    const record = session.featureRecords.find((entry) => entry.featureId === selected.id)
+      ?? session.featureRecords[0]
+      ?? null;
     return {
       type: 'Selected Feature',
       objectType: 'feature',
-      objectId: selected.id,
-      title: labelize(selected.id ?? 'regional feature summary'),
-      status: 'SUMMARY',
-      properties: [
-        ['Feature Families', (session.regionalFeatureSummary?.featureFamilies ?? []).join(', ') || 'not generated'],
-        ['Canyon-Like Gradient Count', session.regionalFeatureSummary?.canyonLikeGradientCount ?? 0],
-        ['Island / Seamount Count', session.regionalFeatureSummary?.islandSeamountCount ?? 0],
-        ['Feature Diversity Score', formatMetric(session.regionalFeatureSummary?.featureDiversityScore)],
+      objectId: record?.featureId ?? selected.id,
+      title: record?.label ?? labelize(selected.id ?? 'regional feature summary'),
+      status: record ? 'CURRENT' : 'SUMMARY',
+      properties: record ? [
+        ['Feature ID', record.featureId],
+        ['Feature Type', labelize(record.type)],
+        ['Approx Center', `${formatMetric(record.approximateCenterMeters.eastMeters)} E, ${formatMetric(record.approximateCenterMeters.northMeters)} N m`],
+        ['Area / Length', record.areaSquareMeters != null ? `${formatMetric(record.areaSquareMeters)} m2` : `${formatMetric(record.lengthMeters)} m`],
+        ['Depth Range', `${formatMetric(record.depthRangeMeters[0])}-${formatMetric(record.depthRangeMeters[1])} m`],
+        ['Slope Range', `${formatMetric(record.slopeRangeMetersPerCell[0])}-${formatMetric(record.slopeRangeMetersPerCell[1])} m/cell`],
+        ['Confidence', formatMetric(record.confidence)],
+        ['Related Source Tiles', record.relatedTileIds.join(', ') || 'none'],
+        ['Validation Notes', record.validationNotes],
         ['Individual Editing', 'Planned after regional preview validation.']
+      ] : [
+        ['Feature Families', (session.regionalFeatureSummary?.featureFamilies ?? []).join(', ') || 'not generated'],
+        ['Feature Diversity Score', formatMetric(session.regionalFeatureSummary?.featureDiversityScore)]
       ],
       actions: [
         { id: 'editFeature', label: 'Edit individual feature', enabled: false, reason: 'Feature-level editing is planned.' }
@@ -931,6 +1167,8 @@ export function environmentStudioInspectorViewModel(sessionInput = {}) {
       ['Resolution', `${session.domainSpec.horizontal.cellSizeMeters} m source cells`],
       ['Regional Template', regionalTemplateById(session.regionalTemplate).label],
       ['Feature Mix', featureMixLabel(session.featureMix)],
+      ['Detected Feature Records', session.featureRecords.length],
+      ['Preview Budget', session.previewBudget?.label ?? 'Not measured'],
       ['Validation Status', session.validationReport?.status ?? 'EMPTY'],
       ['Suitability', session.multiGliderSuitability?.status ?? 'WARN']
     ],
@@ -950,6 +1188,17 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     environmentType: session.environmentType,
     missionScale: session.missionScale,
     intendedGliders: session.intendedGliders,
+    atlasMode: true,
+    studioStage: session.studioStage,
+    atlasPreset: session.atlasPreset,
+    atlasSeed: session.atlasSeed,
+    selectedWindow: compactSelectedWindow(session.selectedOperationalWindow),
+    detectedContext: session.selectedOperationalWindow?.detectedContext ?? null,
+    regionalMissionRecipeDigest: session.regionalMissionRecipe?.recipeDigest ?? null,
+    bathymetryRegime: session.regionalMissionRecipe?.bathymetryRegime ?? session.selectedOperationalWindow?.bathymetryRegime ?? null,
+    currentRegime: session.regionalMissionRecipe?.currentRegime ?? session.selectedOperationalWindow?.currentRegime ?? [],
+    scalarRegime: session.regionalMissionRecipe?.scalarRegime ?? session.selectedOperationalWindow?.scalarRegime ?? [],
+    missionDuration: session.regionalMissionRecipe?.missionDuration ?? null,
     regionalTemplate: session.regionalTemplate,
     coastlineOrientation: session.coastlineOrientation,
     openOceanBoundaries: session.openOceanBoundaries,
@@ -958,9 +1207,14 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     sourceGridShape: session.sourceGridShape,
     previewGridShape: session.previewGridShape,
     previewDecimation: session.previewDecimation,
+    previewBudget: session.previewBudget,
+    previewCameraState: session.previewCameraState,
+    panelViewModel: environmentStudioPanelViewModel(session),
     selectedObjectType: session.selectedObject?.type ?? 'region',
     selectedObjectId: session.selectedObject?.id ?? 'region',
     regionalFeatureSummary: session.regionalFeatureSummary,
+    featureRecords: session.featureRecords,
+    featureRecordCount: session.featureRecords.length,
     multiGliderSuitability: session.multiGliderSuitability,
     domainSpec: domainDebugSummary(session.domainSpec),
     domainDigest: session.domainSpec?.domainSpecDigest ?? null,
@@ -1001,12 +1255,20 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     environmentType: session.environmentType,
     missionScale: session.missionScale,
     intendedGliders: session.intendedGliders,
+    studioStage: session.studioStage,
+    atlasPreset: session.atlasPreset,
+    atlasSeed: session.atlasSeed,
+    selectedWindow: compactSelectedWindow(session.selectedOperationalWindow),
+    regionalMissionRecipeDigest: session.regionalMissionRecipe?.recipeDigest ?? null,
     regionalTemplate: session.regionalTemplate,
     previewMode: session.previewMode,
     sourceGridShape: session.sourceGridShape,
     previewGridShape: session.previewGridShape,
     previewDecimation: session.previewDecimation,
+    previewBudget: session.previewBudget,
+    previewCameraState: session.previewCameraState,
     regionalFeatureSummary: session.regionalFeatureSummary,
+    featureRecords: session.featureRecords,
     multiGliderSuitability: session.multiGliderSuitability,
     tileCount: session.tiles.length,
     mosaicDigest: session.mosaic?.manifest?.mosaicDigest ?? null,
@@ -1237,6 +1499,15 @@ function validationExtras(state = {}) {
       featureDiversityScore: state.regionalFeatureSummary.featureDiversityScore
     }));
   }
+  if (state.featureRecords) {
+    checks.push(check('regional-feature-records-present', !tiles.length || state.featureRecords.length >= 3, {
+      featureRecordCount: state.featureRecords.length,
+      featureTypes: state.featureRecords.map((record) => record.type)
+    }));
+  }
+  if (state.previewBudget) {
+    checks.push(check('preview-budget-measured', state.previewBudget.measured === true || tiles.length === 0, state.previewBudget));
+  }
   if (state.multiGliderSuitability) {
     checks.push(check('multi-glider-suitability-heuristic', state.multiGliderSuitability.status !== 'FAIL' || tiles.length === 0, state.multiGliderSuitability));
     if (state.multiGliderSuitability.status === 'WARN') warnings.push('Multi-glider suitability is a mission-design heuristic and currently has warnings.');
@@ -1283,8 +1554,17 @@ function projectStateFromProject(project = {}) {
     openOceanBoundaries: project.openOceanBoundaries,
     featureMix: project.featureMix,
     randomization: project.randomization,
+    studioStage: project.studioStage,
+    atlas: project.atlas,
+    atlasPreset: project.atlasPreset,
+    atlasSeed: project.atlasSeed,
+    selectedOperationalWindow: project.selectedOperationalWindow,
+    regionalMissionRecipe: project.regionalMissionRecipe,
     previewMode: project.previewMode,
     previewDetail: project.previewDetail,
+    simplifiedPanelState: project.noncanonicalUiMetadata?.simplifiedPanelState ?? project.simplifiedPanelState,
+    expandedAdvancedSections: project.noncanonicalUiMetadata?.expandedAdvancedSections ?? project.expandedAdvancedSections,
+    previewCameraState: project.noncanonicalUiMetadata?.previewCameraState ?? project.previewCameraState,
     tileConfigs: project.tileConfigs,
     selectedObject: project.selectedObject,
     archetypeId,
@@ -1303,6 +1583,18 @@ function normalizeSession(input = {}) {
   const domainSpec = input.domainSpec?.type ? input.domainSpec : normalizeEnvironmentStudioDomainSpec(input.domainSpec ?? {});
   const profile = domainProfileById(input.environmentType ?? input.profileId);
   const recipe = normalizeRegionalRecipe(input, profile);
+  const atlas = normalizeAtlas(input.atlas ?? {
+    presetId: input.atlasPreset ?? input.atlasPresetId,
+    seed: input.atlasSeed ?? input.seed ?? recipe.randomization?.worldSeed
+  });
+  const selectedOperationalWindow = input.selectedOperationalWindow?.windowDigest
+    ? input.selectedOperationalWindow
+    : normalizeOperationalWindow(input.selectedOperationalWindow ?? input.selectedWindow ?? { windowPresetId: input.windowPresetId ?? 'semiEnclosedGulfSurvey' }, atlas);
+  const regionalMissionRecipe = normalizeRegionalMissionRecipe(input.regionalMissionRecipe ?? {
+    atlas,
+    selectedWindow: selectedOperationalWindow,
+    seed: input.seed ?? recipe.randomization?.worldSeed
+  });
   const archetypeId = archetypeById(input.archetypeId).id;
   const archetype = archetypeById(archetypeId);
   const archetypeSpec = input.archetypeSpec?.type
@@ -1330,8 +1622,17 @@ function normalizeSession(input = {}) {
     openOceanBoundaries: recipe.openOceanBoundaries,
     featureMix: recipe.featureMix,
     randomization: recipe.randomization,
+    studioStage: normalizeStudioStage(input.studioStage ?? (input.tiles?.length ? 'regionalDetail' : 'atlasWindow')),
+    atlas,
+    atlasPreset: atlas.atlasPreset,
+    atlasSeed: atlas.seed,
+    selectedOperationalWindow,
+    regionalMissionRecipe,
     previewMode: previewModeById(input.previewMode ?? recipe.previewMode).id,
     previewDetail: previewDetailById(input.previewDetail ?? recipe.previewDetail).id,
+    simplifiedPanelState: normalizeSimplifiedPanelState(input.noncanonicalUiMetadata?.simplifiedPanelState ?? input.simplifiedPanelState),
+    expandedAdvancedSections: normalizeExpandedAdvancedSections(input.noncanonicalUiMetadata?.expandedAdvancedSections ?? input.expandedAdvancedSections),
+    previewCameraState: normalizePreviewCameraState(input.noncanonicalUiMetadata?.previewCameraState ?? input.previewCameraState),
     tileConfigs: normalizeTileConfigs(input.tileConfigs ?? recipe.tileConfigs, {
       seed: input.seed ?? 'env-studio-r1',
       featureMix: recipe.featureMix,
@@ -1442,6 +1743,63 @@ function normalizeRandomization(input = {}) {
       tileSeams: input.locks?.tileSeams !== false
     }
   };
+}
+
+function normalizeSimplifiedPanelState(input = {}) {
+  return {
+    basicExpanded: input.basicExpanded !== false,
+    advancedExpanded: input.advancedExpanded === true,
+    diagnosticsExpanded: input.diagnosticsExpanded === true
+  };
+}
+
+function normalizeExpandedAdvancedSections(input = []) {
+  const allowed = new Set([
+    'domain-resolution',
+    'regional-layout-template',
+    'regional-feature-mix',
+    'randomization',
+    'tile-configuration',
+    'import-export'
+  ]);
+  return [...new Set((Array.isArray(input) ? input : String(input ?? '').split(','))
+    .map((entry) => String(entry).trim())
+    .filter((entry) => allowed.has(entry)))].sort();
+}
+
+function normalizePreviewCameraState(input = {}) {
+  const preset = ENVIRONMENT_STUDIO_CAMERA_PRESETS.some((entry) => entry.id === input.preset)
+    ? input.preset
+    : DEFAULT_PREVIEW_CAMERA_STATE.preset;
+  return {
+    preset,
+    yawDegrees: clampFinite(input.yawDegrees, -180, 180, DEFAULT_PREVIEW_CAMERA_STATE.yawDegrees),
+    pitchDegrees: clampFinite(input.pitchDegrees, 15, 85, DEFAULT_PREVIEW_CAMERA_STATE.pitchDegrees),
+    panX: clampFinite(input.panX, -180, 180, DEFAULT_PREVIEW_CAMERA_STATE.panX),
+    panY: clampFinite(input.panY, -120, 120, DEFAULT_PREVIEW_CAMERA_STATE.panY),
+    zoom: clampFinite(input.zoom, 0.6, 2.6, DEFAULT_PREVIEW_CAMERA_STATE.zoom),
+    verticalExaggeration: clampFinite(input.verticalExaggeration, 0.5, 4, DEFAULT_PREVIEW_CAMERA_STATE.verticalExaggeration)
+  };
+}
+
+function normalizeStudioStage(value = 'atlasWindow') {
+  const text = String(value ?? 'atlasWindow');
+  return text === 'regionalDetail' ? 'regionalDetail' : 'atlasWindow';
+}
+
+function normalizeAtlas(input = {}) {
+  if (input?.atlasType === 'anchor.synthetic-ocean-atlas' && input.atlasDigest) return input;
+  return createSyntheticOceanAtlas({
+    presetId: input.atlasPreset ?? input.presetId ?? input.atlasPresetId ?? 'mixedRegionalWorld',
+    seed: input.atlasSeed ?? input.seed ?? 'env-atlas-r1',
+    atlasId: input.atlasId,
+    label: input.label
+  });
+}
+
+function normalizeRegionalMissionRecipe(input = {}) {
+  if (input?.recipeType === 'anchor.regional-mission-recipe' && input.recipeDigest) return input;
+  return createRegionalMissionRecipe(input);
 }
 
 function normalizeBoundaryList(value = []) {
@@ -1687,7 +2045,175 @@ function computeRegionalFeatureSummary(session = {}, sourceGridShape = {}) {
   };
 }
 
-function computeMultiGliderSuitability(session = {}, summary = {}, sourceGridShape = {}) {
+function computeRegionalFeatureRecords(session = {}, summary = {}) {
+  const tiles = Array.isArray(session.tiles) ? session.tiles : [];
+  if (!tiles.length || summary.generated !== true) return [];
+  const width = Number(session.domainSpec?.horizontal?.widthMeters ?? 0);
+  const height = Number(session.domainSpec?.horizontal?.heightMeters ?? 0);
+  const cellSize = Number(session.domainSpec?.horizontal?.cellSizeMeters ?? 1);
+  const tileIds = tiles.map((tile) => tile.id);
+  const byArchetype = new Map(tiles.map((tile) => [tile.archetypeId, tile]));
+  const allDepths = tiles.flatMap((tile) => (tile.bathymetryArtifact?.bottomDepthMeters ?? []).flat().map(Number).filter(Number.isFinite));
+  const wetDepths = allDepths.filter((value) => value > 0);
+  const maxDepth = Math.max(1, ...wetDepths, Number(session.domainSpec?.vertical?.maxDepthMeters ?? 1));
+  const meanSlope = Number(summary.slopeRange?.meanMetersPerCell ?? 0);
+  const maxSlope = Number(summary.slopeRange?.maxMetersPerCell ?? 0);
+  const featureScale = Math.max(width, height, cellSize);
+  const records = [
+    featureRecord({
+      id: 'feature-shelf-west',
+      type: 'shelf',
+      label: 'Broad Shelf',
+      center: { eastMeters: width * 0.24, northMeters: height * 0.42 },
+      areaSquareMeters: width * height * Math.max(0.05, Number(summary.shallowShelfFraction ?? 0.12)),
+      depthRangeMeters: [5, Math.max(20, maxDepth * 0.28)],
+      slopeRangeMetersPerCell: [0, Math.max(2, meanSlope)],
+      confidence: summary.shallowShelfFraction > 0 ? 0.84 : 0.58,
+      relatedTileIds: relatedTiles(tiles, ['coastalShelf', 'riverMouthDelta', 'gulfBay'], tileIds.slice(0, 2)),
+      validationNotes: 'Public shallow-depth fraction and coastline continuity indicate a broad shelf opportunity.'
+    }),
+    featureRecord({
+      id: 'feature-shelf-break-central',
+      type: 'shelfBreak',
+      label: 'Shelf Break',
+      center: { eastMeters: width * 0.47, northMeters: height * 0.52 },
+      lengthMeters: Math.max(featureScale * 0.35, height * 0.76),
+      depthRangeMeters: [Math.max(30, maxDepth * 0.22), Math.max(80, maxDepth * 0.62)],
+      slopeRangeMetersPerCell: [Math.max(3, meanSlope), Math.max(6, maxSlope * 0.7)],
+      confidence: 0.78,
+      relatedTileIds: relatedTiles(tiles, ['shelfBreak', 'submarineCanyon'], tileIds),
+      validationNotes: 'Derived from public depth gradient and mixed shelf/deep regional template controls.'
+    }),
+    featureRecord({
+      id: 'feature-canyon-incision',
+      type: 'canyon',
+      label: 'Canyon Incision',
+      center: { eastMeters: width * 0.58, northMeters: height * 0.34 },
+      lengthMeters: Math.max(featureScale * 0.25, height * 0.58),
+      depthRangeMeters: [Math.max(40, maxDepth * 0.32), maxDepth],
+      slopeRangeMetersPerCell: [Math.max(6, meanSlope), Math.max(12, maxSlope)],
+      confidence: summary.canyonLikeGradientCount > 0 ? 0.86 : 0.52,
+      relatedTileIds: relatedTiles(tiles, ['submarineCanyon'], [byArchetype.get('submarineCanyon')?.id, tileIds[1]].filter(Boolean)),
+      validationNotes: 'Uses public steep-gradient count; it is a synthetic canyon-like feature, not surveyed geomorphology.'
+    }),
+    featureRecord({
+      id: 'feature-deep-basin',
+      type: 'deepBasin',
+      label: 'Deep Central Basin',
+      center: { eastMeters: width * 0.68, northMeters: height * 0.64 },
+      areaSquareMeters: width * height * Math.max(0.06, Number(summary.deepWaterFraction ?? 0.1)),
+      depthRangeMeters: [Math.max(80, maxDepth * 0.55), maxDepth],
+      slopeRangeMetersPerCell: [Math.max(1, meanSlope * 0.35), Math.max(4, meanSlope * 1.2)],
+      confidence: summary.deepWaterFraction > 0 ? 0.82 : 0.55,
+      relatedTileIds: relatedTiles(tiles, ['deepBasin', 'islandSeamount'], tileIds.slice(-2)),
+      validationNotes: 'Deep-water opportunity is measured from public bottom-depth values.'
+    }),
+    featureRecord({
+      id: 'feature-island-seamount',
+      type: 'islandSeamount',
+      label: 'Island / Seamount',
+      center: { eastMeters: width * 0.76, northMeters: height * 0.42 },
+      areaSquareMeters: width * height * 0.035,
+      depthRangeMeters: [0, Math.max(35, maxDepth * 0.38)],
+      slopeRangeMetersPerCell: [Math.max(2, meanSlope), Math.max(7, maxSlope * 0.8)],
+      confidence: summary.islandSeamountCount > 0 ? 0.82 : 0.5,
+      relatedTileIds: relatedTiles(tiles, ['islandSeamount'], [byArchetype.get('islandSeamount')?.id, tileIds.at(-1)].filter(Boolean)),
+      validationNotes: 'Synthetic island/seamount indicator is carried as mission-design metadata.'
+    }),
+    featureRecord({
+      id: 'feature-river-delta',
+      type: 'riverDelta',
+      label: 'River / Delta Zone',
+      center: { eastMeters: width * 0.18, northMeters: height * 0.18 },
+      areaSquareMeters: width * height * 0.04,
+      depthRangeMeters: [0, Math.max(25, maxDepth * 0.18)],
+      slopeRangeMetersPerCell: [0, Math.max(2, meanSlope * 0.7)],
+      confidence: hasFeatureId(summary, /river|delta/i) ? 0.76 : 0.48,
+      relatedTileIds: relatedTiles(tiles, ['riverMouthDelta', 'gulfBay'], tileIds.slice(0, 2)),
+      validationNotes: 'Included when regional template or tile provenance indicates river-mouth/delta influence.'
+    }),
+    featureRecord({
+      id: 'feature-ridge-sill',
+      type: 'ridgeSill',
+      label: 'Ridge / Sill',
+      center: { eastMeters: width * 0.52, northMeters: height * 0.72 },
+      lengthMeters: Math.max(featureScale * 0.3, width * 0.42),
+      depthRangeMeters: [Math.max(20, maxDepth * 0.18), Math.max(90, maxDepth * 0.5)],
+      slopeRangeMetersPerCell: [Math.max(2, meanSlope * 0.8), Math.max(8, maxSlope * 0.75)],
+      confidence: hasFeatureId(summary, /ridge|sill/i) ? 0.78 : 0.52,
+      relatedTileIds: relatedTiles(tiles, ['ridgeSill', 'islandSeamount'], tileIds.slice(-2)),
+      validationNotes: 'Synthetic ridge/sill support is tracked for route-separation and basin-exchange teaching.'
+    }),
+    featureRecord({
+      id: 'feature-gulf-bay',
+      type: 'gulfBay',
+      label: 'Semi-Enclosed Gulf / Bay',
+      center: { eastMeters: width * 0.34, northMeters: height * 0.55 },
+      areaSquareMeters: width * height * Math.max(0.08, Number(summary.wetFraction ?? 0.3) * 0.18),
+      depthRangeMeters: [0, Math.max(70, maxDepth * 0.48)],
+      slopeRangeMetersPerCell: [0, Math.max(5, meanSlope)],
+      confidence: session.regionalTemplate === 'semiEnclosedGulf' ? 0.88 : 0.58,
+      relatedTileIds: relatedTiles(tiles, ['gulfBay', 'riverMouthDelta'], tileIds),
+      validationNotes: 'Represents semi-enclosed coastline structure for regional authoring, not a real mapped basin.'
+    })
+  ];
+  return records.filter((record) => record.confidence >= 0.45);
+}
+
+function featureRecord(input = {}) {
+  const depthRange = Array.isArray(input.depthRangeMeters) ? input.depthRangeMeters : [0, 0];
+  const slopeRange = Array.isArray(input.slopeRangeMetersPerCell) ? input.slopeRangeMetersPerCell : [0, 0];
+  return {
+    featureId: String(input.id),
+    type: String(input.type),
+    label: String(input.label ?? input.type),
+    approximateCenterMeters: {
+      eastMeters: round(input.center?.eastMeters),
+      northMeters: round(input.center?.northMeters)
+    },
+    areaSquareMeters: input.areaSquareMeters == null ? null : round(input.areaSquareMeters),
+    lengthMeters: input.lengthMeters == null ? null : round(input.lengthMeters),
+    depthRangeMeters: [round(depthRange[0]), round(depthRange[1])],
+    slopeRangeMetersPerCell: [round(slopeRange[0]), round(slopeRange[1])],
+    confidence: round(input.confidence),
+    relatedTileIds: [...new Set((input.relatedTileIds ?? []).filter(Boolean).map(String))],
+    validationNotes: String(input.validationNotes ?? 'Synthetic public feature record.')
+  };
+}
+
+function relatedTiles(tiles = [], archetypeIds = [], fallbackIds = []) {
+  const allowed = new Set(archetypeIds);
+  const matches = tiles.filter((tile) => allowed.has(tile.archetypeId)).map((tile) => tile.id);
+  return matches.length ? matches : fallbackIds;
+}
+
+function hasFeatureId(summary = {}, pattern = /./) {
+  return (summary.featureIds ?? []).some((id) => pattern.test(String(id)));
+}
+
+function computePreviewBudget(sourceGridShape = {}, previewGridShape = {}, previewDecimation = {}) {
+  const sourceCells = Number(sourceGridShape.cellCount ?? 0);
+  const previewCells = Number(previewGridShape.cellCount ?? 0);
+  const factor = Number(previewDecimation.factor ?? 1);
+  const measured = sourceCells > 0 && previewCells > 0;
+  return {
+    type: 'anchor.environment-studio.preview-budget',
+    measured,
+    status: measured ? (previewCells <= Number(previewDecimation.maxPreviewCells ?? previewCells) ? 'PASS' : 'WARN') : 'NOT_MEASURED',
+    sourceCells: measured ? sourceCells : null,
+    previewCells: measured ? previewCells : null,
+    decimationFactor: measured ? factor : null,
+    maxPreviewCells: Number(previewDecimation.maxPreviewCells ?? 0) || null,
+    estimatedRenderCost: measured
+      ? (sourceCells > 50000 || previewCells > 2200 ? 'high but bounded' : sourceCells > 15000 || previewCells > 1000 ? 'moderate' : 'low')
+      : 'Not measured',
+    label: measured
+      ? `${sourceCells} source cells, ${previewCells} preview cells, ${factor}x decimation`
+      : 'Not measured'
+  };
+}
+
+function computeMultiGliderSuitability(session = {}, summary = {}, sourceGridShape = {}, previewBudget = null) {
   const intended = intendedGliderCount(session.intendedGliders);
   const checks = [
     suitabilityCheck('navigable-water-area', Number(summary.wetFraction ?? 0) >= 0.38, summary.wetFraction),
@@ -1696,7 +2222,7 @@ function computeMultiGliderSuitability(session = {}, summary = {}, sourceGridSha
     suitabilityCheck('deep-water-opportunity', Number(summary.deepWaterFraction ?? 0) >= (intended > 2 ? 0.08 : 0.02) || !summary.generated, summary.deepWaterFraction),
     suitabilityCheck('shallow-shelf-opportunity', Number(summary.shallowShelfFraction ?? 0) >= 0.03 || !summary.generated, summary.shallowShelfFraction),
     suitabilityCheck('browser-source-budget', Number(sourceGridShape.cellCount ?? 0) <= ENVIRONMENT_STUDIO_LIMITS.maxDomainCellCount, sourceGridShape.cellCount),
-    suitabilityCheck('browser-preview-budget', true, session.previewGridShape?.cellCount ?? 0)
+    suitabilityCheck('browser-preview-budget', previewBudget?.status !== 'WARN', previewBudget?.label ?? 'Not measured')
   ];
   const separatedCandidateDeploymentZones = Math.max(0, Math.min(6, Math.floor(Number(summary.wetFraction ?? 0) * Number(sourceGridShape.cellCount ?? 0) / 1200) + Math.floor(Number(summary.featureDiversityScore ?? 0) * 3)));
   checks.push(suitabilityCheck('separated-candidate-deployment-zones', separatedCandidateDeploymentZones >= Math.min(intended, 4) || !summary.generated, separatedCandidateDeploymentZones));
@@ -1715,6 +2241,91 @@ function computeMultiGliderSuitability(session = {}, summary = {}, sourceGridSha
     officialScienceValidation: false,
     officialScoringInput: false
   };
+}
+
+function shapeRegionalMosaicFeatures(tileSources = [], session = {}) {
+  if (!tileSources.length) return;
+  const template = String(session.regionalTemplate ?? 'mixedRegionalComposite');
+  const environmentType = String(session.environmentType ?? '');
+  const featureMix = session.featureMix ?? {};
+  const maxDepth = Math.max(1, Number(session.domainSpec?.vertical?.maxDepthMeters ?? 320));
+  const applyRegionalOverlay = [
+    'semiEnclosedGulf',
+    'shelfBreakDeepBasin',
+    'mixedRegionalComposite',
+    'ridgeSillBasin',
+    'canyonSystem'
+  ].includes(template) || /regional|gulf|basin/i.test(environmentType);
+  if (!applyRegionalOverlay) return;
+
+  const rowsPerTile = tileSources[0]?.depthMeters?.length ?? 0;
+  const columnsPerTile = tileSources[0]?.depthMeters?.[0]?.length ?? 0;
+  const tileGridRows = Math.max(1, ...tileSources.map((entry) => Number(entry.config?.tileCoordinate?.row ?? 0) + 1));
+  const tileGridColumns = Math.max(1, ...tileSources.map((entry) => Number(entry.config?.tileCoordinate?.column ?? 0) + 1));
+  const shelfStrength = levelScore(featureMix.shelfFraction);
+  const basinStrength = levelScore(featureMix.deepBasinFraction);
+  const canyonStrength = levelScore(featureMix.canyonDensity);
+  const islandStrength = levelScore(featureMix.islandSeamountCount);
+  const ridgeStrength = levelScore(featureMix.ridgeSillStrength);
+  const coastlineStrength = levelScore(featureMix.coastlineComplexity);
+
+  for (const entry of tileSources) {
+    const grid = entry.depthMeters ?? [];
+    const tileRow = Number(entry.config?.tileCoordinate?.row ?? 0);
+    const tileColumn = Number(entry.config?.tileCoordinate?.column ?? 0);
+    for (let y = 0; y < grid.length; y += 1) {
+      for (let x = 0; x < (grid[y]?.length ?? 0); x += 1) {
+        const gx = ((tileColumn * columnsPerTile) + x) / Math.max(1, tileGridColumns * columnsPerTile - 1);
+        const gy = ((tileRow * rowsPerTile) + y) / Math.max(1, tileGridRows * rowsPerTile - 1);
+        let depth = Number(grid[y][x] ?? 0);
+
+        if (template === 'semiEnclosedGulf' || session.coastlineOrientation === 'curvedGulf') {
+          const curvedCoast = 0.08 + coastlineStrength * 0.12 + Math.sin(gy * Math.PI) * 0.1;
+          const northPocket = gy < 0.18 && gx < 0.35 + coastlineStrength * 0.08;
+          if ((gx < curvedCoast && gy > 0.08 && gy < 0.94) || northPocket) {
+            depth = 0;
+          }
+        }
+
+        const shelfEdge = 0.23 + shelfStrength * 0.22 + Math.sin(gy * Math.PI * 1.4) * 0.045;
+        if (gx < shelfEdge && depth > 0) {
+          const shelfTarget = maxDepth * (0.08 + 0.17 * gx / Math.max(0.01, shelfEdge));
+          depth = Math.min(depth, shelfTarget);
+        }
+
+        const basin = gaussian2d(gx, gy, 0.66, 0.62, 0.18, 0.2);
+        if (basin > 0.08) {
+          depth = Math.max(depth, maxDepth * (0.42 + 0.48 * basin * basinStrength));
+        }
+
+        const canyonCenter = 0.33 + 0.42 * gy;
+        const canyonDistance = Math.abs(gx - canyonCenter);
+        const canyon = Math.max(0, 1 - canyonDistance / 0.065) * Math.max(0, 1 - Math.abs(gy - 0.43) / 0.42);
+        if (canyon > 0) {
+          depth = Math.max(depth, maxDepth * (0.32 + 0.55 * canyon * canyonStrength));
+        }
+
+        const seamount = gaussian2d(gx, gy, 0.78, 0.36, 0.09, 0.11);
+        if (seamount > 0.04 && depth > 0) {
+          depth = Math.max(0, depth - maxDepth * 0.48 * seamount * islandStrength);
+          if (seamount > 0.82 && islandStrength > 0.75) depth = Math.min(depth, maxDepth * 0.04);
+        }
+
+        const ridge = Math.max(0, 1 - Math.abs(gy - (0.72 - gx * 0.16)) / 0.055) * Math.max(0, 1 - Math.abs(gx - 0.55) / 0.36);
+        if (ridge > 0.02 && depth > 0) {
+          depth = Math.max(maxDepth * 0.08, depth - maxDepth * 0.32 * ridge * ridgeStrength);
+        }
+
+        grid[y][x] = round(depth, 3);
+      }
+    }
+  }
+}
+
+function gaussian2d(x, y, cx, cy, sx, sy) {
+  const dx = (x - cx) / Math.max(0.0001, sx);
+  const dy = (y - cy) / Math.max(0.0001, sy);
+  return Math.exp(-0.5 * (dx * dx + dy * dy));
 }
 
 function blendRegionalTileEdges(tileSources = []) {
@@ -1939,6 +2550,24 @@ function domainDebugSummary(domain = {}) {
   };
 }
 
+function compactSelectedWindow(window = {}) {
+  if (!window) return null;
+  return {
+    windowId: window.windowId,
+    label: window.label,
+    x: window.x,
+    y: window.y,
+    width: window.width,
+    height: window.height,
+    center: window.center,
+    primaryContext: window.detectedContext?.primaryContext,
+    primaryContextLabel: window.detectedContext?.primaryContextLabel,
+    recommendedGliders: window.recommendedGliders,
+    recommendedDurationSeconds: window.recommendedDurationSeconds,
+    windowDigest: window.windowDigest
+  };
+}
+
 function tileDigestListDigest(tiles = []) {
   return tiles.length ? canonicalJsonDigest(tiles.map((tile) => tile.manifest?.tileDigest ?? tile.digest ?? tile.id)) : null;
 }
@@ -1962,6 +2591,13 @@ function withDigest(value, digestKey) {
   return { ...value, [digestKey]: canonicalJsonDigest(canonicalizeJsonValue(payload)) };
 }
 
+function withProjectDigest(value, digestKey) {
+  const payload = { ...value };
+  delete payload[digestKey];
+  delete payload.noncanonicalUiMetadata;
+  return { ...value, [digestKey]: canonicalJsonDigest(canonicalizeJsonValue(payload)) };
+}
+
 function stableToken(digest = '') {
   return String(digest).replace(/^fnv1a32:/, '').slice(0, 10) || 'project';
 }
@@ -1979,6 +2615,11 @@ function positive(value, fallback) {
 function finite(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function clampFinite(value, min, max, fallback) {
+  const number = finite(value, fallback);
+  return Math.min(max, Math.max(min, number));
 }
 
 function round(value, digits = 6) {

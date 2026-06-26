@@ -151,6 +151,32 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-008",
+      "title": "Environment Studio should start from a Synthetic Ocean Atlas and operational window selection.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / Environment Studio",
+      "summary": "Alpha review found that mission authors think in terms of operational areas, not low-level terrain-feature controls. Environment Studio should present a simplified synthetic world/ocean atlas where users draw an operational window near coast, gulf, island, strait, shelf break, deep basin, river mouth, or open ocean regions. The selected window should infer a regional mission recipe that drives bathymetry, current/scalar regimes, mission scale, glider count, and validation.",
+      "decision": "Accepted for ENV-ATLAS-R1.",
+      "proposedPhase": "ENV-ATLAS-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Environment Studio opens to a Synthetic Ocean Atlas stage before feature/tile tuning.",
+        "Operational window selection records detected regional context and mission recipe metadata.",
+        "Feature and source-tile controls remain available as advanced provenance after regional generation."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }
