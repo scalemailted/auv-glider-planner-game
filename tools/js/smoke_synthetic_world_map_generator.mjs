@@ -23,6 +23,11 @@ const changed = createSyntheticWorldMap({
 
 assert.equal(base.artifactType, SYNTHETIC_WORLD_MAP_TYPE);
 assert.equal(base.coordinateFrame, 'normalizedSyntheticWorld');
+assert.ok(base.virtualSize.width > base.resolution.columns, 'world has a larger virtual map space than source grid columns');
+assert.ok(base.virtualSize.height > base.resolution.rows, 'world has a larger virtual map space than source grid rows');
+assert.ok(base.tileSize > 0, 'world records tile size');
+assert.ok(base.lodLevels.length >= 2, 'world records LOD levels');
+assert.ok(Number.isFinite(base.generatorParameters.waterLevel), 'world records generator parameters');
 assert.equal(base.worldDigest, repeat.worldDigest, 'same style/seed/resolution keeps world digest stable');
 assert.notEqual(base.worldDigest, changed.worldDigest, 'different seed changes world digest');
 assert.equal(base.claimBoundary.realEarthMap, false);
@@ -71,6 +76,14 @@ for (const style of SYNTHETIC_WORLD_STYLES) {
   assert.ok(world.worldDigest.startsWith('fnv1a32:'), `${style.id} world digest`);
   assert.ok(world.features.length > 0, `${style.id} has structured features`);
   assert.ok(world.layerSummaries.suitability.mean >= 0, `${style.id} suitability summary`);
+  assert.ok(world.layerSummaries.landOceanMask.mean > 0.01, `${style.id} has land context`);
+  assert.ok(world.layerSummaries.landOceanMask.mean < 0.95, `${style.id} has ocean context`);
+  if (/archipelago|island/i.test(style.id)) {
+    assert.ok(world.layerSummaries.islandSeamountPotential.mean > 0.01, `${style.id} has island/seamount potential`);
+  }
+  if (/earthlike|continental|shelf/i.test(style.id)) {
+    assert.ok(world.layerSummaries.distanceToCoast.mean >= 0, `${style.id} has coastline distance field`);
+  }
 }
 
 const text = JSON.stringify(base);

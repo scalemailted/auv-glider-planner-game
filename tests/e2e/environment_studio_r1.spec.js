@@ -9,8 +9,8 @@ let server;
 const BASE = 'http://127.0.0.1:9391';
 
 export const EXACT_TITLES = [
-  'Synthetic World Map Selection',
-  'World Window Generates Bathymetry'
+  'Synthetic World Map Viewport',
+  'Boundary Window Generates Bathymetry'
 ];
 
 test.setTimeout(180000);
@@ -30,6 +30,10 @@ test(EXACT_TITLES[0], async ({ page }) => {
 
   await expect(page.locator('#environment-studio-route')).toBeVisible();
   await expect(page.locator('#mission-console')).toContainText('Synthetic World Map');
+  await expect(page.locator('#mission-console')).toContainText('World Controls');
+  await expect(page.locator('#mission-console')).toContainText('Water Level');
+  await expect(page.locator('#mission-console')).toContainText('Island Density');
+  await expect(page.locator('#mission-console')).toContainText('Coastline Complexity');
   await expect(page.locator('#env-studio-world-style')).toBeVisible();
   await expect(page.locator('#env-studio-world-seed')).toBeVisible();
   await expect(page.locator('[data-env-studio-world-map]')).toBeVisible();
@@ -48,9 +52,27 @@ test(EXACT_TITLES[0], async ({ page }) => {
   const styleDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldDigest);
   expect(styleDigest).toBeTruthy();
   expect(styleDigest).not.toBe(initialDigest);
+  await page.locator('#env-world-island-density').evaluate((input) => {
+    input.value = '0.77';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldGeneratorParameters?.islandDensity), { timeout: 15000 }).toBe(0.77);
+
+  const beforePan = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport);
+  await page.locator('[data-env-studio-world-map]').dragTo(page.locator('[data-env-studio-world-map]'), {
+    sourcePosition: { x: 420, y: 260 },
+    targetPosition: { x: 520, y: 310 }
+  });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport?.panX), { timeout: 15000 }).not.toBe(beforePan.panX);
+  await page.locator('[data-env-world-view-action="zoom-in"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport?.zoom), { timeout: 15000 }).toBeGreaterThan(beforePan.zoom);
 
   await page.locator('[data-action="env-studio-draw-boundary"]').click();
-  await page.locator('[data-env-studio-world-map]').click({ position: { x: 570, y: 255 } });
+  await page.locator('[data-env-studio-world-map]').dragTo(page.locator('[data-env-studio-world-map]'), {
+    sourcePosition: { x: 470, y: 235 },
+    targetPosition: { x: 650, y: 375 }
+  });
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindowDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
   await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Environment Window');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Flow-regime hints');

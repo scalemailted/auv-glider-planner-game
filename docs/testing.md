@@ -1360,6 +1360,7 @@ node tools/js/smoke_synthetic_ocean_atlas_engine.mjs
 node tools/js/smoke_window_conditioned_bathymetry_builder.mjs
 node tools/js/audit_synthetic_atlas_bathymetry_usefulness.mjs
 node tools/js/smoke_synthetic_world_map_generator.mjs
+node tools/js/smoke_synthetic_world_tile_generator.mjs
 node tools/js/smoke_operational_window_selection.mjs
 node tools/js/smoke_world_window_bathymetry_generation.mjs
 node tools/js/smoke_atlas_conditioned_current_builder.mjs
@@ -1377,13 +1378,13 @@ The R1.1 regional smoke asserts regional preset normalization, Environment Scale
 
 The ENV-ATLAS-R1/R1.1 smokes assert Synthetic Ocean Atlas creation, atlas digest stability, procedural field layers, operational window normalization and field sampling, context inference, Regional Mission Recipe generation, recipe-to-Studio conversion, window-conditioned bathymetry generation, generated regional detail, export/import round trip, builder metadata, FIELD-REGEN-R1 flow-generation input preservation, deferred current/scalar/hotspot dependency states before field generation, and hidden-truth rejection.
 
-The ENV-STUDIO-R2 smokes assert deterministic `anchor.synthetic-world-map` generation, style/seed digest stability, bounded semantic layers, sampled `anchor.operational-window` context, stable window digests, regional recipe creation, window-conditioned bathymetry generation, honest dependency states, project import/export round trip, and no real-Earth, operational-forecast, calibrated-product, or hidden-truth claims.
+The ENV-WORLD-R1 smokes assert deterministic `anchor.synthetic-world-map` generation, style/seed digest stability, broad generator-parameter preservation, bounded semantic layers, deterministic `anchor.synthetic-world-map-tile` generation, visible viewport tile bounds, sampled `anchor.operational-window` context, stable window digests, regional recipe creation, window-conditioned bathymetry generation, honest dependency states, project import/export round trip, and no real-Earth, operational-forecast, calibrated-product, or hidden-truth claims.
 
 The FIELD-REGEN-R1 smokes assert atlas-conditioned package-backed synthetic `CurrentField4D` generation, scalar field generation, hotspot candidates, stable digests, finite diagnostics, zero nonzero land/below-bottom current vectors, depth/time variation, compact project metadata, dependency-state transitions to `CURRENT` for current/scalar/hotspots, `NEEDS_VALIDATION` for starts/drop zones, and no hidden-truth, HYCOM, Marine Copernicus, calibrated-product, or operational-forecast claims.
 
 The usefulness audit generates coastal shelf, semi-enclosed gulf, island chain, shelf break/canyon, river mouth, strait/sill, and open-ocean eddy windows. It allows explicit `WARN` results for hard cases but rejects hard failures, missing connected wet water, missing feature diversity, missing mission-suitability metadata, hidden-truth leakage, calibrated ocean claims, and operational forecast claims.
 
-The focused Playwright workflows are `Synthetic World Map Selection` and `World Window Generates Bathymetry`.
+The focused Playwright workflows are `Synthetic World Map Viewport` and `Boundary Window Generates Bathymetry`.
 
 Environment Studio tests must not change simulation, scoring, generated mission semantics, benchmark fairness, or Alpha Product Hub pillar count. The Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain. The synthetic world map is not Earth and not operational ocean data; it is a semantic field artifact used to select operational windows for benchmark environment generation. Currents, scalars, hotspots, launch-to-planning, starts/drop-zone validation, and benchmark bundles remain staged follow-ups unless an explicit later workflow generates them.
 

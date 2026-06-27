@@ -14,6 +14,8 @@ export const SYNTHETIC_WORLD_MAP_VERSION = '1.0.0';
 export const OPERATIONAL_WINDOW_TYPE = 'anchor.operational-window';
 export const OPERATIONAL_WINDOW_WORLD_VERSION = '1.0.0';
 export const SYNTHETIC_WORLD_MAP_ENGINE_VERSION = 'synthetic-world-field-engine-v1';
+export const SYNTHETIC_WORLD_TILE_TYPE = 'anchor.synthetic-world-map-tile';
+export const SYNTHETIC_WORLD_TILE_VERSION = '1.0.0';
 
 export const SYNTHETIC_WORLD_STYLES = Object.freeze([
   { id: 'earthlikeSyntheticOcean', label: 'Earthlike Synthetic Ocean', atlasPreset: 'mixedRegionalWorld', defaultSeed: 'env-world-earthlike-001' },
@@ -33,8 +35,30 @@ export const SYNTHETIC_WORLD_LAYER_OPTIONS = Object.freeze([
   { id: 'suitability', label: 'Suitability' }
 ]);
 
-const DEFAULT_WORLD_RESOLUTION = Object.freeze({ columns: 160, rows: 90 });
+const DEFAULT_WORLD_RESOLUTION = Object.freeze({ columns: 192, rows: 108 });
+const DEFAULT_VIRTUAL_WORLD_SIZE = Object.freeze({ width: 8192, height: 4608 });
+const DEFAULT_TILE_SIZE = 512;
+const DEFAULT_LOD_LEVELS = Object.freeze([0, 1, 2, 3]);
 const DEFAULT_WINDOW_BOUNDS = Object.freeze({ x: 0.22, y: 0.2, width: 0.34, height: 0.34 });
+const DEFAULT_GENERATOR_PARAMETERS = Object.freeze({
+  waterLevel: 0.5,
+  landmassScale: 0.55,
+  islandDensity: 0.5,
+  coastlineComplexity: 0.45,
+  basinScale: 0.55,
+  shelfWidth: 0.5,
+  flowIntensity: 0.55,
+  roughness: 0.35
+});
+const WORLD_STYLE_PARAMETER_PRESETS = Object.freeze({
+  earthlikeSyntheticOcean: { waterLevel: 0.5, landmassScale: 0.62, islandDensity: 0.46, coastlineComplexity: 0.56, basinScale: 0.58, shelfWidth: 0.52, flowIntensity: 0.58, roughness: 0.42 },
+  archipelagoWorld: { waterLevel: 0.58, landmassScale: 0.38, islandDensity: 0.86, coastlineComplexity: 0.7, basinScale: 0.5, shelfWidth: 0.44, flowIntensity: 0.62, roughness: 0.5 },
+  continentalMargins: { waterLevel: 0.46, landmassScale: 0.72, islandDensity: 0.28, coastlineComplexity: 0.52, basinScale: 0.64, shelfWidth: 0.7, flowIntensity: 0.56, roughness: 0.34 },
+  gulfInlandSea: { waterLevel: 0.48, landmassScale: 0.68, islandDensity: 0.36, coastlineComplexity: 0.66, basinScale: 0.48, shelfWidth: 0.6, flowIntensity: 0.64, roughness: 0.46 },
+  shelfToBasinWorld: { waterLevel: 0.52, landmassScale: 0.58, islandDensity: 0.3, coastlineComplexity: 0.42, basinScale: 0.76, shelfWidth: 0.72, flowIntensity: 0.5, roughness: 0.3 },
+  openOceanBasin: { waterLevel: 0.55, landmassScale: 0.4, islandDensity: 0.8, coastlineComplexity: 0.3, basinScale: 0.86, shelfWidth: 0.28, flowIntensity: 0.7, roughness: 0.26 },
+  mixedRandom: DEFAULT_GENERATOR_PARAMETERS
+});
 const WORLD_LAYER_SOURCES = Object.freeze({
   landOceanMask: 'landOceanMask',
   distanceToCoast: 'distanceToCoast',
@@ -66,6 +90,10 @@ export function createSyntheticWorldMap(options = {}) {
   const style = syntheticWorldStyleById(options.style ?? options.worldStyle ?? options.styleId);
   const seed = String(options.seed ?? style.defaultSeed);
   const resolution = normalizeWorldResolution(options.resolution);
+  const virtualSize = normalizeVirtualSize(options.virtualSize);
+  const tileSize = clampInteger(options.tileSize ?? DEFAULT_TILE_SIZE, 128, 1024);
+  const lodLevels = normalizeLodLevels(options.lodLevels);
+  const generatorParameters = normalizeWorldGeneratorParameters(options.generatorParameters ?? options.worldGeneratorParameters, style.id);
   const atlasPreset = style.id === 'mixedRandom'
     ? atlasPresetForMixedRandom(seed)
     : style.atlasPreset;
@@ -74,7 +102,7 @@ export function createSyntheticWorldMap(options = {}) {
     seed,
     resolution
   });
-  const layers = transformAtlasLayersToWorldLayers(sourceAtlas);
+  const layers = applyWorldGeneratorParameters(transformAtlasLayersToWorldLayers(sourceAtlas), generatorParameters, { seed, style: style.id });
   const generatedLayers = {
     ...layers,
     bathymetryContext: buildBathymetryContextLayer(layers),
@@ -90,7 +118,12 @@ export function createSyntheticWorldMap(options = {}) {
     style: style.id,
     styleLabel: style.label,
     coordinateFrame: 'normalizedSyntheticWorld',
+    virtualSize,
+    sourceResolution: resolution,
     resolution,
+    tileSize,
+    lodLevels,
+    generatorParameters,
     layers: generatedLayers,
     layerSummaries,
     features: normalizeWorldFeatures(sourceAtlas.features, sourceAtlas.regions),
@@ -101,7 +134,8 @@ export function createSyntheticWorldMap(options = {}) {
       sourceAtlasVersion: sourceAtlas.atlasVersion,
       sourceAtlasPreset: sourceAtlas.atlasPreset,
       sourceAtlasDigest: sourceAtlas.atlasDigest,
-      topologySource: 'structured distance fields, seeded feature primitives, coast transforms, shelf/basin fields, and controlled roughness',
+      topologySource: 'structured distance fields, continent-scale blobs, island blobs, bay/gulf/strait primitives, shelf/basin fields, and controlled roughness',
+      tileArchitecture: 'deterministic chunk keys and tile summaries derived from world seed, style, tile coordinate, LOD, layer, and generator parameters',
       rawNoiseOnly: false,
       claimBoundary: 'synthetic, benchmark-oriented, not real Earth, not calibrated survey data, not an operational forecast'
     },
@@ -123,6 +157,140 @@ export function createSyntheticWorldMap(options = {}) {
     }
   };
   return withDigest(base, 'worldDigest');
+}
+
+export function createSyntheticWorldTileKey(input = {}) {
+  const lodLevel = clampInteger(input.lodLevel ?? input.lod ?? 0, 0, 8);
+  const tileX = Math.max(0, Math.floor(Number(input.tileX ?? input.x ?? 0)));
+  const tileY = Math.max(0, Math.floor(Number(input.tileY ?? input.y ?? 0)));
+  const layer = String(input.layer ?? input.layerId ?? 'bathymetryContext');
+  const worldDigest = String(input.worldDigest ?? input.worldMap?.worldDigest ?? 'unresolved-world');
+  const key = {
+    worldDigest,
+    tileX,
+    tileY,
+    lodLevel,
+    layer
+  };
+  return {
+    ...key,
+    tileKey: canonicalJsonDigest(key)
+  };
+}
+
+export function createSyntheticWorldTile(worldMapInput = {}, input = {}) {
+  const worldMap = normalizeSyntheticWorldMap(worldMapInput);
+  const key = createSyntheticWorldTileKey({
+    ...input,
+    worldDigest: worldMap.worldDigest
+  });
+  const gridSize = clampInteger(input.gridSize ?? 24, 8, 96);
+  const bounds = syntheticWorldTileBounds(worldMap, key);
+  const samples = [];
+  const values = [];
+  for (let y = 0; y < gridSize; y += 1) {
+    const row = [];
+    for (let x = 0; x < gridSize; x += 1) {
+      const sx = bounds.x + ((x + 0.5) / gridSize) * bounds.width;
+      const sy = bounds.y + ((y + 0.5) / gridSize) * bounds.height;
+      const value = sampleWorldMapLayer(worldMap, key.layer, sx, sy);
+      row.push(value);
+      values.push(value);
+    }
+    samples.push(row);
+  }
+  const finite = values.map(Number).filter(Number.isFinite);
+  const summary = {
+    min: finite.length ? round(Math.min(...finite)) : 0,
+    mean: finite.length ? round(finite.reduce((sum, value) => sum + value, 0) / finite.length) : 0,
+    max: finite.length ? round(Math.max(...finite)) : 0,
+    landFraction: round(tileMean(worldMap, bounds, 'landOceanMask', gridSize)),
+    waterFraction: round(1 - tileMean(worldMap, bounds, 'landOceanMask', gridSize)),
+    finite: finite.length === values.length
+  };
+  const tileBase = {
+    artifactType: SYNTHETIC_WORLD_TILE_TYPE,
+    artifactVersion: SYNTHETIC_WORLD_TILE_VERSION,
+    worldDigest: worldMap.worldDigest,
+    seed: worldMap.seed,
+    style: worldMap.style,
+    tileKey: key.tileKey,
+    tileX: key.tileX,
+    tileY: key.tileY,
+    lodLevel: key.lodLevel,
+    layer: key.layer,
+    bounds,
+    gridSize,
+    samples,
+    summary,
+    provenance: {
+      deterministicFrom: ['worldDigest', 'seed', 'style', 'generatorParameters', 'tileX', 'tileY', 'lodLevel', 'layer'],
+      rendererIndependent: true,
+      hiddenTruthExposed: false,
+      realEarthMap: false,
+      operationalForecast: false
+    }
+  };
+  return withDigest(tileBase, 'tileDigest');
+}
+
+export function createSyntheticWorldTileCache() {
+  const cache = new Map();
+  return {
+    get(worldMap, key) {
+      const normalizedKey = createSyntheticWorldTileKey({ ...key, worldDigest: worldMap?.worldDigest });
+      const cacheKey = normalizedKey.tileKey;
+      if (!cache.has(cacheKey)) cache.set(cacheKey, createSyntheticWorldTile(worldMap, normalizedKey));
+      return cache.get(cacheKey);
+    },
+    clear() {
+      cache.clear();
+    },
+    size() {
+      return cache.size;
+    }
+  };
+}
+
+export function createSyntheticWorldViewportState(input = {}) {
+  return {
+    panX: clamp(Number(input.panX ?? 0), -1, 1),
+    panY: clamp(Number(input.panY ?? 0), -1, 1),
+    zoom: clamp(Number(input.zoom ?? 1), 0.75, 8),
+    canvasWidth: clampInteger(input.canvasWidth ?? input.width ?? 960, 240, 4096),
+    canvasHeight: clampInteger(input.canvasHeight ?? input.height ?? 520, 160, 4096),
+    lodLevel: clampInteger(input.lodLevel ?? input.lod ?? lodForZoom(input.zoom ?? 1), 0, 8)
+  };
+}
+
+export function visibleSyntheticWorldTileKeys(worldMapInput = {}, viewportInput = {}) {
+  const worldMap = normalizeSyntheticWorldMap(worldMapInput);
+  const viewport = createSyntheticWorldViewportState(viewportInput);
+  const tilesPerAxis = tilesPerAxisForLod(worldMap, viewport.lodLevel);
+  const viewBounds = viewportWorldBounds(viewport);
+  const minTileX = clampInteger(Math.floor(viewBounds.x * tilesPerAxis), 0, tilesPerAxis - 1);
+  const maxTileX = clampInteger(Math.floor((viewBounds.x + viewBounds.width) * tilesPerAxis), 0, tilesPerAxis - 1);
+  const minTileY = clampInteger(Math.floor(viewBounds.y * tilesPerAxis), 0, tilesPerAxis - 1);
+  const maxTileY = clampInteger(Math.floor((viewBounds.y + viewBounds.height) * tilesPerAxis), 0, tilesPerAxis - 1);
+  const keys = [];
+  for (let tileY = minTileY; tileY <= maxTileY; tileY += 1) {
+    for (let tileX = minTileX; tileX <= maxTileX; tileX += 1) {
+      keys.push(createSyntheticWorldTileKey({
+        worldDigest: worldMap.worldDigest,
+        tileX,
+        tileY,
+        lodLevel: viewport.lodLevel,
+        layer: viewportInput.layer ?? viewportInput.layerId ?? 'bathymetryContext'
+      }));
+    }
+  }
+  return {
+    viewport,
+    worldBounds: viewBounds,
+    tilesPerAxis,
+    keys,
+    visibleTileDigest: canonicalJsonDigest({ worldDigest: worldMap.worldDigest, viewport, keys })
+  };
 }
 
 export function createOperationalWindowFromWorldMap(input = {}, worldMapInput = createSyntheticWorldMap()) {
@@ -322,7 +490,12 @@ export function compactSyntheticWorldMap(worldMap = {}) {
     style: worldMap.style,
     styleLabel: worldMap.styleLabel,
     coordinateFrame: worldMap.coordinateFrame,
+    virtualSize: worldMap.virtualSize,
+    sourceResolution: worldMap.sourceResolution,
     resolution: worldMap.resolution,
+    tileSize: worldMap.tileSize,
+    lodLevels: worldMap.lodLevels,
+    generatorParameters: worldMap.generatorParameters,
     layerSummaries: worldMap.layerSummaries,
     featureCount: worldMap.features?.length ?? 0,
     validation: worldMap.validation,
@@ -363,6 +536,84 @@ function transformAtlasLayersToWorldLayers(atlas = {}) {
     result[target] = cloneGrid(atlas.layers?.[source]);
   }
   return result;
+}
+
+function normalizeWorldGeneratorParameters(input = {}, styleId = 'earthlikeSyntheticOcean') {
+  const preset = {
+    ...DEFAULT_GENERATOR_PARAMETERS,
+    ...(WORLD_STYLE_PARAMETER_PRESETS[styleId] ?? {})
+  };
+  return {
+    waterLevel: round(clamp(input.waterLevel ?? preset.waterLevel, 0.05, 0.95)),
+    landmassScale: round(clamp(input.landmassScale ?? preset.landmassScale, 0.05, 1)),
+    islandDensity: round(clamp(input.islandDensity ?? preset.islandDensity, 0, 1)),
+    coastlineComplexity: round(clamp(input.coastlineComplexity ?? preset.coastlineComplexity, 0, 1)),
+    basinScale: round(clamp(input.basinScale ?? preset.basinScale, 0, 1)),
+    shelfWidth: round(clamp(input.shelfWidth ?? preset.shelfWidth, 0, 1)),
+    flowIntensity: round(clamp(input.flowIntensity ?? preset.flowIntensity, 0, 1)),
+    roughness: round(clamp(input.roughness ?? preset.roughness, 0, 1))
+  };
+}
+
+function applyWorldGeneratorParameters(layers = {}, params = DEFAULT_GENERATOR_PARAMETERS, context = {}) {
+  const landOceanMask = combineLayerRows(layers.landOceanMask, (x, y) => {
+    const base = valueAt(layers.landOceanMask, x, y);
+    const nx = x / Math.max(1, (layers.landOceanMask?.[0]?.length ?? 1) - 1);
+    const ny = y / Math.max(1, (layers.landOceanMask?.length ?? 1) - 1);
+    const continentBias = 0.5 + (params.landmassScale - 0.55) * 0.55;
+    const waterBias = (0.5 - params.waterLevel) * 0.7;
+    const islandBias = valueAt(layers.islandSeamountPotential, x, y) * (params.islandDensity - 0.5) * 0.5;
+    const coastTexture = structuredVariation(nx, ny, context.seed, 2.4 + params.coastlineComplexity * 3.2) * params.coastlineComplexity * 0.24;
+    return round(clamp01(base * continentBias + waterBias + islandBias + coastTexture));
+  });
+  const shelfZone = combineLayerRows(layers.shelfZone, (x, y) => {
+    if (valueAt(landOceanMask, x, y) > 0.6) return 0;
+    const distance = valueAt(layers.distanceToCoast, x, y);
+    return round(clamp01(valueAt(layers.shelfZone, x, y) * (0.55 + params.shelfWidth * 0.9) + Math.max(0, 0.34 - distance) * params.shelfWidth));
+  });
+  const deepBasinPotential = combineLayerRows(layers.deepBasinPotential, (x, y) => {
+    if (valueAt(landOceanMask, x, y) > 0.6) return 0;
+    return round(clamp01(valueAt(layers.deepBasinPotential, x, y) * (0.45 + params.basinScale) + (1 - valueAt(shelfZone, x, y)) * params.basinScale * 0.22));
+  });
+  const islandSeamountPotential = combineLayerRows(layers.islandSeamountPotential, (x, y) => {
+    const base = valueAt(layers.islandSeamountPotential, x, y);
+    const land = valueAt(landOceanMask, x, y);
+    return round(clamp01(base * (0.45 + params.islandDensity) + Math.max(0, 0.58 - land) * params.islandDensity * 0.12));
+  });
+  const canyonPotential = combineLayerRows(layers.canyonPotential, (x, y) => round(clamp01(valueAt(layers.canyonPotential, x, y) * (0.7 + params.coastlineComplexity * 0.65))));
+  const shelfBreakZone = combineLayerRows(layers.shelfBreakZone, (x, y) => round(clamp01(valueAt(layers.shelfBreakZone, x, y) * (0.7 + params.shelfWidth * 0.45 + params.basinScale * 0.25))));
+  const coarseFlowRegime = combineLayerRows(layers.coarseFlowRegime, (x, y) => {
+    if (valueAt(landOceanMask, x, y) > 0.58) return 0;
+    const scaled = Number(valueAt(layers.coarseFlowRegime, x, y)) * (0.55 + params.flowIntensity * 0.8);
+    return round(clamp(scaled, 0, 8));
+  });
+  const scalarRegime = combineLayerRows(layers.scalarRegime, (x, y) => {
+    if (valueAt(landOceanMask, x, y) > 0.7) return 0;
+    const plume = valueAt(layers.riverMouthInfluence, x, y) * params.shelfWidth * 1.2;
+    const bloom = valueAt(deepBasinPotential, x, y) * params.basinScale * 0.28;
+    return round(clamp(Number(valueAt(layers.scalarRegime, x, y)) + plume + bloom, 0, 8));
+  });
+  return {
+    ...layers,
+    landOceanMask,
+    shelfZone,
+    shelfBreakZone,
+    deepBasinPotential,
+    islandSeamountPotential,
+    canyonPotential,
+    coarseFlowRegime,
+    scalarRegime,
+    suitability: combineLayerRows(layers.suitability, (x, y) => {
+      if (valueAt(landOceanMask, x, y) > 0.72) return 0;
+      return round(clamp01(
+        valueAt(layers.suitability, x, y) * 0.44
+        + valueAt(shelfZone, x, y) * 0.2
+        + valueAt(deepBasinPotential, x, y) * 0.18
+        + valueAt(islandSeamountPotential, x, y) * 0.1
+        + params.flowIntensity * 0.08
+      ));
+    })
+  };
 }
 
 function buildBathymetryContextLayer(layers = {}) {
@@ -672,6 +923,82 @@ function normalizeWorldResolution(input = {}) {
   const columns = clampInteger(input.columns ?? input.width ?? DEFAULT_WORLD_RESOLUTION.columns, 48, 512);
   const rows = clampInteger(input.rows ?? input.height ?? DEFAULT_WORLD_RESOLUTION.rows, 32, 256);
   return { columns, rows };
+}
+
+function normalizeVirtualSize(input = {}) {
+  return {
+    width: clampInteger(input.width ?? DEFAULT_VIRTUAL_WORLD_SIZE.width, 1024, 65536),
+    height: clampInteger(input.height ?? DEFAULT_VIRTUAL_WORLD_SIZE.height, 768, 65536)
+  };
+}
+
+function normalizeLodLevels(input = DEFAULT_LOD_LEVELS) {
+  const values = (Array.isArray(input) ? input : DEFAULT_LOD_LEVELS)
+    .map((value) => clampInteger(value, 0, 8))
+    .filter(Number.isFinite);
+  const uniqueValues = [...new Set(values)];
+  return uniqueValues.length ? uniqueValues.sort((a, b) => a - b) : [...DEFAULT_LOD_LEVELS];
+}
+
+function syntheticWorldTileBounds(worldMap = {}, key = {}) {
+  const tilesPerAxis = tilesPerAxisForLod(worldMap, key.lodLevel);
+  return {
+    x: round(key.tileX / tilesPerAxis),
+    y: round(key.tileY / tilesPerAxis),
+    width: round(1 / tilesPerAxis),
+    height: round(1 / tilesPerAxis)
+  };
+}
+
+function tilesPerAxisForLod(worldMap = {}, lodLevel = 0) {
+  const base = Math.max(2, Math.ceil(Math.max(Number(worldMap.virtualSize?.width ?? DEFAULT_VIRTUAL_WORLD_SIZE.width), Number(worldMap.virtualSize?.height ?? DEFAULT_VIRTUAL_WORLD_SIZE.height)) / Math.max(128, Number(worldMap.tileSize ?? DEFAULT_TILE_SIZE))));
+  return Math.max(2, base * Math.max(1, 2 ** clampInteger(lodLevel, 0, 8)));
+}
+
+function viewportWorldBounds(viewport = {}) {
+  const zoom = Math.max(0.75, Number(viewport.zoom ?? 1));
+  const width = clamp01(1 / zoom);
+  const height = clamp01(1 / zoom);
+  const centerX = clamp01(0.5 - Number(viewport.panX ?? 0));
+  const centerY = clamp01(0.5 - Number(viewport.panY ?? 0));
+  return {
+    x: round(clamp(centerX - width / 2, 0, 1 - width)),
+    y: round(clamp(centerY - height / 2, 0, 1 - height)),
+    width: round(width),
+    height: round(height)
+  };
+}
+
+function lodForZoom(zoom = 1) {
+  const z = Number(zoom) || 1;
+  if (z >= 4) return 3;
+  if (z >= 2.2) return 2;
+  if (z >= 1.25) return 1;
+  return 0;
+}
+
+function tileMean(worldMap = {}, bounds = {}, layer = 'landOceanMask', gridSize = 8) {
+  let sum = 0;
+  let count = 0;
+  for (let y = 0; y < gridSize; y += 1) {
+    for (let x = 0; x < gridSize; x += 1) {
+      sum += sampleWorldMapLayer(worldMap, layer, bounds.x + ((x + 0.5) / gridSize) * bounds.width, bounds.y + ((y + 0.5) / gridSize) * bounds.height);
+      count += 1;
+    }
+  }
+  return count ? sum / count : 0;
+}
+
+function structuredVariation(x = 0, y = 0, seed = '', frequency = 2) {
+  const token = String(canonicalJsonDigest({ seed })).replace(/^fnv1a32:/, '');
+  const a = (parseInt(token.slice(0, 4), 16) || 1) / 65535;
+  const b = (parseInt(token.slice(4, 8), 16) || 1) / 65535;
+  const phaseA = a * Math.PI * 2;
+  const phaseB = b * Math.PI * 2;
+  const wave = Math.sin((x * frequency + a) * Math.PI * 2 + phaseA) * 0.55
+    + Math.cos((y * (frequency * 0.72) + b) * Math.PI * 2 + phaseB) * 0.45
+    + Math.sin(((x + y) * (frequency * 0.48) + a - b) * Math.PI * 2) * 0.28;
+  return round(wave / 1.28);
 }
 
 function normalizeWindowBounds(input = DEFAULT_WINDOW_BOUNDS) {

@@ -470,6 +470,7 @@ export function createEnvironmentStudioSession(options = {}) {
     worldMap,
     worldStyle: worldMap.style,
     worldSeed: worldMap.seed,
+    worldGeneratorParameters: worldMap.generatorParameters,
     worldLayer: worldLayerById(options.worldLayer ?? 'bathymetryContext').id,
     worldView: normalizeWorldView(options.worldView),
     atlas,
@@ -697,6 +698,20 @@ export function setEnvironmentStudioWorldSeed(sessionInput = {}, worldSeed = 'en
     worldSeed,
     selectedOperationalWindow: null,
     lastAction: 'world-seed-changed'
+  });
+}
+
+export function setEnvironmentStudioWorldGeneratorParameters(sessionInput = {}, generatorParameters = {}) {
+  const session = normalizeSession(sessionInput);
+  return createWorldMapSession(session, {
+    worldStyle: session.worldStyle,
+    worldSeed: session.worldSeed,
+    generatorParameters: {
+      ...(session.worldMap?.generatorParameters ?? {}),
+      ...(generatorParameters ?? {})
+    },
+    selectedOperationalWindow: null,
+    lastAction: 'world-generator-parameters-changed'
   });
 }
 
@@ -1271,6 +1286,7 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     worldStyle: session.worldStyle,
     worldSeed: session.worldSeed,
     worldDigest: session.worldMap?.worldDigest ?? null,
+    worldGeneratorParameters: session.worldMap?.generatorParameters ?? session.worldGeneratorParameters,
     worldLayer: session.worldLayer,
     selectedWindowDigest: session.selectedOperationalWindow?.windowDigest ?? null,
     atlas: session.atlas,
@@ -1343,6 +1359,7 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     worldMap: source.worldMap ?? source.syntheticWorldMap,
     worldStyle: source.worldStyle,
     worldSeed: source.worldSeed,
+    worldGeneratorParameters: source.worldGeneratorParameters,
     worldLayer: source.worldLayer,
     atlas: source.atlas,
     atlasPreset: source.atlasPreset,
@@ -1709,7 +1726,9 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     worldSeed: session.worldSeed,
     worldDigest: session.worldMap?.worldDigest ?? null,
     worldResolution: session.worldMap?.resolution ?? null,
+    worldGeneratorParameters: session.worldMap?.generatorParameters ?? session.worldGeneratorParameters,
     worldLayer: session.worldLayer,
+    viewport: session.worldView,
     worldLayerSummary: session.worldMap?.layerSummaries?.[session.worldLayer] ?? null,
     selectedWindowBounds: session.selectedOperationalWindow?.bounds ?? null,
     sampledFieldStats: session.selectedOperationalWindow?.sampledFieldStats ?? null,
@@ -2623,6 +2642,7 @@ function normalizeSession(input = {}) {
     worldMap,
     worldStyle: worldMap.style,
     worldSeed: worldMap.seed,
+    worldGeneratorParameters: worldMap.generatorParameters,
     worldLayer: worldLayerById(input.worldLayer ?? 'bathymetryContext').id,
     worldView: normalizeWorldView(input.worldView),
     atlas,
@@ -2801,7 +2821,8 @@ function normalizeWorldMap(input = {}) {
     style: input.worldStyle ?? input.style ?? input.styleId ?? 'earthlikeSyntheticOcean',
     seed: input.worldSeed ?? input.seed ?? 'env-world-001',
     resolution: input.resolution ?? input.worldResolution,
-    ...input
+    ...input,
+    generatorParameters: input.generatorParameters ?? input.worldGeneratorParameters
   });
 }
 
@@ -2856,7 +2877,11 @@ function createWorldMapSession(session = {}, options = {}) {
   const worldMap = createSyntheticWorldMap({
     style: style.id,
     seed: options.worldSeed ?? session.worldSeed ?? style.defaultSeed,
-    resolution: session.worldMap?.resolution
+    resolution: session.worldMap?.resolution,
+    virtualSize: session.worldMap?.virtualSize,
+    tileSize: session.worldMap?.tileSize,
+    lodLevels: session.worldMap?.lodLevels,
+    generatorParameters: options.generatorParameters ?? session.worldMap?.generatorParameters ?? session.worldGeneratorParameters
   });
   const atlas = normalizeAtlas({
     presetId: worldMap.sourceAtlasSummary?.atlasPreset,
@@ -2883,6 +2908,7 @@ function createWorldMapSession(session = {}, options = {}) {
     worldMap,
     worldStyle: worldMap.style,
     worldSeed: worldMap.seed,
+    worldGeneratorParameters: worldMap.generatorParameters,
     worldLayer: worldLayerById(options.worldLayer ?? session.worldLayer ?? 'bathymetryContext').id,
     worldView: normalizeWorldView(session.worldView),
     atlas,

@@ -257,6 +257,32 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-012",
+      "title": "Environment Studio must use a real pan/zoom procedural synthetic world map, not pixel-grid atlas art.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Synthetic World Map",
+      "summary": "Alpha review found that the Environment Studio world map still appears as static pixel-grid art with a heavy control panel. Users want to generate a large synthetic Earth-like ocean world with land masses, islands, oceans, and coarse environmental fields; pan and zoom around it; select their own operational boundary; and then generate regional 3D bathymetry from that selected window.",
+      "decision": "Accepted for ENV-WORLD-R1 hard reauthor.",
+      "proposedPhase": "ENV-WORLD-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Environment Studio opens to a large generated synthetic world-map viewport rather than a symbolic atlas diagram.",
+        "Users can pan, zoom, choose broad generation controls, and drag an operational boundary window.",
+        "Selected windows sample deterministic synthetic world fields and drive regional 3D bathymetry generation without changing mission simulation, scoring, planners, or current/scalar equations."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }
