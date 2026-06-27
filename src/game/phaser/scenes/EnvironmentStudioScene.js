@@ -11,7 +11,10 @@ import {
   ENVIRONMENT_STUDIO_PREVIEW_DETAILS,
   ENVIRONMENT_STUDIO_PREVIEW_MODES,
   ENVIRONMENT_STUDIO_REGIONAL_TEMPLATES,
+  SYNTHETIC_WORLD_LAYER_OPTIONS,
+  SYNTHETIC_WORLD_STYLES,
   buildEnvironmentStudioProject,
+  clearEnvironmentStudioWorldWindow,
   createEnvironmentStudioMosaic,
   createEnvironmentStudioSession,
   domainProfileById,
@@ -19,19 +22,27 @@ import {
   environmentStudioInspectorViewModel,
   environmentStudioSessionSummary,
   generateEnvironmentStudioRegionFromAtlasWindow,
+  generateEnvironmentStudioRegionFromWorldWindow,
   generateEnvironmentStudioTile,
   importEnvironmentStudioProject,
   patchEnvironmentStudioDomain,
   patchEnvironmentStudioOperationalWindow,
+  patchEnvironmentStudioWorldWindow,
   randomizeEnvironmentStudioAtlasSeed,
+  randomizeEnvironmentStudioWorldSeed,
   regenerateEnvironmentStudioFields,
   refreshEnvironmentStudioSession,
   selectEnvironmentStudioObject,
   selectEnvironmentStudioOperationalWindow,
+  selectEnvironmentStudioWorldWindow,
   setEnvironmentStudioArchetype,
   setEnvironmentStudioAtlasPreset,
   setEnvironmentStudioPreviewCameraState,
   setEnvironmentStudioPreviewMode,
+  setEnvironmentStudioWorldLayer,
+  setEnvironmentStudioWorldSeed,
+  setEnvironmentStudioWorldStyle,
+  setEnvironmentStudioWorldView,
   updateEnvironmentStudioRegionalRecipe,
   validateEnvironmentStudioProject
 } from '../../../core/editor/EnvironmentStudioProject.js';
@@ -40,6 +51,9 @@ import {
   SYNTHETIC_OCEAN_ATLAS_PRESETS,
   sampleAtlasLayer
 } from '../../../core/editor/SyntheticOceanAtlas.js';
+import {
+  sampleWorldMapLayer
+} from '../../../core/editor/SyntheticWorldMap.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -50,8 +64,9 @@ export class EnvironmentStudioScene extends PhaserScene {
     super('EnvironmentStudioScene');
     this.objects = [];
     this.session = createEnvironmentStudioSession();
-    this.statusMessage = 'Choose regional inputs and generate public synthetic bathymetry.';
+    this.statusMessage = 'Generate a synthetic world map, select an operational boundary, then generate regional bathymetry.';
     this.lastError = null;
+    this.worldBoundaryDrawing = false;
   }
 
   create() {
@@ -91,11 +106,27 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   renderConsole() {
+    if (this.session.studioStage === 'worldMap') {
+      this.renderWorldMapConsole();
+      return;
+    }
     if (this.session.studioStage === 'atlasWindow') {
       this.renderAtlasConsole();
       return;
     }
-    this.renderSimplifiedConsole();
+    this.renderRegionalBathymetryConsole();
+  }
+
+  renderWorldMapConsole() {
+    const summary = environmentStudioSessionSummary(this.session);
+    this.app.setPanel(worldMapConsoleHtml(this, summary));
+    bindEnvironmentStudioWorldMapControls(this, this.app.elements?.consoleRoot ?? globalThis.document);
+  }
+
+  renderRegionalBathymetryConsole() {
+    const summary = environmentStudioSessionSummary(this.session);
+    this.app.setPanel(regionalBathymetryConsoleHtml(this, summary));
+    bindEnvironmentStudioRegionalControls(this, this.app.elements?.consoleRoot ?? globalThis.document);
   }
 
   renderAtlasConsole() {
@@ -278,6 +309,10 @@ export class EnvironmentStudioScene extends PhaserScene {
   renderRightPanel() {
     const root = this.app.elements?.waypointTimelineRoot;
     if (!root) return;
+    if (this.session.studioStage === 'worldMap') {
+      root.innerHTML = worldMapRightPanelHtml(this.session);
+      return;
+    }
     if (this.session.studioStage === 'atlasWindow') {
       root.innerHTML = atlasRightPanelHtml(this.session);
       return;
@@ -300,8 +335,6 @@ export class EnvironmentStudioScene extends PhaserScene {
         <div class="console-kicker environment-studio-panel-kicker">Feature Summary</div>
         ${featureSummaryHtml(this.session.regionalFeatureSummary)}
         ${featureRecordButtonsHtml(this.session.featureRecords, this.session.selectedObject)}
-        <div class="console-kicker environment-studio-panel-kicker">Multi-Glider Suitability</div>
-        ${suitabilityHtml(this.session.multiGliderSuitability)}
         <div class="console-kicker environment-studio-panel-kicker">Generated Field Status</div>
         ${dependencyGraphTable(this.session.dependencyGraph)}
         ${fieldRegenerationSummaryHtml(this.session.fieldRegenerationResult)}
@@ -314,6 +347,12 @@ export class EnvironmentStudioScene extends PhaserScene {
   renderPreview() {
     if (!this.previewHost) return;
     const project = buildEnvironmentStudioProject(this.session);
+    if (this.session.studioStage === 'worldMap') {
+      this.previewHost.innerHTML = worldMapPreviewHtml(this.session, project);
+      bindEnvironmentStudioWorldMapPreview(this, this.previewHost);
+      paintSyntheticWorldCanvas(this);
+      return;
+    }
     if (this.session.studioStage === 'atlasWindow') {
       this.previewHost.innerHTML = atlasPreviewHtml(this.session, project);
       bindEnvironmentStudioAtlasControls(this, this.previewHost);
@@ -324,8 +363,8 @@ export class EnvironmentStudioScene extends PhaserScene {
         <header class="environment-studio-route-header">
           <div>
             <p class="console-kicker">Unified Environment Studio</p>
-            <h1>${escapeHtml(project.label)}</h1>
-            <p>Regional 2.5D bathymetry authoring preview. The center view is diagnostic display; canonical source grids remain in the project export.</p>
+            <h1>Regional Bathymetry Detail</h1>
+            <p>High-resolution synthetic regional bathymetry generated from the selected world-map boundary. The canonical source grid remains in project export.</p>
           </div>
           <label class="environment-studio-preview-mode">
             Preview Mode
@@ -363,6 +402,131 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.session = setEnvironmentStudioPreviewCameraState(this.session, patch);
     this.statusMessage = 'Preview camera updated. UI-only camera state is preserved in project exports as noncanonical metadata.';
     this.lastError = null;
+    this.render();
+  }
+
+  setWorldStyle(styleId) {
+    this.session = setEnvironmentStudioWorldStyle(this.session, styleId, { seed: this.readWorldSeed() });
+    this.statusMessage = 'Generated a deterministic synthetic world map for the selected style.';
+    this.lastError = null;
+    this.render();
+  }
+
+  generateWorld() {
+    this.session = setEnvironmentStudioWorldSeed(this.session, this.readWorldSeed());
+    this.statusMessage = 'Generated synthetic world map from the current seed.';
+    this.lastError = null;
+    this.render();
+  }
+
+  randomizeWorldSeed() {
+    this.session = randomizeEnvironmentStudioWorldSeed(this.session);
+    this.statusMessage = 'Randomized world seed and regenerated the synthetic world map.';
+    this.lastError = null;
+    this.render();
+  }
+
+  setWorldLayer(layerId) {
+    this.session = setEnvironmentStudioWorldLayer(this.session, layerId);
+    this.statusMessage = `Showing ${labelize(layerId)} layer.`;
+    this.lastError = null;
+    this.render();
+  }
+
+  resetWorldView() {
+    this.session = setEnvironmentStudioWorldView(this.session, { panX: 0, panY: 0, zoom: 1 });
+    this.statusMessage = 'World map view reset.';
+    this.lastError = null;
+    this.render();
+  }
+
+  toggleBoundaryDrawing() {
+    this.worldBoundaryDrawing = !this.worldBoundaryDrawing;
+    this.statusMessage = this.worldBoundaryDrawing
+      ? 'Boundary drawing enabled. Click the world map to place the operational window.'
+      : 'Boundary drawing disabled.';
+    this.render();
+  }
+
+  selectWorldWindowAt(x, y) {
+    const width = this.numberValue('env-studio-window-width', 0.28);
+    const height = this.numberValue('env-studio-window-height', 0.22);
+    this.session = selectEnvironmentStudioWorldWindow(this.session, {
+      x: x - width / 2,
+      y: y - height / 2,
+      width,
+      height,
+      sourceResolutionMeters: this.numberValue('env-studio-source-resolution', 1500),
+      previewResolutionMeters: this.numberValue('env-studio-preview-resolution', 6000),
+      selectedBy: 'world-map-click'
+    });
+    this.statusMessage = 'Selected operational boundary from synthetic world-map fields.';
+    this.lastError = null;
+    this.worldBoundaryDrawing = false;
+    this.render();
+  }
+
+  selectWorldWindowFromControls() {
+    const current = this.session.selectedOperationalWindow?.bounds ?? { x: 0.28, y: 0.24 };
+    this.session = selectEnvironmentStudioWorldWindow(this.session, {
+      x: current.x,
+      y: current.y,
+      width: this.numberValue('env-studio-window-width', 0.28),
+      height: this.numberValue('env-studio-window-height', 0.22),
+      sourceResolutionMeters: this.numberValue('env-studio-source-resolution', 1500),
+      previewResolutionMeters: this.numberValue('env-studio-preview-resolution', 6000),
+      selectedBy: 'world-map-controls'
+    });
+    this.statusMessage = 'Selected operational boundary from current control values.';
+    this.lastError = null;
+    this.render();
+  }
+
+  clearWorldWindow() {
+    this.session = clearEnvironmentStudioWorldWindow(this.session);
+    this.statusMessage = 'Cleared selected operational boundary.';
+    this.lastError = null;
+    this.render();
+  }
+
+  adjustWorldWindow(action) {
+    const bounds = this.session.selectedOperationalWindow?.bounds ?? { x: 0.28, y: 0.24, width: 0.28, height: 0.22 };
+    const patch = { ...bounds };
+    const step = 0.035;
+    if (action === 'left') patch.x -= step;
+    if (action === 'right') patch.x += step;
+    if (action === 'up') patch.y -= step;
+    if (action === 'down') patch.y += step;
+    if (action === 'wider') patch.width += step;
+    if (action === 'narrower') patch.width -= step;
+    if (action === 'taller') patch.height += step;
+    if (action === 'shorter') patch.height -= step;
+    this.session = patchEnvironmentStudioWorldWindow(this.session, {
+      ...patch,
+      sourceResolutionMeters: this.numberValue('env-studio-source-resolution', 1500),
+      previewResolutionMeters: this.numberValue('env-studio-preview-resolution', 6000)
+    });
+    this.statusMessage = 'Moved or resized selected operational boundary.';
+    this.lastError = null;
+    this.render();
+  }
+
+  generateWorldBathymetry() {
+    try {
+      if (!this.session.selectedOperationalWindow?.windowDigest) this.selectWorldWindowFromControls();
+      this.session = generateEnvironmentStudioRegionFromWorldWindow(this.session, { seed: this.readWorldSeed() });
+      this.statusMessage = 'Generated regional 3D bathymetry from the selected synthetic world-map window.';
+      this.lastError = null;
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'World-window bathymetry generation failed.';
+    }
+    this.render();
+  }
+
+  exportWorldMap() {
+    downloadJSON('anchor_synthetic_world_map.json', this.session.worldMap);
+    this.statusMessage = 'Exported synthetic world-map artifact JSON.';
     this.render();
   }
 
@@ -576,8 +740,40 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.render();
   }
 
+  async importWorldMap(file) {
+    if (!file) return;
+    try {
+      const payload = await readJSONFile(file);
+      this.session = createEnvironmentStudioSession({
+        ...this.session,
+        studioStage: 'worldMap',
+        worldMap: payload,
+        worldStyle: payload.style,
+        worldSeed: payload.seed,
+        selectedOperationalWindow: null
+      });
+      this.statusMessage = `Imported world map ${file.name}.`;
+      this.lastError = null;
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'World map import failed.';
+      this.app.toast?.(this.lastError, 'warning');
+    }
+    this.render();
+  }
+
+  readWorldSeed() {
+    return String(this.app.elements?.consoleRoot?.querySelector?.('#env-studio-world-seed')?.value ?? this.session.worldSeed ?? 'env-world-001');
+  }
+
   readSeed() {
-    return String(this.app.elements?.consoleRoot?.querySelector?.('#env-studio-seed')?.value ?? this.session.seed ?? 'env-studio-r1');
+    return String(
+      this.app.elements?.consoleRoot?.querySelector?.('#env-studio-seed')?.value
+      ?? this.app.elements?.consoleRoot?.querySelector?.('#env-studio-world-seed')?.value
+      ?? this.session.seed
+      ?? this.session.worldSeed
+      ?? 'env-studio-r1'
+    );
   }
 
   readArchetype() {
@@ -713,6 +909,422 @@ export class EnvironmentStudioScene extends PhaserScene {
       scoringChanged: false
     };
   }
+}
+
+function worldMapConsoleHtml(scene, summary = {}) {
+  const session = scene.session;
+  const selected = session.selectedOperationalWindow;
+  const bounds = selected?.bounds ?? { width: 0.28, height: 0.22 };
+  return `
+    <section class="console-header">
+      <div class="console-kicker">Simulation Lab / Environment Studio</div>
+      <h1>Synthetic World Map</h1>
+      <p>Generate a deterministic synthetic ocean world, select an operational boundary, then generate regional 3D bathymetry.</p>
+    </section>
+    <section class="console-status">
+      <span>Stage</span>
+      <strong>World Map</strong>
+      <small>${escapeHtml(scene.statusMessage)}</small>
+    </section>
+    ${scene.lastError ? `<section class="console-section" data-keep-title="true"><h2>Warning</h2><div class="hud-muted">${escapeHtml(scene.lastError)}</div></section>` : ''}
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-studio-stage="worldMap">
+      <h2>Synthetic World</h2>
+      <label class="compact-field">
+        World Style
+        <select id="env-studio-world-style" data-env-studio-world-style>
+          ${SYNTHETIC_WORLD_STYLES.map((style) => `<option value="${escapeAttr(style.id)}" ${style.id === session.worldStyle ? 'selected' : ''}>${escapeHtml(style.label)}</option>`).join('')}
+        </select>
+      </label>
+      <label class="compact-field">
+        World Seed
+        <input id="env-studio-world-seed" data-env-studio-world-seed type="text" value="${escapeAttr(session.worldSeed)}" />
+      </label>
+      <button class="console-button primary" type="button" data-action="env-studio-generate-world">Generate New World</button>
+      <button class="console-button secondary" type="button" data-action="env-studio-randomize-world-seed">Randomize Seed</button>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Map Layers</h2>
+      <div class="environment-studio-camera-row" aria-label="Map layer controls">
+        ${SYNTHETIC_WORLD_LAYER_OPTIONS.map((layer) => `<button type="button" class="${layer.id === session.worldLayer ? 'active' : ''}" data-env-studio-world-layer="${escapeAttr(layer.id)}">${escapeHtml(layer.label)}</button>`).join('')}
+      </div>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Boundary Selection</h2>
+      <div class="environment-studio-camera-row" aria-label="Boundary controls">
+        <button type="button" class="${scene.worldBoundaryDrawing ? 'active' : ''}" data-action="env-studio-draw-boundary">Draw Boundary</button>
+        <button type="button" data-action="env-studio-select-boundary">Select Boundary</button>
+        <button type="button" data-action="env-studio-clear-boundary">Clear Boundary</button>
+      </div>
+      ${numberInput('Window Width', 'env-studio-window-width', bounds.width, 0.08, 0.78, 0.01)}
+      ${numberInput('Window Height', 'env-studio-window-height', bounds.height, 0.08, 0.78, 0.01)}
+      ${numberInput('Source Resolution', 'env-studio-source-resolution', selected?.recommendedDomain?.sourceResolutionMeters ?? 1500, 500, 6000, 100)}
+      ${numberInput('Preview Resolution', 'env-studio-preview-resolution', selected?.recommendedDomain?.previewResolutionMeters ?? 6000, 1000, 12000, 500)}
+      <div class="environment-studio-camera-row" aria-label="Move or resize selected boundary">
+        <button type="button" data-env-studio-world-window-action="left">Left</button>
+        <button type="button" data-env-studio-world-window-action="right">Right</button>
+        <button type="button" data-env-studio-world-window-action="up">Up</button>
+        <button type="button" data-env-studio-world-window-action="down">Down</button>
+        <button type="button" data-env-studio-world-window-action="narrower">Narrower</button>
+        <button type="button" data-env-studio-world-window-action="wider">Wider</button>
+        <button type="button" data-env-studio-world-window-action="shorter">Shorter</button>
+        <button type="button" data-env-studio-world-window-action="taller">Taller</button>
+      </div>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('World Digest', shortDigest(session.worldMap?.worldDigest))}
+        ${metricHtml('Window Digest', shortDigest(selected?.windowDigest))}
+        ${metricHtml('Source grid', selected?.recommendedDomain ? `${selected.recommendedDomain.columns} x ${selected.recommendedDomain.rows}` : 'select window')}
+        ${metricHtml('Layer', labelize(session.worldLayer))}
+      </div>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Actions</h2>
+      <button class="console-button primary" type="button" data-action="env-studio-generate-world-bathymetry">Generate 3D Bathymetry</button>
+      <button class="console-button secondary" type="button" data-action="env-studio-export-world-map">Export World Map</button>
+      <label class="console-button secondary" for="env-studio-import-world-map-file">Import World Map</label>
+      <input id="env-studio-import-world-map-file" type="file" accept="application/json,.json" hidden data-env-studio-import-world-map />
+      <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
+      <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
+      <input id="env-studio-import-file" type="file" accept="application/json,.json" hidden data-env-studio-import />
+      <button class="console-button secondary" type="button" data-action="menu">Main Menu</button>
+    </section>
+  `;
+}
+
+function regionalBathymetryConsoleHtml(scene, summary = {}) {
+  const session = scene.session;
+  const camera = session.previewCameraState ?? {};
+  return `
+    <section class="console-header">
+      <div class="console-kicker">Simulation Lab / Environment Studio</div>
+      <h1>Regional Bathymetry</h1>
+      <p>Inspect the generated 2.5D bottom surface and exported metadata from the selected synthetic world-map window.</p>
+    </section>
+    <section class="console-status">
+      <span>Stage</span>
+      <strong>Regional Bathymetry</strong>
+      <small>${escapeHtml(scene.statusMessage)}</small>
+    </section>
+    ${scene.lastError ? `<section class="console-section" data-keep-title="true"><h2>Warning</h2><div class="hud-muted">${escapeHtml(scene.lastError)}</div></section>` : ''}
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Regional Bathymetry</h2>
+      <label class="compact-field">
+        Preview Mode
+        <select id="env-studio-preview-mode" data-env-studio-preview-mode-panel>
+          ${ENVIRONMENT_STUDIO_PREVIEW_MODES.filter((mode) => mode.id !== 'multiGliderSuitability').map((mode) => `<option value="${escapeAttr(mode.id)}" ${mode.id === session.previewMode ? 'selected' : ''}>${escapeHtml(mode.label)}</option>`).join('')}
+        </select>
+      </label>
+      <label class="compact-field">
+        Vertical exaggeration
+        <input id="env-studio-vertical-exaggeration-panel" type="number" min="0.5" max="4" step="0.1" value="${escapeAttr(camera.verticalExaggeration ?? 1.6)}" />
+      </label>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Source grid', `${summary.sourceGridShape.columns} x ${summary.sourceGridShape.rows}`)}
+        ${metricHtml('Preview grid', `${summary.previewGridShape.columns} x ${summary.previewGridShape.rows}`)}
+        ${metricHtml('World Digest', shortDigest(session.worldMap?.worldDigest))}
+        ${metricHtml('Window Digest', shortDigest(session.selectedOperationalWindow?.windowDigest))}
+        ${metricHtml('Bathymetry Artifact', shortDigest(summary.bathymetryArtifactDigest))}
+      </div>
+      <button class="console-button primary" type="button" data-action="env-studio-regenerate-world-bathymetry">Regenerate Bathymetry</button>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Artifacts</h2>
+      <button class="console-button secondary" type="button" data-action="env-studio-export-bathymetry">Export Bathymetry</button>
+      <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
+      <button class="console-button secondary" type="button" disabled>Generate Fields - planned</button>
+      <button class="console-button secondary" type="button" disabled>Launch to Planning - planned</button>
+      <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
+      <input id="env-studio-import-file" type="file" accept="application/json,.json" hidden data-env-studio-import />
+      <button class="console-button secondary" type="button" data-action="menu">Main Menu</button>
+    </section>
+    <section class="console-section environment-studio-secondary-panel" data-keep-title="true">
+      <h2>Dependency State</h2>
+      ${dependencyGraphTable(session.dependencyGraph)}
+    </section>
+  `;
+}
+
+function bindEnvironmentStudioWorldMapControls(scene, root) {
+  root?.querySelector?.('[data-env-studio-world-style]')?.addEventListener('change', (event) => scene.setWorldStyle(event.target.value));
+  root?.querySelector?.('[data-action="env-studio-generate-world"]')?.addEventListener('click', () => scene.generateWorld());
+  root?.querySelector?.('[data-action="env-studio-randomize-world-seed"]')?.addEventListener('click', () => scene.randomizeWorldSeed());
+  root?.querySelectorAll?.('[data-env-studio-world-layer]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.setWorldLayer(button.getAttribute('data-env-studio-world-layer')));
+  });
+  root?.querySelector?.('[data-action="env-studio-draw-boundary"]')?.addEventListener('click', () => scene.toggleBoundaryDrawing());
+  root?.querySelector?.('[data-action="env-studio-select-boundary"]')?.addEventListener('click', () => scene.selectWorldWindowFromControls());
+  root?.querySelector?.('[data-action="env-studio-clear-boundary"]')?.addEventListener('click', () => scene.clearWorldWindow());
+  root?.querySelectorAll?.('[data-env-studio-world-window-action]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.adjustWorldWindow(button.getAttribute('data-env-studio-world-window-action')));
+  });
+  root?.querySelector?.('[data-action="env-studio-generate-world-bathymetry"]')?.addEventListener('click', () => scene.generateWorldBathymetry());
+  root?.querySelector?.('[data-action="env-studio-export-world-map"]')?.addEventListener('click', () => scene.exportWorldMap());
+  root?.querySelector?.('[data-action="env-studio-export-project"]')?.addEventListener('click', () => scene.exportProject());
+  root?.querySelector?.('[data-env-studio-import]')?.addEventListener('change', (event) => scene.importProject(event.target.files?.[0]));
+  root?.querySelector?.('[data-env-studio-import-world-map]')?.addEventListener('change', (event) => scene.importWorldMap(event.target.files?.[0]));
+  root?.querySelector?.('[data-action="menu"]')?.addEventListener('click', () => scene.scene.start('MainMenuScene'));
+}
+
+function bindEnvironmentStudioRegionalControls(scene, root) {
+  root?.querySelector?.('[data-env-studio-preview-mode-panel]')?.addEventListener('change', (event) => {
+    scene.session = setEnvironmentStudioPreviewMode(scene.session, event.target.value);
+    scene.statusMessage = `Preview mode changed to ${event.target.selectedOptions?.[0]?.textContent ?? event.target.value}.`;
+    scene.render();
+  });
+  root?.querySelector?.('#env-studio-vertical-exaggeration-panel')?.addEventListener('change', (event) => {
+    scene.updatePreviewCamera({ verticalExaggeration: Number(event.target.value) });
+  });
+  root?.querySelector?.('[data-action="env-studio-regenerate-world-bathymetry"]')?.addEventListener('click', () => scene.generateWorldBathymetry());
+  root?.querySelector?.('[data-action="env-studio-export-project"]')?.addEventListener('click', () => scene.exportProject());
+  root?.querySelector?.('[data-action="env-studio-export-bathymetry"]')?.addEventListener('click', () => scene.exportBathymetryArtifact());
+  root?.querySelector?.('[data-env-studio-import]')?.addEventListener('change', (event) => scene.importProject(event.target.files?.[0]));
+  root?.querySelector?.('[data-action="menu"]')?.addEventListener('click', () => scene.scene.start('MainMenuScene'));
+}
+
+function worldMapRightPanelHtml(session = {}) {
+  const world = session.worldMap ?? {};
+  const selected = session.selectedOperationalWindow;
+  if (!selected) {
+    return `
+      <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
+        <div class="console-kicker">World Summary</div>
+        <h2>${escapeHtml(world.styleLabel ?? labelize(session.worldStyle))}</h2>
+        <p class="hud-muted">Deterministic synthetic semantic field artifact. Not Earth, not calibrated survey data, and not an operational forecast. Draw a boundary box to define the operational region.</p>
+        <div class="cell-inspector-metrics">
+          ${metricHtml('Style', world.styleLabel ?? labelize(session.worldStyle))}
+          ${metricHtml('Seed', session.worldSeed)}
+          ${metricHtml('World Digest', shortDigest(world.worldDigest))}
+          ${metricHtml('Resolution', `${world.resolution?.columns ?? 0} x ${world.resolution?.rows ?? 0}`)}
+          ${metricHtml('Land fraction', formatNumber(world.layerSummaries?.landOceanMask?.mean))}
+          ${metricHtml('Ocean fraction', formatNumber(1 - Number(world.layerSummaries?.landOceanMask?.mean ?? 0)))}
+          ${metricHtml('Shelf fraction', formatNumber(world.layerSummaries?.shelfZone?.mean))}
+          ${metricHtml('Basin fraction', formatNumber(world.layerSummaries?.deepBasinPotential?.mean))}
+          ${metricHtml('Island count', (world.features ?? []).filter((feature) => /island|seamount/i.test(feature.type ?? feature.featureId ?? '')).length)}
+          ${metricHtml('Flow summary', `mean ${formatNumber(world.layerSummaries?.coarseFlowRegime?.mean)}`)}
+          ${metricHtml('Scalar summary', `mean ${formatNumber(world.layerSummaries?.scalarRegime?.mean)}`)}
+        </div>
+      </section>
+    `;
+  }
+  const stats = selected.sampledFieldStats?.layerMeans ?? {};
+  return `
+    <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
+      <div class="console-kicker">Selected Environment Window</div>
+      <h2>${escapeHtml(selected.detectedContext?.primaryLabel ?? selected.detectedContext?.primaryContextLabel ?? 'Selected Window')}</h2>
+      <p class="hud-muted">Window context comes from sampled synthetic world fields. Suggested use tags are not mission settings.</p>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Bounds', `${formatNumber(selected.bounds?.x)}, ${formatNumber(selected.bounds?.y)} / ${formatNumber(selected.bounds?.width)} x ${formatNumber(selected.bounds?.height)}`)}
+        ${metricHtml('Domain', `${formatNumber((selected.recommendedDomain?.widthMeters ?? 0) / 1000)} x ${formatNumber((selected.recommendedDomain?.heightMeters ?? 0) / 1000)} km`)}
+        ${metricHtml('Source resolution', `${selected.recommendedDomain?.sourceResolutionMeters ?? 'n/a'} m`)}
+        ${metricHtml('Preview resolution', `${selected.recommendedDomain?.previewResolutionMeters ?? 'n/a'} m`)}
+        ${metricHtml('Detected context', selected.detectedContext?.primaryLabel ?? selected.detectedContext?.primary)}
+        ${metricHtml('Window Digest', shortDigest(selected.windowDigest))}
+      </div>
+      <table class="environment-studio-table">
+        <tbody>
+          <tr><td>Land / ocean</td><td>${escapeHtml(formatNumber(stats.landOceanMask))} land, ${escapeHtml(formatNumber(1 - Number(stats.landOceanMask ?? 0)))} ocean</td></tr>
+          <tr><td>Shelf / basin</td><td>${escapeHtml(formatNumber(stats.shelfZone))} shelf, ${escapeHtml(formatNumber(stats.deepBasinPotential))} basin</td></tr>
+          <tr><td>Island / river / strait</td><td>${escapeHtml(formatNumber(stats.islandSeamountPotential))} / ${escapeHtml(formatNumber(stats.riverMouthInfluence))} / ${escapeHtml(formatNumber(stats.straitSillInfluence))}</td></tr>
+          <tr><td>Flow-regime hints</td><td>${escapeHtml((selected.environmentRegimes?.flow ?? []).join(', ') || 'none')}</td></tr>
+          <tr><td>Scalar-regime hints</td><td>${escapeHtml((selected.environmentRegimes?.scalar ?? []).join(', ') || 'none')}</td></tr>
+          <tr><td>Expected artifacts</td><td>Bathymetry, wet/land mask, coastline, validation, and dependency metadata. Currents/scalars/hotspots require later regeneration.</td></tr>
+          <tr><td>Warnings</td><td>${escapeHtml((selected.environmentSuitability?.warnings ?? []).join('; ') || 'none')}</td></tr>
+          <tr><td>Suggested use tags</td><td>${escapeHtml((selected.datasetTags ?? []).join(', ') || 'none')}</td></tr>
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
+function worldMapPreviewHtml(session = {}, project = {}) {
+  const selected = session.selectedOperationalWindow;
+  return `
+    <main id="environment-studio-route" class="environment-studio-route environment-studio-world-route">
+      <header class="environment-studio-route-header">
+        <div>
+          <p class="console-kicker">Synthetic World Map</p>
+          <h1>${escapeHtml(session.worldMap?.styleLabel ?? labelize(session.worldStyle))}</h1>
+          <p>The map is the first generated artifact: semantic synthetic ocean fields in normalized coordinates, not a real-world basemap.</p>
+        </div>
+        <div class="environment-studio-digest">
+          <span>World Digest</span>
+          <strong>${escapeHtml(shortDigest(session.worldMap?.worldDigest))}</strong>
+          <span>Window</span>
+          <strong>${escapeHtml(shortDigest(selected?.windowDigest))}</strong>
+        </div>
+      </header>
+      <section class="environment-studio-preview-grid" aria-label="Synthetic world map preview">
+        <section class="environment-studio-terrain-preview" data-env-studio-world-map-panel>
+          <h2>Synthetic World Map</h2>
+          <div class="environment-studio-preview-meta">
+            ${metricHtml('Style', session.worldMap?.styleLabel ?? labelize(session.worldStyle))}
+            ${metricHtml('Seed', session.worldSeed)}
+            ${metricHtml('Layer', labelize(session.worldLayer))}
+            ${metricHtml('Zoom', `${formatNumber(session.worldView?.zoom ?? 1)}x`)}
+            <div><span>Coordinates</span><strong data-env-world-coordinate>move over map</strong></div>
+          </div>
+          <canvas data-env-studio-world-map width="960" height="520" style="width:100%;max-height:62vh;border-radius:8px;background:#04101d;display:block;"></canvas>
+          <div class="environment-studio-camera-row" aria-label="World map view controls">
+            <button type="button" data-env-world-view-action="zoom-out">Zoom Out</button>
+            <button type="button" data-env-world-view-action="zoom-in">Zoom In</button>
+            <button type="button" data-env-world-view-action="pan-left">Pan Left</button>
+            <button type="button" data-env-world-view-action="pan-right">Pan Right</button>
+            <button type="button" data-env-world-view-action="pan-up">Pan Up</button>
+            <button type="button" data-env-world-view-action="pan-down">Pan Down</button>
+            <button type="button" data-env-world-view-action="reset">Reset View</button>
+          </div>
+          <div class="environment-studio-depth-ramp" aria-label="World map legend">
+            <span style="background:#6e7749">land</span>
+            <span style="background:#2f9a9c">shelf</span>
+            <span style="background:#215f9b">basin</span>
+            <span style="background:#6844aa">feature</span>
+          </div>
+          <p class="hud-muted">Click while Draw Boundary is active to place the selected operational window. Three.js only visualizes later regional artifacts; it does not create these fields.</p>
+        </section>
+      </section>
+      <section class="environment-studio-boundary">
+        <strong>Boundary</strong>
+        <span>Synthetic, benchmark-oriented, not real Earth, not operational forecast, not certified navigation data. Currents, scalars, hotspots, and launch-to-planning remain staged follow-ups.</span>
+      </section>
+    </main>
+  `;
+}
+
+function bindEnvironmentStudioWorldMapPreview(scene, root) {
+  const canvas = root?.querySelector?.('[data-env-studio-world-map]');
+  canvas?.addEventListener('click', (event) => {
+    const point = worldPointFromCanvas(scene, canvas, event);
+    if (scene.worldBoundaryDrawing || !scene.session.selectedOperationalWindow) scene.selectWorldWindowAt(point.x, point.y);
+  });
+  canvas?.addEventListener('mousemove', (event) => {
+    const point = worldPointFromCanvas(scene, canvas, event);
+    const label = root?.querySelector?.('[data-env-world-coordinate]');
+    if (label) label.textContent = `${formatNumber(point.x)}, ${formatNumber(point.y)}`;
+  });
+  canvas?.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const current = scene.session.worldView ?? {};
+    scene.session = setEnvironmentStudioWorldView(scene.session, {
+      zoom: Number(current.zoom ?? 1) + (event.deltaY < 0 ? 0.25 : -0.25)
+    });
+    scene.render();
+  }, { passive: false });
+  root?.querySelectorAll?.('[data-env-world-view-action]')?.forEach((button) => {
+    button.addEventListener('click', () => {
+      const action = button.getAttribute('data-env-world-view-action');
+      const view = scene.session.worldView ?? {};
+      if (action === 'reset') return scene.resetWorldView();
+      const patch = { ...view };
+      if (action === 'zoom-in') patch.zoom = Number(view.zoom ?? 1) + 0.25;
+      if (action === 'zoom-out') patch.zoom = Number(view.zoom ?? 1) - 0.25;
+      if (action === 'pan-left') patch.panX = Number(view.panX ?? 0) - 0.04;
+      if (action === 'pan-right') patch.panX = Number(view.panX ?? 0) + 0.04;
+      if (action === 'pan-up') patch.panY = Number(view.panY ?? 0) - 0.04;
+      if (action === 'pan-down') patch.panY = Number(view.panY ?? 0) + 0.04;
+      scene.session = setEnvironmentStudioWorldView(scene.session, patch);
+      scene.render();
+    });
+  });
+}
+
+function paintSyntheticWorldCanvas(scene) {
+  const canvas = scene.previewHost?.querySelector?.('[data-env-studio-world-map]');
+  if (!canvas?.getContext) return;
+  const width = Math.max(240, Number(canvas.width) || 960);
+  const height = Math.max(160, Number(canvas.height) || 520);
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(width, height);
+  const data = image.data;
+  const layer = scene.session.worldLayer ?? 'bathymetryContext';
+  for (let py = 0; py < height; py += 1) {
+    for (let px = 0; px < width; px += 1) {
+      const point = normalizedWorldPoint(scene, px / Math.max(1, width - 1), py / Math.max(1, height - 1));
+      const offset = (py * width + px) * 4;
+      const color = worldLayerColor(scene.session.worldMap, layer, point.x, point.y);
+      data[offset] = color[0];
+      data[offset + 1] = color[1];
+      data[offset + 2] = color[2];
+      data[offset + 3] = color[3];
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  drawWorldWindowOverlay(ctx, scene.session, width, height);
+}
+
+function drawWorldWindowOverlay(ctx, session = {}, width = 1, height = 1) {
+  const bounds = session.selectedOperationalWindow?.bounds;
+  if (!bounds) return;
+  const view = session.worldView ?? {};
+  const zoom = Number(view.zoom ?? 1) || 1;
+  const panX = Number(view.panX ?? 0) || 0;
+  const panY = Number(view.panY ?? 0) || 0;
+  const toCanvas = (x, y) => ({
+    x: ((x - 0.5 + panX) * zoom + 0.5) * width,
+    y: ((y - 0.5 + panY) * zoom + 0.5) * height
+  });
+  const p0 = toCanvas(bounds.x, bounds.y);
+  const p1 = toCanvas(bounds.x + bounds.width, bounds.y + bounds.height);
+  const x = Math.min(p0.x, p1.x);
+  const y = Math.min(p0.y, p1.y);
+  const w = Math.abs(p1.x - p0.x);
+  const h = Math.abs(p1.y - p0.y);
+  ctx.save();
+  ctx.strokeStyle = '#f8e36c';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([12, 7]);
+  ctx.strokeRect(x, y, w, h);
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(248, 227, 108, 0.12)';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#f8e36c';
+  ctx.font = '16px sans-serif';
+  ctx.fillText('Operational Boundary', x + 10, Math.max(22, y - 8));
+  ctx.restore();
+}
+
+function worldPointFromCanvas(scene, canvas, event) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = (event.clientX - rect.left) / Math.max(1, rect.width);
+  const sy = (event.clientY - rect.top) / Math.max(1, rect.height);
+  return normalizedWorldPoint(scene, sx, sy);
+}
+
+function normalizedWorldPoint(scene, sx, sy) {
+  const view = scene.session.worldView ?? {};
+  const zoom = Math.max(0.1, Number(view.zoom ?? 1) || 1);
+  return {
+    x: Math.max(0, Math.min(1, (sx - 0.5) / zoom + 0.5 - Number(view.panX ?? 0))),
+    y: Math.max(0, Math.min(1, (sy - 0.5) / zoom + 0.5 - Number(view.panY ?? 0)))
+  };
+}
+
+function worldLayerColor(worldMap = {}, layer = 'bathymetryContext', x = 0.5, y = 0.5) {
+  const land = sampleWorldMapLayer(worldMap, 'landOceanMask', x, y);
+  if (land > 0.56) return [110, 119, 73, 255];
+  if (layer === 'landOceanMask') return [22, 85, 118, 255];
+  if (layer === 'coarseFlowRegime') {
+    const regime = sampleWorldMapLayer(worldMap, 'coarseFlowRegime', x, y) / 8;
+    return [32, Math.round(96 + regime * 125), Math.round(130 + regime * 90), 255];
+  }
+  if (layer === 'scalarRegime') {
+    const scalar = sampleWorldMapLayer(worldMap, 'scalarRegime', x, y) / 8;
+    return [Math.round(70 + scalar * 130), Math.round(78 + scalar * 88), Math.round(120 + scalar * 70), 255];
+  }
+  if (layer === 'suitability') {
+    const suitability = sampleWorldMapLayer(worldMap, 'suitability', x, y);
+    return [Math.round(18 + suitability * 80), Math.round(74 + suitability * 145), Math.round(116 + suitability * 72), 255];
+  }
+  const shelf = sampleWorldMapLayer(worldMap, 'shelfZone', x, y);
+  const basin = sampleWorldMapLayer(worldMap, 'deepBasinPotential', x, y);
+  const canyon = sampleWorldMapLayer(worldMap, 'canyonPotential', x, y);
+  const island = sampleWorldMapLayer(worldMap, 'islandSeamountPotential', x, y);
+  const river = sampleWorldMapLayer(worldMap, 'riverMouthInfluence', x, y);
+  const strait = sampleWorldMapLayer(worldMap, 'straitSillInfluence', x, y);
+  if (river > 0.36) return [90, 156, 100, 255];
+  if (strait > 0.34) return [72, 177, 174, 255];
+  if (island > 0.38) return [178, 163, 96, 255];
+  if (canyon > 0.32) return [58, 76, 148, 255];
+  if (shelf > basin) return [45, Math.round(120 + shelf * 55), Math.round(145 + shelf * 45), 255];
+  return [Math.round(22 + basin * 38), Math.round(58 + basin * 36), Math.round(110 + basin * 58), 255];
 }
 
 function simplifiedConsoleHtml(scene, summary = {}, panelSections = new Map(), advancedOpen = '', diagnosticsOpen = '') {

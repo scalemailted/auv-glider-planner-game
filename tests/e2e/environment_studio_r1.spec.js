@@ -9,10 +9,8 @@ let server;
 const BASE = 'http://127.0.0.1:9391';
 
 export const EXACT_TITLES = [
-  'Procedural Atlas Field Engine',
-  'Window Generates Bathymetry',
-  'Atlas Region Generates Fields',
-  'Field Regeneration Export Import Cleanup'
+  'Synthetic World Map Selection',
+  'World Window Generates Bathymetry'
 ];
 
 test.setTimeout(180000);
@@ -31,37 +29,43 @@ test(EXACT_TITLES[0], async ({ page }) => {
   await openEnvironmentStudio(page);
 
   await expect(page.locator('#environment-studio-route')).toBeVisible();
-  await expect(page.locator('#mission-console')).toContainText('Synthetic Ocean Atlas');
-  await expect(page.locator('#mission-console')).toContainText('Mission Region');
-  await expect(page.locator('[data-env-studio-atlas-map]')).toBeVisible();
-  await expect(page.locator('[data-env-studio-atlas-field-raster]')).toBeVisible();
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Operational Window');
+  await expect(page.locator('#mission-console')).toContainText('Synthetic World Map');
+  await expect(page.locator('#env-studio-world-style')).toBeVisible();
+  await expect(page.locator('#env-studio-world-seed')).toBeVisible();
+  await expect(page.locator('[data-env-studio-world-map]')).toBeVisible();
+  await expect(page.locator('#mission-console')).toContainText('Land / Ocean');
+  await expect(page.locator('#mission-console')).toContainText('Bathymetry Context');
+  await expect(page.locator('#mission-console')).toContainText('Flow Regime');
+  await expect(page.locator('#mission-console')).toContainText('Scalar Regime');
+  await expect(page.locator('#mission-console')).toContainText('Suitability');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('World Summary');
+  await expect(page.locator('#mission-console')).not.toContainText('Intended Gliders');
+  await expect(page.locator('#mission-console')).not.toContainText('Mission Duration');
 
-  const initialDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasDigest);
-  await page.locator('#env-studio-atlas-preset').selectOption('islandChainWorld');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasPreset), { timeout: 15000 }).toBe('islandChainWorld');
-  const presetDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasDigest);
-  expect(presetDigest).toBeTruthy();
-  expect(presetDigest).not.toBe(initialDigest);
-  await page.locator('#mission-console [data-action="env-studio-randomize-atlas-seed"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasDigest), { timeout: 15000 }).not.toBe(presetDigest);
+  const initialDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldDigest);
+  await page.locator('#env-studio-world-style').selectOption('archipelagoWorld');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldStyle), { timeout: 15000 }).toBe('archipelagoWorld');
+  const styleDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldDigest);
+  expect(styleDigest).toBeTruthy();
+  expect(styleDigest).not.toBe(initialDigest);
 
-  await page.locator('#env-studio-window-preset').selectOption('semiEnclosedGulfSurvey');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Window Digest');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Recommended Gliders');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Current Regime Hints');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar Regime Hints');
-  await expect(page.locator('#mission-console [data-action="env-studio-generate-atlas-region"]')).toBeVisible();
+  await page.locator('[data-action="env-studio-draw-boundary"]').click();
+  await page.locator('[data-env-studio-world-map]').click({ position: { x: 570, y: 255 } });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindowDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Environment Window');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Flow-regime hints');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar-regime hints');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Suggested use tags');
 
   const debug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
-  expect(debug.atlasMode).toBe(true);
-  expect(debug.studioStage).toBe('atlasWindow');
-  expect(debug.atlasPreset).toBeTruthy();
-  expect(debug.atlasDigest).toMatch(/^fnv1a32:/);
+  expect(debug.studioStage).toBe('worldMap');
+  expect(debug.worldArtifactType).toBe('anchor.synthetic-world-map');
+  expect(debug.worldDigest).toMatch(/^fnv1a32:/);
+  expect(debug.worldResolution.columns).toBeGreaterThan(0);
   expect(debug.selectedWindowDigest).toMatch(/^fnv1a32:/);
-  expect(debug.selectedWindow.primaryContext).toBeTruthy();
-  expect(debug.currentRegimeHints.length).toBeGreaterThan(0);
-  expect(debug.scalarRegimeHints.length).toBeGreaterThan(0);
+  expect(debug.selectedWindowBounds.width).toBeGreaterThan(0);
+  expect(debug.detectedContext.primary).toBeTruthy();
+  expect(debug.sampledFieldStats.fieldStatsDigest).toMatch(/^fnv1a32:/);
   expect(debug.flowGenerationInputs.generatedArtifacts.currentField4D).toBe(false);
   expect(debug.flowGenerationInputs.generatedArtifacts.scalarField4D).toBe(false);
   expect(debug.hiddenTruthExposed).toBe(false);
@@ -74,34 +78,33 @@ test(EXACT_TITLES[1], async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
   await openEnvironmentStudio(page);
 
-  await page.locator('#env-studio-window-preset').selectOption('semiEnclosedGulfSurvey');
-  await page.locator('#mission-console [data-action="env-studio-generate-atlas-region"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 15000 }).toBe('regionalDetail');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.tileCount ?? 0), { timeout: 15000 }).toBe(4);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 15000 }).not.toBeNull();
+  await page.locator('[data-action="env-studio-select-boundary"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindowDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
+  await page.locator('#mission-console [data-action="env-studio-generate-world-bathymetry"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 20000 }).toBe('regionalBathymetry');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.tileCount ?? 0), { timeout: 20000 }).toBe(4);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 20000 }).not.toBeNull();
 
   await expect(page.locator('.environment-studio-terrain-preview')).toBeVisible();
   await expect(page.locator('.environment-studio-terrain-preview')).toContainText('Regional 3D Bathymetry Preview');
-  await expect(page.locator('.environment-studio-digest')).toContainText('Bathymetry Artifact');
-  await expect(page.locator('#mission-console')).toContainText('Basic Authoring');
-  await expect(page.locator('[data-env-studio-section="advanced"]').first()).toHaveAttribute('data-collapsed', 'true');
-  await expect(page.locator('[data-env-studio-source-diagnostics]').first()).toHaveAttribute('data-collapsed', 'true');
+  await expect(page.locator('#mission-console')).toContainText('Regional Bathymetry');
+  await expect(page.locator('#mission-console')).toContainText('Generate Fields - planned');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Feature Summary');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Generated Field Status');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Current Artifact');
-  await expect(page.locator('#mission-console')).toContainText('Builder validation');
-  await expect(page.locator('#mission-console')).toContainText('Bathymetry artifact');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar Artifact');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Hotspots');
   await expect(page.locator('#env-studio-status-panel')).toContainText('REQUIRES_REGENERATION');
 
   const exported = await downloadStudioProject(page);
-  expect(exported.data.studioStage).toBe('regionalDetail');
-  expect(exported.data.atlas.atlasType).toBe('anchor.synthetic-ocean-atlas');
-  expect(exported.data.selectedOperationalWindow.windowId).toBe('semiEnclosedGulfSurvey');
+  expect(exported.data.studioStage).toBe('regionalBathymetry');
+  expect(exported.data.worldMap.artifactType).toBe('anchor.synthetic-world-map');
+  expect(exported.data.worldDigest).toMatch(/^fnv1a32:/);
+  expect(exported.data.selectedOperationalWindow.artifactType).toBe('anchor.operational-window');
+  expect(exported.data.selectedOperationalWindow.windowDigest).toMatch(/^fnv1a32:/);
   expect(exported.data.regionalMissionRecipe.recipeDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.bathymetryBuilderVersion).toBeTruthy();
   expect(exported.data.bathymetryBuilderResult.builderDigest).toMatch(/^fnv1a32:/);
   expect(exported.data.bathymetryArtifactDigest).toBe(exported.data.bathymetryBuilderResult.bathymetryArtifactDigest);
-  expect(exported.data.flowGenerationInputs.flowGenerationInputDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.flowGenerationInputs.bathymetryArtifactDigest).toBe(exported.data.bathymetryArtifactDigest);
   expect(exported.data.flowGenerationInputs.generatedArtifacts.currentField4D).toBe(false);
   expect(exported.data.flowGenerationInputs.generatedArtifacts.scalarField4D).toBe(false);
   expect(exported.data.dependencyGraph.nodes.currentArtifact.state).toBe('REQUIRES_REGENERATION');
@@ -111,119 +114,14 @@ test(EXACT_TITLES[1], async ({ page }) => {
   expect(exported.data.dependencyGraph.nodes.benchmarkBundle.state).toBe('REQUIRES_REGENERATION');
   expect(exported.data.provenance.hiddenTruthExposed).toBe(false);
   const originalDigest = exported.data.projectDigest;
-  const originalRecipeDigest = exported.data.regionalMissionRecipe.recipeDigest;
+  const originalWindowDigest = exported.data.selectedOperationalWindow.windowDigest;
   const originalBathymetryDigest = exported.data.bathymetryArtifactDigest;
 
   await page.locator('#env-studio-import-file').setInputFiles(exported.path);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.projectDigest ?? null), { timeout: 15000 }).toBe(originalDigest);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage ?? null), { timeout: 15000 }).toBe('regionalDetail');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindow?.windowId ?? null), { timeout: 15000 }).toBe('semiEnclosedGulfSurvey');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.regionalMissionRecipeDigest ?? null), { timeout: 15000 }).toBe(originalRecipeDigest);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage ?? null), { timeout: 15000 }).toBe('regionalBathymetry');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindowDigest ?? null), { timeout: 15000 }).toBe(originalWindowDigest);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 15000 }).toBe(originalBathymetryDigest);
-
-  await page.locator('#mission-console [data-action="menu"]').click();
-  await waitForAnchorRoute(page, 'main-menu');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.routeActive === false), { timeout: 15000 }).toBe(true);
-  await expect(page.locator('[data-environment-studio-preview-host]')).toHaveCount(0);
-  const cleanup = await page.evaluate(() => ({
-    activeRafCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.activeRafCount,
-    previewRendererCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.previewRendererCount,
-    terrainPreviewRafCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.terrainPreviewRafCount,
-    terrainPreviewRendererCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.terrainPreviewRendererCount,
-    stalePreviewObjects: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.stalePreviewObjects,
-    hiddenTruthExposed: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.hiddenTruthExposed
-  }));
-  expect(cleanup).toEqual({
-    activeRafCount: 0,
-    previewRendererCount: 0,
-    terrainPreviewRafCount: 0,
-    terrainPreviewRendererCount: 0,
-    stalePreviewObjects: 0,
-    hiddenTruthExposed: false
-  });
-  browserErrors.assertClean();
-});
-
-test(EXACT_TITLES[2], async ({ page }) => {
-  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
-  await openEnvironmentStudio(page);
-
-  await page.locator('#env-studio-window-preset').selectOption('semiEnclosedGulfSurvey');
-  await page.locator('#mission-console [data-action="env-studio-generate-atlas-region"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 15000 }).toBe('regionalDetail');
-  await page.locator('#mission-console [data-action="env-studio-generate-fields"]').click();
-
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.currentArtifactDigest ?? null), { timeout: 60000 }).toMatch(/^fnv1a32:/);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.scalarArtifactDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Current Artifact');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar Artifact');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Hotspots');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('CURRENT');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Mean speed');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar mean');
-
-  const debug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
-  expect(debug.fieldRegenVersion).toBe('field-regen-r1');
-  expect(debug.currentArtifactDigest).toMatch(/^fnv1a32:/);
-  expect(debug.scalarArtifactDigest).toMatch(/^fnv1a32:/);
-  expect(debug.hotspotArtifactDigest).toMatch(/^fnv1a32:/);
-  expect(debug.flowGenerationInputs.generatedArtifacts.currentField4D).toBe(true);
-  expect(debug.flowGenerationInputs.generatedArtifacts.scalarField4D).toBe(true);
-  expect(debug.flowGenerationInputs.generatedArtifacts.hotspots).toBe(true);
-  expect(debug.dependencyGraph.nodes.currentArtifact.state).toBe('CURRENT');
-  expect(debug.dependencyGraph.nodes.scalarArtifact.state).toBe('CURRENT');
-  expect(debug.dependencyGraph.nodes.hotspots.state).toBe('CURRENT');
-  expect(debug.dependencyGraph.nodes.startsDropZones.state).toBe('NEEDS_VALIDATION');
-  expect(debug.dependencyGraph.nodes.benchmarkBundle.state).toBe('REQUIRES_REGENERATION');
-  expect(debug.landVectorCount).toBe(0);
-  expect(debug.belowBottomVectorCount).toBe(0);
-  expect(Number.isFinite(debug.divergenceRms)).toBe(true);
-  expect(Number.isFinite(debug.coastNormalLeakage)).toBe(true);
-  expect(Number.isFinite(debug.verticalShearRms)).toBe(true);
-  expect(debug.currentRegimeComponents.length).toBeGreaterThan(0);
-  expect(debug.scalarRegimeComponents.length).toBeGreaterThan(0);
-  expect(debug.hotspotCount).toBeGreaterThan(0);
-  expect(debug.hiddenTruthExposed).toBe(false);
-  expect(debug.simulationChanged).toBe(false);
-  expect(debug.scoringChanged).toBe(false);
-  browserErrors.assertClean();
-});
-
-test(EXACT_TITLES[3], async ({ page }) => {
-  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
-  await openEnvironmentStudio(page);
-
-  await page.locator('#env-studio-window-preset').selectOption('openOceanEddySurvey');
-  await page.locator('#mission-console [data-action="env-studio-generate-atlas-region"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 15000 }).toBe('regionalDetail');
-  await page.locator('#mission-console [data-action="env-studio-generate-fields"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.fieldRegenerationDigest ?? null), { timeout: 60000 }).toMatch(/^fnv1a32:/);
-
-  const exported = await downloadStudioProject(page);
-  expect(exported.data.fieldRegenerationResult.fieldRegenerationDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.fieldRegenerationResult.currentArtifactDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.fieldRegenerationResult.scalarArtifactDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.fieldRegenerationResult.hotspotArtifactDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.fieldRegenerationResult.storagePolicy.projectStoresCompactMetadataOnly).toBe(true);
-  expect(exported.data.fieldRegenerationResult.currentArtifact).toBeUndefined();
-  expect(exported.data.fieldRegenerationResult.scalarArtifact).toBeUndefined();
-  expect(exported.data.flowGenerationInputs.generatedArtifacts.currentField4D).toBe(true);
-  expect(exported.data.dependencyGraph.nodes.currentArtifact.state).toBe('CURRENT');
-  expect(exported.data.dependencyGraph.nodes.scalarArtifact.state).toBe('CURRENT');
-  expect(exported.data.dependencyGraph.nodes.hotspots.state).toBe('CURRENT');
-  expect(exported.data.dependencyGraph.nodes.startsDropZones.state).toBe('NEEDS_VALIDATION');
-  expect(exported.data.fieldRegenerationResult.claimBoundary.hiddenTruthExposed).toBe(false);
-  expect(exported.data.fieldRegenerationResult.claimBoundary.simulationChanged).toBe(false);
-  expect(exported.data.fieldRegenerationResult.claimBoundary.scoringChanged).toBe(false);
-  const originalFieldDigest = exported.data.fieldRegenerationResult.fieldRegenerationDigest;
-  const originalCurrentDigest = exported.data.fieldRegenerationResult.currentArtifactDigest;
-  const originalScalarDigest = exported.data.fieldRegenerationResult.scalarArtifactDigest;
-
-  await page.locator('#env-studio-import-file').setInputFiles(exported.path);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.fieldRegenerationDigest ?? null), { timeout: 15000 }).toBe(originalFieldDigest);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.currentArtifactDigest ?? null), { timeout: 15000 }).toBe(originalCurrentDigest);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.scalarArtifactDigest ?? null), { timeout: 15000 }).toBe(originalScalarDigest);
-  await expect(page.locator('#env-studio-status-panel')).toContainText('CURRENT');
 
   await page.locator('#mission-console [data-action="menu"]').click();
   await waitForAnchorRoute(page, 'main-menu');

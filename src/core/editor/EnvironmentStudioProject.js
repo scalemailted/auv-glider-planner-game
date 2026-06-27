@@ -51,11 +51,25 @@ import {
   environmentStudioOptionsFromRegionalRecipe,
   normalizeOperationalWindow
 } from './SyntheticOceanAtlas.js';
+import {
+  OPERATIONAL_WINDOW_TYPE,
+  SYNTHETIC_WORLD_LAYER_OPTIONS,
+  SYNTHETIC_WORLD_STYLES,
+  SYNTHETIC_WORLD_MAP_TYPE,
+  compactSyntheticWorldMap,
+  createOperationalWindowFromWorldMap,
+  createRegionalMissionRecipeFromWorldWindow,
+  createSyntheticWorldMap,
+  environmentStudioOptionsFromWorldRecipe,
+  normalizeSyntheticWorldMap,
+  syntheticWorldStyleById
+} from './SyntheticWorldMap.js';
 
 export const ENVIRONMENT_STUDIO_PROJECT_TYPE = 'anchor.environment-studio-project';
 export const ENVIRONMENT_STUDIO_PROJECT_VERSION = '1.0.0';
-export const ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION = 'environment-studio-r1-1-project';
+export const ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION = 'environment-studio-r2-project';
 export const ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION = 'field-regen-r1';
+export { SYNTHETIC_WORLD_LAYER_OPTIONS, SYNTHETIC_WORLD_STYLES };
 
 export const ENVIRONMENT_STUDIO_PREVIEW_MODES = Object.freeze([
   { id: 'bathymetry3d', label: '3D Bathymetry', description: 'Main regional terrain preview derived from the canonical 2.5D bottom surface.' },
@@ -131,6 +145,9 @@ const DEFAULT_PREVIEW_CAMERA_STATE = Object.freeze({
   zoom: 1,
   verticalExaggeration: 1.6
 });
+
+const DEFAULT_WORLD_WINDOW_BOUNDS = Object.freeze({ x: 0.22, y: 0.2, width: 0.34, height: 0.34 });
+const DEFAULT_WORLD_VIEW = Object.freeze({ panX: 0, panY: 0, zoom: 1 });
 
 export const ENVIRONMENT_STUDIO_DEFAULT_TILE_CONFIGS = Object.freeze([
   { id: 'northwest', label: 'Northwest', tileCoordinate: { row: 0, column: 0 }, archetypeId: 'riverMouthDelta', seedOffset: 'nw', featureRole: 'coastal shelf / river-mouth region' },
@@ -367,17 +384,27 @@ export const ENVIRONMENT_STUDIO_BATHYMETRY_ARCHETYPES = Object.freeze([
 export function createEnvironmentStudioSession(options = {}) {
   const profile = domainProfileById(options.profileId ?? options.domainProfileId);
   const recipe = normalizeRegionalRecipe(options, profile);
-  const atlas = normalizeAtlas(options.atlas ?? {
-    presetId: options.atlasPreset ?? options.atlasPresetId,
-    seed: options.atlasSeed ?? options.seed ?? recipe.randomization?.worldSeed
+  const legacyAtlasMode = options.studioStage === 'atlasWindow'
+    || Boolean(options.atlas && !options.worldMap && !options.syntheticWorldMap && !options.worldStyle && !options.style);
+  const worldMap = normalizeWorldMap(options.worldMap ?? options.syntheticWorldMap ?? {
+    style: options.worldStyle ?? options.style,
+    seed: options.worldSeed ?? options.atlasSeed ?? options.seed ?? recipe.randomization?.worldSeed,
+    resolution: options.worldResolution
   });
-  const selectedOperationalWindow = normalizeOperationalWindow(options.selectedOperationalWindow ?? options.selectedWindow ?? {
-    windowPresetId: options.windowPresetId ?? 'semiEnclosedGulfSurvey',
-    selectedBy: 'preset'
-  }, atlas);
-  const regionalMissionRecipe = normalizeRegionalMissionRecipe(options.regionalMissionRecipe ?? {
+  const atlas = normalizeAtlas(options.atlas ?? {
+    presetId: options.atlasPreset ?? options.atlasPresetId ?? worldMap.sourceAtlasSummary?.atlasPreset,
+    seed: options.atlasSeed ?? worldMap.seed ?? options.seed ?? recipe.randomization?.worldSeed,
+    resolution: worldMap.resolution
+  });
+  const selectedOperationalWindow = normalizeStudioOperationalWindow(options.selectedOperationalWindow ?? options.selectedWindow, {
+    worldMap,
     atlas,
-    selectedWindow: selectedOperationalWindow,
+    preferWorld: !legacyAtlasMode
+  });
+  const regionalMissionRecipe = normalizeStudioRegionalRecipe(options.regionalMissionRecipe, {
+    worldMap,
+    atlas,
+    selectedOperationalWindow,
     seed: options.seed ?? recipe.randomization?.worldSeed
   });
   const domainSpec = normalizeEnvironmentStudioDomainSpec({
@@ -439,13 +466,18 @@ export function createEnvironmentStudioSession(options = {}) {
     openOceanBoundaries: recipe.openOceanBoundaries,
     featureMix: recipe.featureMix,
     randomization: recipe.randomization,
-    studioStage: normalizeStudioStage(options.studioStage),
+    studioStage: normalizeStudioStage(options.studioStage ?? (legacyAtlasMode ? 'atlasWindow' : 'worldMap')),
+    worldMap,
+    worldStyle: worldMap.style,
+    worldSeed: worldMap.seed,
+    worldLayer: worldLayerById(options.worldLayer ?? 'bathymetryContext').id,
+    worldView: normalizeWorldView(options.worldView),
     atlas,
     atlasPreset: atlas.atlasPreset,
     atlasSeed: atlas.seed,
     selectedOperationalWindow,
     regionalMissionRecipe,
-    flowGenerationInputs: options.flowGenerationInputs ?? options.bathymetryBuilderResult?.flowGenerationInputs ?? regionalMissionRecipe.flowGenerationInputs ?? null,
+    flowGenerationInputs: options.flowGenerationInputs ?? options.bathymetryBuilderResult?.flowGenerationInputs ?? regionalMissionRecipe?.flowGenerationInputs ?? null,
     bathymetryBuilderVersion: options.bathymetryBuilderVersion ?? options.bathymetryBuilderResult?.builderVersion ?? null,
     bathymetryBuilderResult: options.bathymetryBuilderResult ?? null,
     bathymetryArtifactDigest: options.bathymetryArtifactDigest ?? options.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
@@ -645,6 +677,152 @@ export function randomizeEnvironmentStudioAtlasSeed(sessionInput = {}) {
     project: session.projectId
   }))}`;
   return setEnvironmentStudioAtlasPreset(session, session.atlasPreset, { seed: nextSeed });
+}
+
+export function setEnvironmentStudioWorldStyle(sessionInput = {}, worldStyle = 'earthlikeSyntheticOcean', options = {}) {
+  const session = normalizeSession(sessionInput);
+  const style = syntheticWorldStyleById(worldStyle);
+  return createWorldMapSession(session, {
+    worldStyle: style.id,
+    worldSeed: options.seed ?? session.worldSeed ?? style.defaultSeed,
+    selectedOperationalWindow: null,
+    lastAction: 'world-style-changed'
+  });
+}
+
+export function setEnvironmentStudioWorldSeed(sessionInput = {}, worldSeed = 'env-world-001') {
+  const session = normalizeSession(sessionInput);
+  return createWorldMapSession(session, {
+    worldStyle: session.worldStyle,
+    worldSeed,
+    selectedOperationalWindow: null,
+    lastAction: 'world-seed-changed'
+  });
+}
+
+export function randomizeEnvironmentStudioWorldSeed(sessionInput = {}) {
+  const session = normalizeSession(sessionInput);
+  const nextSeed = `${session.worldStyle ?? 'world'}-${stableToken(canonicalJsonDigest({
+    previous: session.worldSeed,
+    worldDigest: session.worldMap?.worldDigest,
+    project: session.projectId
+  }))}`;
+  return setEnvironmentStudioWorldSeed(session, nextSeed);
+}
+
+export function setEnvironmentStudioWorldLayer(sessionInput = {}, layerId = 'bathymetryContext') {
+  const session = normalizeSession(sessionInput);
+  return refreshEnvironmentStudioSession({
+    ...session,
+    worldLayer: worldLayerById(layerId).id,
+    lastAction: 'world-layer-changed'
+  });
+}
+
+export function setEnvironmentStudioWorldView(sessionInput = {}, patch = {}) {
+  const session = normalizeSession(sessionInput);
+  return refreshEnvironmentStudioSession({
+    ...session,
+    worldView: normalizeWorldView({
+      ...session.worldView,
+      ...(patch ?? {})
+    }),
+    lastAction: 'world-view-changed'
+  });
+}
+
+export function selectEnvironmentStudioWorldWindow(sessionInput = {}, bounds = {}) {
+  const session = normalizeSession(sessionInput);
+  const selectedOperationalWindow = createOperationalWindowFromWorldMap({
+    ...bounds,
+    sourceResolutionMeters: bounds.sourceResolutionMeters,
+    previewResolutionMeters: bounds.previewResolutionMeters,
+    selectedBy: bounds.selectedBy ?? 'world-map-boundary'
+  }, session.worldMap);
+  const regionalMissionRecipe = createRegionalMissionRecipeFromWorldWindow({
+    worldMap: session.worldMap,
+    selectedWindow: selectedOperationalWindow,
+    seed: `${session.worldSeed}:${selectedOperationalWindow.windowDigest}`
+  });
+  return refreshEnvironmentStudioSession({
+    ...session,
+    studioStage: 'worldMap',
+    selectedOperationalWindow,
+    regionalMissionRecipe,
+    flowGenerationInputs: regionalMissionRecipe.flowGenerationInputs ?? null,
+    fieldRegenerationResult: null,
+    lastAction: 'world-window-selected'
+  });
+}
+
+export function patchEnvironmentStudioWorldWindow(sessionInput = {}, patch = {}) {
+  const session = normalizeSession(sessionInput);
+  const current = session.selectedOperationalWindow?.bounds ?? DEFAULT_WORLD_WINDOW_BOUNDS;
+  return selectEnvironmentStudioWorldWindow(session, {
+    ...current,
+    ...patch,
+    selectedBy: patch.selectedBy ?? 'world-map-controls'
+  });
+}
+
+export function clearEnvironmentStudioWorldWindow(sessionInput = {}) {
+  const session = normalizeSession(sessionInput);
+  return refreshEnvironmentStudioSession({
+    ...session,
+    studioStage: 'worldMap',
+    selectedOperationalWindow: null,
+    regionalMissionRecipe: null,
+    flowGenerationInputs: null,
+    fieldRegenerationResult: null,
+    lastAction: 'world-window-cleared'
+  });
+}
+
+export function generateEnvironmentStudioRegionFromWorldWindow(sessionInput = {}, options = {}) {
+  const session = normalizeSession(sessionInput);
+  if (!session.selectedOperationalWindow?.windowDigest) {
+    throw new Error('Draw or select an operational boundary window before generating regional bathymetry.');
+  }
+  const selectedOperationalWindow = session.selectedOperationalWindow?.artifactType === OPERATIONAL_WINDOW_TYPE
+    ? session.selectedOperationalWindow
+    : createOperationalWindowFromWorldMap(session.selectedOperationalWindow, session.worldMap);
+  if (selectedOperationalWindow.validation?.valid === false) {
+    throw new Error(selectedOperationalWindow.validation.errors?.[0] ?? 'Selected operational window failed validation.');
+  }
+  const regionalMissionRecipe = createRegionalMissionRecipeFromWorldWindow({
+    worldMap: session.worldMap,
+    selectedWindow: selectedOperationalWindow,
+    seed: options.seed ?? `${session.worldSeed}:${selectedOperationalWindow.windowDigest}`
+  });
+  const recipeOptions = environmentStudioOptionsFromWorldRecipe(regionalMissionRecipe);
+  const prepared = createEnvironmentStudioSession({
+    ...recipeOptions,
+    projectId: session.projectId,
+    worldMap: session.worldMap,
+    worldStyle: session.worldStyle,
+    worldSeed: session.worldSeed,
+    worldLayer: session.worldLayer,
+    worldView: session.worldView,
+    atlas: session.atlas,
+    atlasPreset: session.atlasPreset,
+    atlasSeed: session.atlasSeed,
+    selectedOperationalWindow,
+    regionalMissionRecipe,
+    studioStage: 'regionalBathymetry',
+    selectedObject: { type: 'region', id: 'region' },
+    previewMode: 'bathymetry3d',
+    previewCameraState: session.previewCameraState,
+    simplifiedPanelState: session.simplifiedPanelState,
+    expandedAdvancedSections: session.expandedAdvancedSections
+  });
+  const builderResult = buildWindowConditionedBathymetry(regionalMissionRecipe, {
+    atlas: prepared.atlas,
+    seed: options.seed ?? regionalMissionRecipe.randomSeed
+  });
+  return createEnvironmentStudioMosaicFromBuilderResult(prepared, builderResult, {
+    seed: regionalMissionRecipe.randomSeed,
+    studioStage: 'regionalBathymetry'
+  });
 }
 
 export function generateEnvironmentStudioRegionFromAtlasWindow(sessionInput = {}, options = {}) {
@@ -1065,6 +1243,7 @@ export function createEnvironmentStudioMosaicFromBuilderResult(sessionInput = {}
     bathymetryArtifactDigest: builderResult.bathymetryArtifactDigest,
     flowGenerationInputs: builderResult.flowGenerationInputs ?? session.regionalMissionRecipe?.flowGenerationInputs ?? session.flowGenerationInputs ?? null,
     fieldRegenerationResult: null,
+    studioStage: normalizeStudioStage(options.studioStage ?? session.studioStage),
     lastAction: 'window-conditioned-bathymetry-generated'
   });
 }
@@ -1088,6 +1267,12 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     featureMix: session.featureMix,
     randomization: session.randomization,
     studioStage: session.studioStage,
+    worldMap: compactSyntheticWorldMap(session.worldMap),
+    worldStyle: session.worldStyle,
+    worldSeed: session.worldSeed,
+    worldDigest: session.worldMap?.worldDigest ?? null,
+    worldLayer: session.worldLayer,
+    selectedWindowDigest: session.selectedOperationalWindow?.windowDigest ?? null,
     atlas: session.atlas,
     atlasPreset: session.atlasPreset,
     atlasSeed: session.atlasSeed,
@@ -1155,6 +1340,10 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     featureMix: source.featureMix,
     randomization: source.randomization,
     studioStage: source.studioStage,
+    worldMap: source.worldMap ?? source.syntheticWorldMap,
+    worldStyle: source.worldStyle,
+    worldSeed: source.worldSeed,
+    worldLayer: source.worldLayer,
     atlas: source.atlas,
     atlasPreset: source.atlasPreset,
     atlasSeed: source.atlasSeed,
@@ -1513,8 +1702,17 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     environmentType: session.environmentType,
     missionScale: session.missionScale,
     intendedGliders: session.intendedGliders,
-    atlasMode: true,
+    atlasMode: session.studioStage === 'atlasWindow',
     studioStage: session.studioStage,
+    worldArtifactType: session.worldMap?.artifactType ?? null,
+    worldStyle: session.worldStyle,
+    worldSeed: session.worldSeed,
+    worldDigest: session.worldMap?.worldDigest ?? null,
+    worldResolution: session.worldMap?.resolution ?? null,
+    worldLayer: session.worldLayer,
+    worldLayerSummary: session.worldMap?.layerSummaries?.[session.worldLayer] ?? null,
+    selectedWindowBounds: session.selectedOperationalWindow?.bounds ?? null,
+    sampledFieldStats: session.selectedOperationalWindow?.sampledFieldStats ?? null,
     atlasVersion: session.atlas?.atlasVersion ?? null,
     atlasPreset: session.atlasPreset,
     atlasSeed: session.atlasSeed,
@@ -1615,6 +1813,11 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     missionScale: session.missionScale,
     intendedGliders: session.intendedGliders,
     studioStage: session.studioStage,
+    worldStyle: session.worldStyle,
+    worldSeed: session.worldSeed,
+    worldDigest: session.worldMap?.worldDigest ?? null,
+    worldResolution: session.worldMap?.resolution ?? null,
+    worldLayer: session.worldLayer,
     atlasVersion: session.atlas?.atlasVersion ?? null,
     atlasPreset: session.atlasPreset,
     atlasSeed: session.atlasSeed,
@@ -2328,6 +2531,10 @@ function projectStateFromProject(project = {}) {
     featureMix: project.featureMix,
     randomization: project.randomization,
     studioStage: project.studioStage,
+    worldMap: project.worldMap,
+    worldStyle: project.worldStyle,
+    worldSeed: project.worldSeed,
+    worldLayer: project.worldLayer,
     atlas: project.atlas,
     atlasPreset: project.atlasPreset,
     atlasSeed: project.atlasSeed,
@@ -2362,16 +2569,27 @@ function normalizeSession(input = {}) {
   const domainSpec = input.domainSpec?.type ? input.domainSpec : normalizeEnvironmentStudioDomainSpec(input.domainSpec ?? {});
   const profile = domainProfileById(input.environmentType ?? input.profileId);
   const recipe = normalizeRegionalRecipe(input, profile);
-  const atlas = normalizeAtlas(input.atlas ?? {
-    presetId: input.atlasPreset ?? input.atlasPresetId,
-    seed: input.atlasSeed ?? input.seed ?? recipe.randomization?.worldSeed
+  const legacyAtlasMode = input.studioStage === 'atlasWindow'
+    || Boolean(input.atlas && !input.worldMap && !input.syntheticWorldMap && !input.worldStyle && !input.style);
+  const worldMap = normalizeWorldMap(input.worldMap ?? input.syntheticWorldMap ?? {
+    style: input.worldStyle ?? input.style,
+    seed: input.worldSeed ?? input.atlasSeed ?? input.seed ?? recipe.randomization?.worldSeed,
+    resolution: input.worldResolution
   });
-  const selectedOperationalWindow = input.selectedOperationalWindow?.windowDigest
-    ? input.selectedOperationalWindow
-    : normalizeOperationalWindow(input.selectedOperationalWindow ?? input.selectedWindow ?? { windowPresetId: input.windowPresetId ?? 'semiEnclosedGulfSurvey' }, atlas);
-  const regionalMissionRecipe = normalizeRegionalMissionRecipe(input.regionalMissionRecipe ?? {
+  const atlas = normalizeAtlas(input.atlas ?? {
+    presetId: input.atlasPreset ?? input.atlasPresetId ?? worldMap.sourceAtlasSummary?.atlasPreset,
+    seed: input.atlasSeed ?? worldMap.seed ?? input.seed ?? recipe.randomization?.worldSeed,
+    resolution: worldMap.resolution
+  });
+  const selectedOperationalWindow = normalizeStudioOperationalWindow(input.selectedOperationalWindow ?? input.selectedWindow, {
+    worldMap,
     atlas,
-    selectedWindow: selectedOperationalWindow,
+    preferWorld: !legacyAtlasMode
+  });
+  const regionalMissionRecipe = normalizeStudioRegionalRecipe(input.regionalMissionRecipe, {
+    worldMap,
+    atlas,
+    selectedOperationalWindow,
     seed: input.seed ?? recipe.randomization?.worldSeed
   });
   const archetypeId = archetypeById(input.archetypeId).id;
@@ -2401,13 +2619,18 @@ function normalizeSession(input = {}) {
     openOceanBoundaries: recipe.openOceanBoundaries,
     featureMix: recipe.featureMix,
     randomization: recipe.randomization,
-    studioStage: normalizeStudioStage(input.studioStage ?? (input.tiles?.length ? 'regionalDetail' : 'atlasWindow')),
+    studioStage: normalizeStudioStage(input.studioStage ?? (input.tiles?.length ? 'regionalBathymetry' : legacyAtlasMode ? 'atlasWindow' : 'worldMap')),
+    worldMap,
+    worldStyle: worldMap.style,
+    worldSeed: worldMap.seed,
+    worldLayer: worldLayerById(input.worldLayer ?? 'bathymetryContext').id,
+    worldView: normalizeWorldView(input.worldView),
     atlas,
     atlasPreset: atlas.atlasPreset,
     atlasSeed: atlas.seed,
     selectedOperationalWindow,
     regionalMissionRecipe,
-    flowGenerationInputs: input.flowGenerationInputs ?? input.bathymetryBuilderResult?.flowGenerationInputs ?? regionalMissionRecipe.flowGenerationInputs ?? null,
+    flowGenerationInputs: input.flowGenerationInputs ?? input.bathymetryBuilderResult?.flowGenerationInputs ?? regionalMissionRecipe?.flowGenerationInputs ?? null,
     fieldRegenerationResult: normalizeFieldRegenerationResult(input.fieldRegenerationResult),
     bathymetryBuilderVersion: input.bathymetryBuilderVersion ?? input.bathymetryBuilderResult?.builderVersion ?? null,
     bathymetryBuilderResult: input.bathymetryBuilderResult ?? null,
@@ -2566,9 +2789,20 @@ function normalizePreviewCameraState(input = {}) {
   };
 }
 
-function normalizeStudioStage(value = 'atlasWindow') {
-  const text = String(value ?? 'atlasWindow');
-  return text === 'regionalDetail' ? 'regionalDetail' : 'atlasWindow';
+function normalizeStudioStage(value = 'worldMap') {
+  const text = String(value ?? 'worldMap');
+  if (text === 'regionalDetail' || text === 'regionalBathymetry') return text === 'regionalDetail' ? 'regionalDetail' : 'regionalBathymetry';
+  if (text === 'atlasWindow') return 'atlasWindow';
+  return 'worldMap';
+}
+
+function normalizeWorldMap(input = {}) {
+  return normalizeSyntheticWorldMap({
+    style: input.worldStyle ?? input.style ?? input.styleId ?? 'earthlikeSyntheticOcean',
+    seed: input.worldSeed ?? input.seed ?? 'env-world-001',
+    resolution: input.resolution ?? input.worldResolution,
+    ...input
+  });
 }
 
 function normalizeAtlas(input = {}) {
@@ -2577,13 +2811,107 @@ function normalizeAtlas(input = {}) {
     presetId: input.atlasPreset ?? input.presetId ?? input.atlasPresetId ?? 'mixedRegionalWorld',
     seed: input.atlasSeed ?? input.seed ?? 'env-atlas-r1',
     atlasId: input.atlasId,
-    label: input.label
+    label: input.label,
+    resolution: input.resolution
   });
 }
 
 function normalizeRegionalMissionRecipe(input = {}) {
   if (input?.recipeType === 'anchor.regional-mission-recipe' && input.recipeDigest) return input;
   return createRegionalMissionRecipe(input);
+}
+
+function normalizeStudioOperationalWindow(input = null, context = {}) {
+  if (!input) return null;
+  if (input?.artifactType === OPERATIONAL_WINDOW_TYPE && input.windowDigest) return input;
+  if (context.preferWorld !== false) {
+    return createOperationalWindowFromWorldMap({
+      ...(input.bounds ?? {}),
+      ...input,
+      selectedBy: input.selectedBy ?? 'project-normalize'
+    }, context.worldMap);
+  }
+  return input?.windowDigest ? input : normalizeOperationalWindow(input, context.atlas);
+}
+
+function normalizeStudioRegionalRecipe(input = null, context = {}) {
+  if (input?.recipeType === 'anchor.regional-mission-recipe' && input.recipeDigest) return input;
+  if (!context.selectedOperationalWindow) return null;
+  if (context.selectedOperationalWindow.artifactType === OPERATIONAL_WINDOW_TYPE) {
+    return createRegionalMissionRecipeFromWorldWindow({
+      worldMap: context.worldMap,
+      selectedWindow: context.selectedOperationalWindow,
+      seed: context.seed
+    });
+  }
+  return createRegionalMissionRecipe({
+    atlas: context.atlas,
+    selectedWindow: context.selectedOperationalWindow,
+    seed: context.seed
+  });
+}
+
+function createWorldMapSession(session = {}, options = {}) {
+  const style = syntheticWorldStyleById(options.worldStyle ?? session.worldStyle);
+  const worldMap = createSyntheticWorldMap({
+    style: style.id,
+    seed: options.worldSeed ?? session.worldSeed ?? style.defaultSeed,
+    resolution: session.worldMap?.resolution
+  });
+  const atlas = normalizeAtlas({
+    presetId: worldMap.sourceAtlasSummary?.atlasPreset,
+    seed: worldMap.seed,
+    resolution: worldMap.resolution
+  });
+  const selectedOperationalWindow = options.selectedOperationalWindow === null
+    ? null
+    : normalizeStudioOperationalWindow(options.selectedOperationalWindow ?? session.selectedOperationalWindow, {
+      worldMap,
+      atlas,
+      preferWorld: true
+    });
+  const regionalMissionRecipe = selectedOperationalWindow
+    ? createRegionalMissionRecipeFromWorldWindow({
+      worldMap,
+      selectedWindow: selectedOperationalWindow,
+      seed: `${worldMap.seed}:${selectedOperationalWindow.windowDigest}`
+    })
+    : null;
+  return refreshEnvironmentStudioSession({
+    ...session,
+    studioStage: 'worldMap',
+    worldMap,
+    worldStyle: worldMap.style,
+    worldSeed: worldMap.seed,
+    worldLayer: worldLayerById(options.worldLayer ?? session.worldLayer ?? 'bathymetryContext').id,
+    worldView: normalizeWorldView(session.worldView),
+    atlas,
+    atlasPreset: atlas.atlasPreset,
+    atlasSeed: atlas.seed,
+    selectedOperationalWindow,
+    regionalMissionRecipe,
+    flowGenerationInputs: regionalMissionRecipe?.flowGenerationInputs ?? null,
+    fieldRegenerationResult: null,
+    tiles: [],
+    mosaic: null,
+    bathymetryBuilderResult: null,
+    bathymetryBuilderVersion: null,
+    bathymetryArtifactDigest: null,
+    lastAction: options.lastAction ?? 'world-map-generated'
+  });
+}
+
+function worldLayerById(id = 'bathymetryContext') {
+  const key = String(id ?? 'bathymetryContext');
+  return SYNTHETIC_WORLD_LAYER_OPTIONS.find((entry) => entry.id === key) ?? SYNTHETIC_WORLD_LAYER_OPTIONS[1];
+}
+
+function normalizeWorldView(input = {}) {
+  return {
+    panX: clampFinite(input.panX, -1, 1, DEFAULT_WORLD_VIEW.panX),
+    panY: clampFinite(input.panY, -1, 1, DEFAULT_WORLD_VIEW.panY),
+    zoom: clampFinite(input.zoom, 0.75, 5, DEFAULT_WORLD_VIEW.zoom)
+  };
 }
 
 function normalizeBoundaryList(value = []) {
@@ -3365,18 +3693,29 @@ function domainDebugSummary(domain = {}) {
 
 function compactSelectedWindow(window = {}) {
   if (!window) return null;
-  return {
-    windowId: window.windowId,
-    label: window.label,
+  const bounds = window.bounds ?? {
     x: window.x,
     y: window.y,
     width: window.width,
-    height: window.height,
+    height: window.height
+  };
+  return {
+    artifactType: window.artifactType ?? window.windowType ?? null,
+    windowId: window.windowId,
+    label: window.label,
+    x: bounds.x ?? window.x,
+    y: bounds.y ?? window.y,
+    width: bounds.width ?? window.width,
+    height: bounds.height ?? window.height,
+    bounds,
     center: window.center,
-    primaryContext: window.detectedContext?.primaryContext,
-    primaryContextLabel: window.detectedContext?.primaryContextLabel,
+    primaryContext: window.detectedContext?.primaryContext ?? window.detectedContext?.primary,
+    primaryContextLabel: window.detectedContext?.primaryContextLabel ?? window.detectedContext?.primaryLabel,
     recommendedGliders: window.recommendedGliders,
     recommendedDurationSeconds: window.recommendedDurationSeconds,
+    sampledFieldStats: window.sampledFieldStats ?? null,
+    environmentRegimes: window.environmentRegimes ?? null,
+    datasetTags: window.datasetTags ?? null,
     windowDigest: window.windowDigest
   };
 }

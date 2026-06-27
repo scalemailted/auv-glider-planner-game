@@ -1,6 +1,6 @@
 # ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1 responds to `ALPHA-FB-008` by changing the first interaction model: mission authors start from a Synthetic Ocean Atlas and selected operational window, not low-level terrain-feature controls. ENV-ATLAS-R1.1 responds to `ALPHA-FB-009` by making the atlas field-based and adding a window-conditioned bathymetry builder. FIELD-REGEN-R1 responds to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from the atlas-conditioned regional context. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1/R1.1 responded to `ALPHA-FB-008` and `ALPHA-FB-009` with a structured atlas field engine and window-conditioned bathymetry builder. FIELD-REGEN-R1 responded to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from atlas-conditioned regional context. ENV-STUDIO-R2 responds to `ALPHA-FB-011` by making the browser workflow start from a deterministic synthetic world-map artifact and a user-selected operational boundary. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
 
 ## Feedback Classification
 
@@ -137,6 +137,25 @@ Scope:
 5. The UI shows atlas/window digests, builder digest, bathymetry artifact digest, feature summary, validation, and honest dependency states.
 
 Noise is used for variation and texture, not as the sole terrain model. FIELD-REGEN-R1 now explicitly generates compact current, scalar, and hotspot metadata through package-backed synthetic builders. Starts/drop zones remain candidates needing validation, and benchmark bundles remain staged follow-ups.
+
+## What ENV-STUDIO-R2 Implements
+
+Implemented world-map-first authoring:
+
+```text
+ENV-STUDIO-R2 - Procedural Synthetic World Map and Boundary Selection
+```
+
+Scope:
+
+1. Environment Studio opens to a deterministic `anchor.synthetic-world-map`, not a mission-planning form.
+2. The left panel is environment-focused: world style, world seed, map layers, boundary selection, source/preview resolution, bathymetry generation, and export/import.
+3. The center view renders a synthetic semantic world map with pan/zoom controls and a selected boundary overlay.
+4. The right panel shows world summary before selection and sampled selected-window context after selection.
+5. `anchor.operational-window` records normalized bounds, sampled field stats, detected context, recommended domain, bathymetry/flow/scalar regimes, suitability, dataset tags, and digest.
+6. Generate 3D Bathymetry creates regional bathymetry from the selected window through the existing window-conditioned builder.
+
+R2 removes glider count, mission duration, mission scale, route execution, and scoring concerns from the primary Environment Studio flow. Currents, scalars, hotspots, starts/drop zones, benchmark bundles, and launch-to-planning remain staged follow-ups unless an explicit later phase validates and generates them.
 
 ## Staged Follow-Ups
 

@@ -231,6 +231,32 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-011",
+      "title": "Environment Studio should be reauthored around a procedural synthetic world map and user-drawn operational boundary.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / Environment Studio",
+      "summary": "Current Environment Studio remains too parameter-heavy and symbolic. Alpha review wants a generated high-resolution synthetic world map with land masses, islands, oceans, and coarse flow-regime context. Users should pan/zoom the world map, define their own operational boundary box, and then generate regional 3D bathymetry from that selected window.",
+      "decision": "Accepted for ENV-STUDIO-R2.",
+      "proposedPhase": "ENV-STUDIO-R2",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Environment Studio opens to a deterministic synthetic world-map artifact.",
+        "Users select an operational boundary window that samples world fields.",
+        "Selected windows drive regional 3D bathymetry generation while mission planning, scoring, current/scalar equations, and launch workflows remain unchanged."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }
