@@ -65,6 +65,21 @@ import {
   syntheticGlobeStyleById,
   syntheticGlobeViewportVisualMetrics
 } from './SyntheticGlobeWorld.js';
+import {
+  NO_REFERENCE_DATA_FIXTURE,
+  REFERENCE_BATHYMETRY_LAYER_OPTIONS,
+  REFERENCE_BATHYMETRY_SOURCE_MODES,
+  REFERENCE_BATHYMETRY_WINDOW_TYPE,
+  buildBathymetryFromReferenceWindow,
+  compactReferenceBathymetryAtlas,
+  compactReferencePatchBathymetryResult,
+  createDefaultReferenceBathymetryWindow,
+  createReferenceBathymetryAtlas,
+  createReferenceBathymetryWindow,
+  normalizeReferenceBathymetryAtlas,
+  normalizeReferenceBathymetryWindow,
+  referenceBathymetryVisualMetrics
+} from './ReferenceBathymetryAtlas.js';
 
 export const ENVIRONMENT_STUDIO_PROJECT_TYPE = 'anchor.environment-studio-project';
 export const ENVIRONMENT_STUDIO_PROJECT_VERSION = '1.0.0';
@@ -72,7 +87,14 @@ export const ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION = 'environment-studio-r2-
 export const ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION = 'field-regen-r1';
 export const SYNTHETIC_WORLD_LAYER_OPTIONS = SYNTHETIC_GLOBE_LAYER_OPTIONS;
 export const SYNTHETIC_WORLD_STYLES = SYNTHETIC_GLOBE_STYLES;
-export { syntheticGlobeViewportVisualMetrics };
+export {
+  NO_REFERENCE_DATA_FIXTURE,
+  REFERENCE_BATHYMETRY_LAYER_OPTIONS,
+  REFERENCE_BATHYMETRY_SOURCE_MODES,
+  REFERENCE_BATHYMETRY_WINDOW_TYPE,
+  referenceBathymetryVisualMetrics,
+  syntheticGlobeViewportVisualMetrics
+};
 
 export const ENVIRONMENT_STUDIO_PREVIEW_MODES = Object.freeze([
   { id: 'bathymetry3d', label: '3D Bathymetry', description: 'Main regional terrain preview derived from the canonical 2.5D bottom surface.' },
@@ -387,8 +409,16 @@ export const ENVIRONMENT_STUDIO_BATHYMETRY_ARCHETYPES = Object.freeze([
 export function createEnvironmentStudioSession(options = {}) {
   const profile = domainProfileById(options.profileId ?? options.domainProfileId);
   const recipe = normalizeRegionalRecipe(options, profile);
+  const explicitWorldMode = options.studioStage === 'worldMap'
+    || options.sourceMode === 'proceduralSyntheticSandbox'
+    || Boolean(options.worldMap || options.syntheticWorldMap || options.worldStyle || options.style);
   const legacyAtlasMode = options.studioStage === 'atlasWindow'
     || Boolean(options.atlas && !options.worldMap && !options.syntheticWorldMap && !options.worldStyle && !options.style);
+  const referenceAtlas = normalizeReferenceBathymetryAtlas(options.referenceAtlas ?? options.referenceBathymetryAtlas ?? {});
+  const selectedReferenceWindow = normalizeReferenceBathymetryWindow(
+    options.selectedReferenceWindow ?? options.selectedReferencePatch ?? null,
+    referenceAtlas
+  );
   const worldMap = normalizeWorldMap(options.worldMap ?? options.syntheticWorldMap ?? {
     style: options.worldStyle ?? options.style,
     seed: options.worldSeed ?? options.atlasSeed ?? options.seed ?? recipe.randomization?.worldSeed,
@@ -469,7 +499,11 @@ export function createEnvironmentStudioSession(options = {}) {
     openOceanBoundaries: recipe.openOceanBoundaries,
     featureMix: recipe.featureMix,
     randomization: recipe.randomization,
-    studioStage: normalizeStudioStage(options.studioStage ?? (legacyAtlasMode ? 'atlasWindow' : 'worldMap')),
+    sourceMode: normalizeSourceMode(options.sourceMode ?? (explicitWorldMode ? 'proceduralSyntheticSandbox' : 'referenceBathymetryAtlas')),
+    studioStage: normalizeStudioStage(options.studioStage ?? (legacyAtlasMode ? 'atlasWindow' : explicitWorldMode ? 'worldMap' : 'referenceAtlas')),
+    referenceAtlas,
+    referenceLayer: referenceBathymetryLayerById(options.referenceLayer ?? 'topographyBathymetry').id,
+    selectedReferenceWindow,
     worldMap,
     worldStyle: worldMap.style,
     worldSeed: worldMap.seed,
@@ -619,6 +653,7 @@ export function setEnvironmentStudioAtlasPreset(sessionInput = {}, atlasPreset =
   });
   return refreshEnvironmentStudioSession({
     ...session,
+    sourceMode: 'proceduralSyntheticSandbox',
     studioStage: 'atlasWindow',
     atlas,
     atlasPreset: atlas.atlasPreset,
@@ -641,6 +676,7 @@ export function selectEnvironmentStudioOperationalWindow(sessionInput = {}, wind
   });
   return refreshEnvironmentStudioSession({
     ...session,
+    sourceMode: 'proceduralSyntheticSandbox',
     studioStage: 'atlasWindow',
     selectedOperationalWindow,
     regionalMissionRecipe,
@@ -664,6 +700,7 @@ export function patchEnvironmentStudioOperationalWindow(sessionInput = {}, patch
   });
   return refreshEnvironmentStudioSession({
     ...session,
+    sourceMode: 'proceduralSyntheticSandbox',
     studioStage: 'atlasWindow',
     selectedOperationalWindow,
     regionalMissionRecipe,
@@ -746,6 +783,108 @@ export function setEnvironmentStudioWorldView(sessionInput = {}, patch = {}) {
       ...(patch ?? {})
     }),
     lastAction: 'world-view-changed'
+  });
+}
+
+export function setEnvironmentStudioSourceMode(sessionInput = {}, sourceMode = 'referenceBathymetryAtlas') {
+  const session = normalizeSession(sessionInput);
+  const mode = normalizeSourceMode(sourceMode);
+  return refreshEnvironmentStudioSession({
+    ...session,
+    sourceMode: mode,
+    studioStage: mode === 'proceduralSyntheticSandbox' ? 'worldMap' : 'referenceAtlas',
+    selectedReferenceWindow: mode === 'referenceBathymetryAtlas' ? session.selectedReferenceWindow : null,
+    selectedOperationalWindow: mode === 'proceduralSyntheticSandbox' ? session.selectedOperationalWindow : null,
+    lastAction: 'source-mode-changed'
+  });
+}
+
+export function setEnvironmentStudioReferenceLayer(sessionInput = {}, layerId = 'topographyBathymetry') {
+  const session = normalizeSession(sessionInput);
+  return refreshEnvironmentStudioSession({
+    ...session,
+    referenceLayer: referenceBathymetryLayerById(layerId).id,
+    lastAction: 'reference-layer-changed'
+  });
+}
+
+export function selectEnvironmentStudioReferenceWindow(sessionInput = {}, bounds = {}) {
+  const session = normalizeSession(sessionInput);
+  const selectedReferenceWindow = createReferenceBathymetryWindow({
+    ...bounds,
+    selectedResolutionMeters: bounds.selectedResolutionMeters,
+    previewResolutionMeters: bounds.previewResolutionMeters
+  }, session.referenceAtlas);
+  return refreshEnvironmentStudioSession({
+    ...session,
+    sourceMode: 'referenceBathymetryAtlas',
+    studioStage: 'referenceAtlas',
+    selectedReferenceWindow,
+    selectedOperationalWindow: null,
+    fieldRegenerationResult: null,
+    lastAction: 'reference-window-selected'
+  });
+}
+
+export function patchEnvironmentStudioReferenceWindow(sessionInput = {}, patch = {}) {
+  const session = normalizeSession(sessionInput);
+  const current = session.selectedReferenceWindow?.bounds ?? {};
+  return selectEnvironmentStudioReferenceWindow(session, {
+    ...current,
+    ...patch
+  });
+}
+
+export function clearEnvironmentStudioReferenceWindow(sessionInput = {}) {
+  const session = normalizeSession(sessionInput);
+  return refreshEnvironmentStudioSession({
+    ...session,
+    selectedReferenceWindow: null,
+    fieldRegenerationResult: null,
+    lastAction: 'reference-window-cleared'
+  });
+}
+
+export function generateEnvironmentStudioRegionFromReferenceWindow(sessionInput = {}, options = {}) {
+  const session = normalizeSession(sessionInput);
+  const selectedReferenceWindow = session.selectedReferenceWindow?.patchDigest
+    ? session.selectedReferenceWindow
+    : createDefaultReferenceBathymetryWindow(session.referenceAtlas);
+  if (selectedReferenceWindow.validation?.valid === false) {
+    throw new Error(selectedReferenceWindow.validation.errors?.[0] ?? 'Selected reference bathymetry patch failed validation.');
+  }
+  const builderResult = buildBathymetryFromReferenceWindow(session.referenceAtlas, selectedReferenceWindow, {
+    seed: options.seed ?? `${session.seed}:${selectedReferenceWindow.patchDigest}`
+  });
+  const shape = builderResult.bathymetryField?.operationalDomain?.horizontal ?? {};
+  const prepared = createEnvironmentStudioSession({
+    ...session,
+    projectId: session.projectId,
+    sourceMode: 'referenceBathymetryAtlas',
+    studioStage: 'regionalBathymetry',
+    referenceAtlas: session.referenceAtlas,
+    selectedReferenceWindow,
+    selectedOperationalWindow: null,
+    domainSpec: {
+      ...(session.domainSpec ?? {}),
+      horizontal: {
+        ...(session.domainSpec?.horizontal ?? {}),
+        widthMeters: shape.widthMeters ?? session.domainSpec?.horizontal?.widthMeters,
+        heightMeters: shape.heightMeters ?? session.domainSpec?.horizontal?.heightMeters,
+        cellSizeMeters: shape.cellSizeMeters ?? session.domainSpec?.horizontal?.cellSizeMeters,
+        columns: shape.columns ?? null,
+        rows: shape.rows ?? null
+      }
+    },
+    selectedObject: { type: 'region', id: 'region' },
+    previewMode: 'bathymetry3d',
+    previewCameraState: session.previewCameraState,
+    simplifiedPanelState: session.simplifiedPanelState,
+    expandedAdvancedSections: session.expandedAdvancedSections
+  });
+  return createEnvironmentStudioMosaicFromBuilderResult(prepared, builderResult, {
+    seed: options.seed ?? `${session.seed}:${selectedReferenceWindow.patchDigest}`,
+    studioStage: 'regionalBathymetry'
   });
 }
 
@@ -1195,7 +1334,9 @@ export function createEnvironmentStudioMosaicFromBuilderResult(sessionInput = {}
       bathymetry,
       tileConfig: tileConfigs[index],
       featureRole: window.featureRole,
-      bathymetrySourceMode: 'windowConditionedAtlasGenerated',
+      bathymetrySourceMode: builderResult.type === 'anchor.reference-patch-bathymetry-builder-result'
+        ? 'referenceBathymetryPatch'
+        : 'windowConditionedAtlasGenerated',
       provenance: {
         generatedBy: 'src/core/editor/EnvironmentStudioProject.js',
         generatorVersion: ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION,
@@ -1219,7 +1360,7 @@ export function createEnvironmentStudioMosaicFromBuilderResult(sessionInput = {}
       source: 'window-conditioned-bathymetry-builder',
       deterministicSeed: seed,
       operations: [
-        { id: 'build-window-conditioned-bathymetry', type: 'regional-atlas-window-bathymetry-builder', target: 'bottomDepthMeters' },
+        { id: 'build-window-conditioned-bathymetry', type: builderResult.type === 'anchor.reference-patch-bathymetry-builder-result' ? 'reference-patch-bathymetry-builder' : 'regional-atlas-window-bathymetry-builder', target: 'bottomDepthMeters' },
         { id: 'slice-builder-grid-into-source-tiles', type: 'overlapping-shared-edge-2x2-slice', target: 'bathymetryTiles' }
       ]
     }
@@ -1256,7 +1397,7 @@ export function createEnvironmentStudioMosaicFromBuilderResult(sessionInput = {}
     tileConfigs,
     tiles,
     mosaic,
-    bathymetryBuilderResult: compactWindowConditionedBathymetryResult(builderResult),
+    bathymetryBuilderResult: compactBathymetryBuilderResult(builderResult),
     bathymetryBuilderVersion: builderResult.builderVersion ?? WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
     bathymetryArtifactDigest: builderResult.bathymetryArtifactDigest,
     flowGenerationInputs: builderResult.flowGenerationInputs ?? session.regionalMissionRecipe?.flowGenerationInputs ?? session.flowGenerationInputs ?? null,
@@ -1284,7 +1425,12 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     openOceanBoundaries: session.openOceanBoundaries,
     featureMix: session.featureMix,
     randomization: session.randomization,
+    sourceMode: session.sourceMode,
     studioStage: session.studioStage,
+    referenceAtlas: compactReferenceBathymetryAtlas(session.referenceAtlas),
+    referenceLayer: session.referenceLayer,
+    selectedReferenceWindow: session.selectedReferenceWindow,
+    selectedPatchDigest: session.selectedReferenceWindow?.patchDigest ?? null,
     worldMap: compactSyntheticGlobeWorld(session.worldMap),
     worldStyle: session.worldStyle,
     worldSeed: session.worldSeed,
@@ -1325,7 +1471,9 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
       generatedBy: 'src/core/editor/EnvironmentStudioProject.js',
       generatorVersion: ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION,
       deterministicSeed: String(session.seed ?? 'env-studio-r1'),
-      synthetic: true,
+      synthetic: session.referenceAtlas?.sourceDataset?.referenceDataAvailable !== true,
+      referenceBathymetryPatch: session.sourceMode === 'referenceBathymetryAtlas',
+      fixtureStatus: session.referenceAtlas?.provenance?.fixtureStatus ?? null,
       calibratedOceanProduct: false,
       operationalForecast: false,
       certifiedForNavigation: false,
@@ -1361,7 +1509,11 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     openOceanBoundaries: source.openOceanBoundaries,
     featureMix: source.featureMix,
     randomization: source.randomization,
+    sourceMode: source.sourceMode,
     studioStage: source.studioStage,
+    referenceAtlas: source.referenceAtlas ?? source.referenceBathymetryAtlas,
+    referenceLayer: source.referenceLayer,
+    selectedReferenceWindow: source.selectedReferenceWindow ?? source.selectedReferencePatch,
     worldMap: source.worldMap ?? source.syntheticWorldMap,
     worldStyle: source.worldStyle,
     worldSeed: source.worldSeed,
@@ -1532,7 +1684,8 @@ function flowGenerationInputsForSession(session = {}, context = {}) {
     },
     claimBoundary: {
       ...(base.claimBoundary ?? {}),
-      synthetic: true,
+      synthetic: session.referenceAtlas?.sourceDataset?.referenceDataAvailable !== true,
+      referenceBathymetryPatch: session.sourceMode === 'referenceBathymetryAtlas' || base.claimBoundary?.referenceBathymetryPatch === true,
       currentField4DGenerated: hasRegeneratedFields,
       scalarField4DGenerated: hasRegeneratedFields,
       hotspotsGenerated: hasRegeneratedFields,
@@ -1726,8 +1879,23 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     environmentType: session.environmentType,
     missionScale: session.missionScale,
     intendedGliders: session.intendedGliders,
+    sourceMode: session.sourceMode,
+    defaultSourceMode: 'referenceBathymetryAtlas',
+    proceduralSandboxDefault: false,
     atlasMode: session.studioStage === 'atlasWindow',
     studioStage: session.studioStage,
+    referenceAtlasType: session.referenceAtlas?.artifactType ?? null,
+    referenceAtlasDigest: session.referenceAtlas?.atlasDigest ?? null,
+    referenceDataset: session.referenceAtlas?.sourceDataset ?? null,
+    referenceDatasetName: session.referenceAtlas?.sourceDataset?.name ?? null,
+    referenceDataAvailable: session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true,
+    referenceFixtureStatus: session.referenceAtlas?.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE,
+    referenceLayer: session.referenceLayer,
+    selectedReferenceWindow: session.selectedReferenceWindow,
+    selectedPatchDigest: session.selectedReferenceWindow?.patchDigest ?? null,
+    selectedPatchBounds: session.selectedReferenceWindow?.bounds ?? null,
+    selectedPatchStats: session.selectedReferenceWindow?.sampledStats ?? null,
+    selectedPatchValidation: session.selectedReferenceWindow?.validation ?? null,
     worldArtifactType: session.worldMap?.artifactType ?? null,
     worldStyle: session.worldStyle,
     worldSeed: session.worldSeed,
@@ -1841,7 +2009,17 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     environmentType: session.environmentType,
     missionScale: session.missionScale,
     intendedGliders: session.intendedGliders,
+    sourceMode: session.sourceMode,
+    defaultSourceMode: 'referenceBathymetryAtlas',
+    proceduralSandboxDefault: false,
     studioStage: session.studioStage,
+    referenceAtlasDigest: session.referenceAtlas?.atlasDigest ?? null,
+    referenceDatasetName: session.referenceAtlas?.sourceDataset?.name ?? null,
+    referenceDataAvailable: session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true,
+    referenceFixtureStatus: session.referenceAtlas?.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE,
+    referenceLayer: session.referenceLayer,
+    selectedPatchDigest: session.selectedReferenceWindow?.patchDigest ?? null,
+    selectedPatchBounds: session.selectedReferenceWindow?.bounds ?? null,
     worldStyle: session.worldStyle,
     worldSeed: session.worldSeed,
     worldDigest: session.worldMap?.worldDigest ?? null,
@@ -2561,7 +2739,11 @@ function projectStateFromProject(project = {}) {
     openOceanBoundaries: project.openOceanBoundaries,
     featureMix: project.featureMix,
     randomization: project.randomization,
+    sourceMode: project.sourceMode,
     studioStage: project.studioStage,
+    referenceAtlas: project.referenceAtlas ?? project.referenceBathymetryAtlas,
+    referenceLayer: project.referenceLayer,
+    selectedReferenceWindow: project.selectedReferenceWindow ?? project.selectedReferencePatch,
     worldMap: project.worldMap,
     worldStyle: project.worldStyle,
     worldSeed: project.worldSeed,
@@ -2600,8 +2782,16 @@ function normalizeSession(input = {}) {
   const domainSpec = input.domainSpec?.type ? input.domainSpec : normalizeEnvironmentStudioDomainSpec(input.domainSpec ?? {});
   const profile = domainProfileById(input.environmentType ?? input.profileId);
   const recipe = normalizeRegionalRecipe(input, profile);
+  const explicitWorldMode = input.studioStage === 'worldMap'
+    || input.sourceMode === 'proceduralSyntheticSandbox'
+    || Boolean(input.worldMap || input.syntheticWorldMap || input.worldStyle || input.style);
   const legacyAtlasMode = input.studioStage === 'atlasWindow'
     || Boolean(input.atlas && !input.worldMap && !input.syntheticWorldMap && !input.worldStyle && !input.style);
+  const referenceAtlas = normalizeReferenceBathymetryAtlas(input.referenceAtlas ?? input.referenceBathymetryAtlas ?? {});
+  const selectedReferenceWindow = normalizeReferenceBathymetryWindow(
+    input.selectedReferenceWindow ?? input.selectedReferencePatch ?? null,
+    referenceAtlas
+  );
   const worldMap = normalizeWorldMap(input.worldMap ?? input.syntheticWorldMap ?? {
     style: input.worldStyle ?? input.style,
     seed: input.worldSeed ?? input.atlasSeed ?? input.seed ?? recipe.randomization?.worldSeed,
@@ -2650,7 +2840,11 @@ function normalizeSession(input = {}) {
     openOceanBoundaries: recipe.openOceanBoundaries,
     featureMix: recipe.featureMix,
     randomization: recipe.randomization,
-    studioStage: normalizeStudioStage(input.studioStage ?? (input.tiles?.length ? 'regionalBathymetry' : legacyAtlasMode ? 'atlasWindow' : 'worldMap')),
+    sourceMode: normalizeSourceMode(input.sourceMode ?? (explicitWorldMode ? 'proceduralSyntheticSandbox' : 'referenceBathymetryAtlas')),
+    studioStage: normalizeStudioStage(input.studioStage ?? (input.tiles?.length ? 'regionalBathymetry' : legacyAtlasMode ? 'atlasWindow' : explicitWorldMode ? 'worldMap' : 'referenceAtlas')),
+    referenceAtlas,
+    referenceLayer: referenceBathymetryLayerById(input.referenceLayer ?? 'topographyBathymetry').id,
+    selectedReferenceWindow,
     worldMap,
     worldStyle: worldMap.style,
     worldSeed: worldMap.seed,
@@ -2824,8 +3018,29 @@ function normalizePreviewCameraState(input = {}) {
 function normalizeStudioStage(value = 'worldMap') {
   const text = String(value ?? 'worldMap');
   if (text === 'regionalDetail' || text === 'regionalBathymetry') return text === 'regionalDetail' ? 'regionalDetail' : 'regionalBathymetry';
+  if (text === 'referenceAtlas') return 'referenceAtlas';
   if (text === 'atlasWindow') return 'atlasWindow';
   return 'worldMap';
+}
+
+function normalizeSourceMode(value = 'referenceBathymetryAtlas') {
+  const key = String(value ?? 'referenceBathymetryAtlas');
+  return REFERENCE_BATHYMETRY_SOURCE_MODES.some((entry) => entry.id === key)
+    ? key
+    : 'referenceBathymetryAtlas';
+}
+
+function referenceBathymetryLayerById(id = 'topographyBathymetry') {
+  const key = String(id ?? 'topographyBathymetry');
+  return REFERENCE_BATHYMETRY_LAYER_OPTIONS.find((entry) => entry.id === key)
+    ?? REFERENCE_BATHYMETRY_LAYER_OPTIONS[0];
+}
+
+function compactBathymetryBuilderResult(result = {}) {
+  if (result?.type === 'anchor.reference-patch-bathymetry-builder-result') {
+    return compactReferencePatchBathymetryResult(result);
+  }
+  return compactWindowConditionedBathymetryResult(result);
 }
 
 function normalizeWorldMap(input = {}) {
@@ -2915,6 +3130,7 @@ function createWorldMapSession(session = {}, options = {}) {
     : null;
   return refreshEnvironmentStudioSession({
     ...session,
+    sourceMode: 'proceduralSyntheticSandbox',
     studioStage: 'worldMap',
     worldMap,
     worldStyle: worldMap.style,

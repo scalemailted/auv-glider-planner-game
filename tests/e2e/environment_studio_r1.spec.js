@@ -8,17 +8,15 @@ import { launchFromMainMenuHub } from './helpers/SmokeSpecShared.js';
 
 let server;
 const BASE = 'http://127.0.0.1:9391';
-const OWNER_REVIEW_DIR = path.resolve('test-results', 'env-globe-r1-owner-review');
+const OWNER_REVIEW_DIR = path.resolve('test-results', 'real-bathy-r1-owner-review');
 const REQUIRED_SCREENSHOTS = [
-  '01-globe-default.png',
-  '02-globe-rotated.png',
-  '03-globe-zoomed.png',
-  '04-globe-layer-bathymetry.png',
-  '05-globe-layer-flow.png',
-  '06-globe-region-selected.png',
-  '07-regional-bathymetry-generated.png'
+  '01-reference-atlas-default.png',
+  '02-reference-atlas-zoomed.png',
+  '03-bounding-box-selected.png',
+  '04-selected-patch-summary.png',
+  '05-regional-bathymetry-generated.png'
 ];
-const FORBIDDEN_STAGE_ONE_PATTERNS = [
+const FORBIDDEN_PRIMARY_PATTERNS = [
   /glider count/i,
   /mission duration/i,
   /mission scale/i,
@@ -31,12 +29,13 @@ const FORBIDDEN_STAGE_ONE_PATTERNS = [
   /source tile/i,
   /dependency state/i,
   /atlas preset/i,
-  /window examples/i
+  /window examples/i,
+  /synthetic globe/i
 ];
 
 export const EXACT_TITLES = [
-  'Synthetic Globe Selector',
-  'Globe Region Generates Bathymetry'
+  'Reference Bathymetry Atlas Opens',
+  'Reference Patch Generates Bathymetry'
 ];
 
 test.setTimeout(180000);
@@ -56,89 +55,54 @@ test(EXACT_TITLES[0], async ({ page }) => {
   await openEnvironmentStudio(page);
 
   await expect(page.locator('#environment-studio-route')).toBeVisible();
-  await expect(page.locator('#mission-console')).toContainText('Synthetic Globe');
-  await expect(page.locator('#env-studio-world-style')).toBeVisible();
-  await expect(page.locator('#env-studio-world-seed')).toBeVisible();
-  await expect(page.locator('[data-env-studio-advanced-world-controls]')).toBeVisible();
-  await expect(page.locator('[data-env-studio-advanced-world-controls]')).not.toHaveAttribute('open', '');
-  await expect(page.locator('#env-world-island-density')).toHaveCount(1);
-  await expect(page.locator('[data-env-studio-globe-host]')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.globeRendered), { timeout: 15000 }).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.sphereVisible), { timeout: 15000 }).toBe(true);
-  await expect(page.locator('[data-env-studio-globe-canvas]')).toBeVisible();
+  await expect(page.locator('#mission-console')).toContainText('Reference Bathymetry Atlas');
+  await expect(page.locator('#mission-console')).toContainText('Bathymetry Source');
+  await expect(page.locator('#mission-console')).toContainText('Reference Dataset');
+  await expect(page.locator('#mission-console')).toContainText('Map Controls');
+  await expect(page.locator('#mission-console')).toContainText('Boundary Selection');
+  await expect(page.locator('#mission-console')).toContainText('Actions');
+  await expect(page.locator('#env-reference-source-mode')).toHaveValue('referenceBathymetryAtlas');
+  await expect(page.locator('[data-env-reference-bathymetry-map]')).toBeVisible();
+  await expect(page.locator('[data-env-studio-globe-host]')).toHaveCount(0);
   await expect(page.locator('[data-env-studio-world-map]')).toHaveCount(0);
-  await expect(page.locator('#mission-console')).toContainText('Land / Ocean');
-  await expect(page.locator('#mission-console')).toContainText('Bathymetry Context');
-  await expect(page.locator('#mission-console')).toContainText('Coarse Flow');
-  await expect(page.locator('#mission-console')).toContainText('Scalar Regime');
-  await expect(page.locator('#mission-console')).toContainText('Suitability');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Globe Summary');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Reference Atlas Summary');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('NO_REFERENCE_DATA_FIXTURE');
   await expect(page.locator('#mission-console')).not.toContainText('Intended Gliders');
   await expect(page.locator('#mission-console')).not.toContainText('Mission Duration');
   await expect(page.locator('#mission-console')).not.toContainText('Mission Scale');
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[0]);
 
-  const initialDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldDigest);
-  await configureOwnerReviewWorld(page);
-  const styleDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldDigest);
-  expect(styleDigest).toBeTruthy();
-  expect(styleDigest).not.toBe(initialDigest);
-
-  const rotationStart = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.rotationYawDegrees);
-  await page.locator('[data-env-globe-view-action="rotate-right"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.rotationYawDegrees), { timeout: 15000 }).not.toBe(rotationStart);
-  const rotationEnd = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.rotationYawDegrees);
+  const initialZoom = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport?.zoom ?? 1);
+  await page.locator('[data-env-reference-view-action="zoom-in"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport?.zoom ?? 1), { timeout: 15000 }).toBeGreaterThan(initialZoom);
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[1]);
 
-  const zoomStart = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.zoom);
-  await page.locator('[data-env-globe-view-action="zoom-in"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.zoom), { timeout: 15000 }).toBeGreaterThan(zoomStart);
-  const zoomEnd = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.zoom);
+  await page.locator('[data-env-reference-layer="slope"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.referenceLayer), { timeout: 15000 }).toBe('slope');
+  await page.locator('[data-action="env-reference-draw-boundary"]').click();
+  await clickReferenceAtFraction(page, 0.34, 0.30);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedPatchDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[2]);
-
-  await page.locator('[data-env-studio-world-layer="bathymetryContext"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldLayer), { timeout: 15000 }).toBe('bathymetryContext');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Bathymetry Patch');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Current Artifact');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('REQUIRES_REGENERATION');
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[3]);
-  await page.locator('[data-env-studio-world-layer="coarseFlowRegime"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldLayer), { timeout: 15000 }).toBe('coarseFlowRegime');
-  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[4]);
-
-  await page.locator('[data-action="env-studio-draw-boundary"]').click();
-  await clickGlobeAtFraction(page, 0.72, 0.44);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindowDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
-  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[5]);
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Globe Region');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Flow-regime hints');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar-regime hints');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Suggested use tags');
 
   const debug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
-  expect(debug.studioStage).toBe('worldMap');
-  expect(debug.worldArtifactType).toBe('anchor.synthetic-globe-world');
-  expect(debug.worldDigest).toMatch(/^fnv1a32:/);
-  expect(debug.canonicalWorldResolution.width).toBeGreaterThanOrEqual(2048);
-  expect(debug.canonicalWorldResolution.height).toBeGreaterThanOrEqual(1024);
-  expect(debug.displayTextureResolution.width).toBeGreaterThan(0);
-  expect(debug.selectedWindowDigest).toMatch(/^fnv1a32:/);
-  expect(debug.selectedWindowBounds.widthNormalized).toBeGreaterThan(0);
-  expect(debug.detectedContext.primary).toBeTruthy();
-  expect(debug.sampledFieldStats.fieldStatsDigest).toMatch(/^fnv1a32:/);
-  expect(debug.flowGenerationInputs.generatedArtifacts.currentField4D).toBe(false);
-  expect(debug.flowGenerationInputs.generatedArtifacts.scalarField4D).toBe(false);
+  expect(debug.sourceMode).toBe('referenceBathymetryAtlas');
+  expect(debug.studioStage).toBe('referenceAtlas');
+  expect(debug.defaultSourceMode).toBe('referenceBathymetryAtlas');
+  expect(debug.proceduralSandboxDefault).toBe(false);
+  expect(debug.referenceDatasetName).toBe('NO_REFERENCE_DATA_FIXTURE');
+  expect(debug.referenceAtlasDigest).toMatch(/^fnv1a32:/);
+  expect(debug.selectedPatchDigest).toMatch(/^fnv1a32:/);
   expect(debug.hiddenTruthExposed).toBe(false);
   expect(debug.simulationChanged).toBe(false);
   expect(debug.scoringChanged).toBe(false);
 
   await writeQaSummary({
     ...ownerReviewSummaryFromDebug(debug),
-    rotationStart: roundMetric(rotationStart),
-    rotationEnd: roundMetric(rotationEnd),
-    zoomStart: roundMetric(zoomStart),
-    zoomEnd: roundMetric(zoomEnd),
-    forbiddenPrimaryControlCount: await countForbiddenStageOneControls(page),
-    symbolicAtlasShapeCount: await countSymbolicAtlasShapes(page),
-    pixelGridPrimaryView: await hasVisibleCellGrid(page),
-    flatMapPrimaryView: await hasFlatMapPrimaryView(page),
+    forbiddenPrimaryControlCount: await countForbiddenPrimaryControls(page),
     screenshots: REQUIRED_SCREENSHOTS
   });
   browserErrors.assertClean();
@@ -147,21 +111,18 @@ test(EXACT_TITLES[0], async ({ page }) => {
 test(EXACT_TITLES[1], async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
   await openEnvironmentStudio(page);
-  await configureOwnerReviewWorld(page);
 
-  await page.locator('[data-action="env-studio-select-boundary"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindowDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
-  await page.locator('#mission-console [data-action="env-studio-generate-world-bathymetry"]').click();
+  await page.locator('[data-action="env-reference-select-boundary"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedPatchDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
+  await page.locator('#mission-console [data-action="env-reference-generate-bathymetry"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 20000 }).toBe('regionalBathymetry');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.tileCount ?? 0), { timeout: 20000 }).toBe(4);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 20000 }).not.toBeNull();
-  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[6]);
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[4]);
 
   await expect(page.locator('.environment-studio-terrain-preview')).toBeVisible();
   await expect(page.locator('.environment-studio-terrain-preview')).toContainText('Regional 3D Bathymetry Preview');
   await expect(page.locator('#mission-console')).toContainText('Regional Bathymetry');
-  await expect(page.locator('#mission-console')).toContainText('Generate Fields - planned');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Feature Summary');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Generated Field Status');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Current Artifact');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar Artifact');
@@ -169,26 +130,31 @@ test(EXACT_TITLES[1], async ({ page }) => {
   await expect(page.locator('#env-studio-status-panel')).toContainText('REQUIRES_REGENERATION');
 
   const exported = await downloadStudioProject(page);
-  expect(exported.data.studioStage).toBe('regionalBathymetry');
-  expect(exported.data.worldMap.artifactType).toBe('anchor.synthetic-globe-world');
-  expect(exported.data.worldDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.selectedOperationalWindow.artifactType).toBe('anchor.operational-globe-window');
-  expect(exported.data.selectedOperationalWindow.windowDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.regionalMissionRecipe.recipeDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.bathymetryBuilderResult.builderDigest).toMatch(/^fnv1a32:/);
+  expect(exported.data.sourceMode).toBe('referenceBathymetryAtlas');
+  expect(exported.data.referenceAtlas.sourceDataset.name).toBe('NO_REFERENCE_DATA_FIXTURE');
+  expect(exported.data.referenceAtlas.provenance.fixtureStatus).toBe('NO_REFERENCE_DATA_FIXTURE');
+  expect(exported.data.selectedReferenceWindow.artifactType).toBe('anchor.reference-bathymetry-window');
+  expect(exported.data.selectedReferenceWindow.patchDigest).toMatch(/^fnv1a32:/);
+  expect(exported.data.selectedPatchDigest).toBe(exported.data.selectedReferenceWindow.patchDigest);
+  expect(exported.data.bathymetryBuilderResult.type).toBe('anchor.reference-patch-bathymetry-builder-summary');
+  expect(exported.data.bathymetryBuilderResult.patchDigest).toBe(exported.data.selectedPatchDigest);
   expect(exported.data.bathymetryArtifactDigest).toBe(exported.data.bathymetryBuilderResult.bathymetryArtifactDigest);
   expect(exported.data.flowGenerationInputs.generatedArtifacts.currentField4D).toBe(false);
   expect(exported.data.flowGenerationInputs.generatedArtifacts.scalarField4D).toBe(false);
+  expect(exported.data.flowGenerationInputs.generatedArtifacts.hotspots).toBe(false);
   expect(exported.data.dependencyGraph.nodes.currentArtifact.state).toBe('REQUIRES_REGENERATION');
   expect(exported.data.dependencyGraph.nodes.scalarArtifact.state).toBe('REQUIRES_REGENERATION');
   expect(exported.data.dependencyGraph.nodes.hotspots.state).toBe('REQUIRES_REGENERATION');
   expect(exported.data.dependencyGraph.nodes.startsDropZones.state).toBe('NEEDS_VALIDATION');
   expect(exported.data.dependencyGraph.nodes.benchmarkBundle.state).toBe('REQUIRES_REGENERATION');
   expect(exported.data.provenance.hiddenTruthExposed).toBe(false);
+  expect(exported.data.provenance.operationalForecast).toBe(false);
+  expect(exported.data.provenance.certifiedForNavigation).toBe(false);
+
   const debugAfterGeneration = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
   await writeQaSummary({
     ...ownerReviewSummaryFromDebug(debugAfterGeneration),
-    sourceGridShape: debugAfterGeneration.visualAcceptance?.sourceGridShape ?? debugAfterGeneration.sourceGridShape,
+    sourceGridShape: debugAfterGeneration.sourceGridShape,
     bathymetryArtifactDigest: debugAfterGeneration.bathymetryArtifactDigest,
     hiddenTruthExposed: false,
     simulationChanged: false,
@@ -196,13 +162,13 @@ test(EXACT_TITLES[1], async ({ page }) => {
   });
 
   const originalDigest = exported.data.projectDigest;
-  const originalWindowDigest = exported.data.selectedOperationalWindow.windowDigest;
+  const originalPatchDigest = exported.data.selectedReferenceWindow.patchDigest;
   const originalBathymetryDigest = exported.data.bathymetryArtifactDigest;
 
   await page.locator('#env-studio-import-file').setInputFiles(exported.path);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.projectDigest ?? null), { timeout: 15000 }).toBe(originalDigest);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage ?? null), { timeout: 15000 }).toBe('regionalBathymetry');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindowDigest ?? null), { timeout: 15000 }).toBe(originalWindowDigest);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedPatchDigest ?? null), { timeout: 15000 }).toBe(originalPatchDigest);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 15000 }).toBe(originalBathymetryDigest);
 
   await page.locator('#mission-console [data-action="menu"]').click();
@@ -247,22 +213,11 @@ async function openEnvironmentStudio(page) {
   await expect(page.locator('#environment-studio-route')).toBeVisible({ timeout: 15000 });
 }
 
-async function configureOwnerReviewWorld(page) {
-  await page.locator('#env-studio-world-style').selectOption('archipelagoWorld');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldStyle), { timeout: 15000 }).toBe('archipelagoWorld');
-  await page.locator('#env-world-island-density').evaluate((input) => {
-    input.value = '0.77';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldGeneratorParameters?.islandDensity), { timeout: 15000 }).toBe(0.77);
-}
-
-async function clickGlobeAtFraction(page, xFraction, yFraction) {
-  const host = page.locator('[data-env-studio-globe-host]');
-  const box = await host.boundingBox();
+async function clickReferenceAtFraction(page, xFraction, yFraction) {
+  const canvas = page.locator('[data-env-reference-bathymetry-map]');
+  const box = await canvas.boundingBox();
   expect(box).toBeTruthy();
-  await host.click({
+  await canvas.click({
     position: {
       x: Math.max(1, Math.min(box.width - 1, box.width * xFraction)),
       y: Math.max(1, Math.min(box.height - 1, box.height * yFraction))
@@ -302,60 +257,25 @@ async function writeQaSummary(patch) {
 }
 
 function ownerReviewSummaryFromDebug(debug = {}) {
-  const visual = debug.visualAcceptance ?? {};
-  const selectedArea = visual.selectedWindowAreaFractionOfGlobe ?? visual.selectedWindowAreaFractionOfWorld ?? 0;
   return {
-    globeRendered: Boolean(debug.globeRendered || visual.globeRendered),
-    sphereVisible: Boolean(debug.sphereVisible || visual.sphereVisible),
-    flatMapPrimaryView: false,
-    canonicalWorldResolution: debug.canonicalWorldResolution ?? visual.canonicalWorldResolution ?? null,
-    displayTextureResolution: debug.displayTextureResolution ?? visual.displayTextureResolution ?? null,
-    worldDigest: debug.worldDigest ?? visual.worldDigest ?? null,
-    worldStyle: debug.worldStyle ?? visual.worldStyle ?? null,
-    worldSeed: debug.worldSeed ?? visual.worldSeed ?? null,
-    worldGeneratorParameters: debug.worldGeneratorParameters ?? null,
-    selectedWindowAreaFractionOfGlobe: selectedArea,
-    selectedWindowDigest: debug.selectedWindowDigest ?? visual.selectedWindowDigest ?? null,
-    visibleLandFraction: visual.visibleLandFraction ?? 0,
-    visibleOceanFraction: visual.visibleOceanFraction ?? 0,
-    visibleIslandCount: visual.visibleIslandCount ?? 0,
-    visibleCoastlineComplexity: visual.visibleCoastlineComplexity ?? 0,
-    sourceGridShape: visual.sourceGridShape ?? debug.sourceGridShape ?? null,
-    bathymetryArtifactDigest: visual.bathymetryArtifactDigest ?? debug.bathymetryArtifactDigest ?? null,
-    pixelGridPrimaryView: false,
-    rendererCleanup: visual.rendererCleanup ?? {
-      activeRendererCount: 0,
-      activeRafCount: 0,
-      activeCanvasCount: 0
-    },
+    defaultSourceMode: debug.defaultSourceMode ?? 'referenceBathymetryAtlas',
+    proceduralSandboxDefault: debug.proceduralSandboxDefault === true ? true : false,
+    referenceDatasetName: debug.referenceDatasetName ?? 'NO_REFERENCE_DATA_FIXTURE',
+    referenceAtlasDigest: debug.referenceAtlasDigest ?? null,
+    selectedPatchDigest: debug.selectedPatchDigest ?? null,
+    bathymetryArtifactDigest: debug.bathymetryArtifactDigest ?? null,
+    referenceFixtureStatus: debug.referenceFixtureStatus ?? 'NO_REFERENCE_DATA_FIXTURE',
+    validationStatus: debug.validationStatus ?? null,
+    sourceGridShape: debug.sourceGridShape ?? null,
     hiddenTruthExposed: false,
     simulationChanged: false,
     scoringChanged: false
   };
 }
 
-async function countForbiddenStageOneControls(page) {
+async function countForbiddenPrimaryControls(page) {
   const text = await page.locator('#mission-console').innerText();
-  return FORBIDDEN_STAGE_ONE_PATTERNS.filter((pattern) => pattern.test(text)).length;
-}
-
-async function countSymbolicAtlasShapes(page) {
-  return page.locator('[data-env-studio-atlas-map], [data-env-atlas-region], [data-env-atlas-shape], .synthetic-ocean-atlas-shape').count();
-}
-
-async function hasVisibleCellGrid(page) {
-  const count = await page.locator('[data-env-world-cell], [data-env-studio-atlas-cell], .environment-studio-world-cell').count();
-  return count > 0;
-}
-
-async function hasFlatMapPrimaryView(page) {
-  const count = await page.locator('[data-env-studio-world-map]').count();
-  return count > 0;
-}
-
-function roundMetric(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.round(number * 1000000) / 1000000 : 0;
+  return FORBIDDEN_PRIMARY_PATTERNS.filter((pattern) => pattern.test(text)).length;
 }
 
 async function downloadStudioProject(page) {

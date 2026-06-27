@@ -12,9 +12,13 @@ import {
   ENVIRONMENT_STUDIO_PREVIEW_DETAILS,
   ENVIRONMENT_STUDIO_PREVIEW_MODES,
   ENVIRONMENT_STUDIO_REGIONAL_TEMPLATES,
+  NO_REFERENCE_DATA_FIXTURE,
+  REFERENCE_BATHYMETRY_LAYER_OPTIONS,
+  REFERENCE_BATHYMETRY_SOURCE_MODES,
   SYNTHETIC_WORLD_LAYER_OPTIONS,
   SYNTHETIC_WORLD_STYLES,
   buildEnvironmentStudioProject,
+  clearEnvironmentStudioReferenceWindow,
   clearEnvironmentStudioWorldWindow,
   createEnvironmentStudioMosaic,
   createEnvironmentStudioSession,
@@ -22,24 +26,30 @@ import {
   environmentStudioDebugPayload,
   environmentStudioInspectorViewModel,
   environmentStudioSessionSummary,
+  generateEnvironmentStudioRegionFromReferenceWindow,
   generateEnvironmentStudioRegionFromAtlasWindow,
   generateEnvironmentStudioRegionFromWorldWindow,
   generateEnvironmentStudioTile,
   importEnvironmentStudioProject,
   patchEnvironmentStudioDomain,
+  patchEnvironmentStudioReferenceWindow,
   patchEnvironmentStudioOperationalWindow,
   patchEnvironmentStudioWorldWindow,
   randomizeEnvironmentStudioAtlasSeed,
   randomizeEnvironmentStudioWorldSeed,
+  referenceBathymetryVisualMetrics,
   regenerateEnvironmentStudioFields,
   refreshEnvironmentStudioSession,
   selectEnvironmentStudioObject,
+  selectEnvironmentStudioReferenceWindow,
   selectEnvironmentStudioOperationalWindow,
   selectEnvironmentStudioWorldWindow,
   setEnvironmentStudioArchetype,
   setEnvironmentStudioAtlasPreset,
   setEnvironmentStudioPreviewCameraState,
   setEnvironmentStudioPreviewMode,
+  setEnvironmentStudioReferenceLayer,
+  setEnvironmentStudioSourceMode,
   setEnvironmentStudioWorldLayer,
   setEnvironmentStudioWorldSeed,
   setEnvironmentStudioWorldStyle,
@@ -57,6 +67,9 @@ import {
   syntheticGlobeLayerColor,
   syntheticGlobeViewportVisualMetrics
 } from '../../../core/editor/SyntheticGlobeWorld.js';
+import {
+  referenceBathymetryLayerColor
+} from '../../../core/editor/ReferenceBathymetryAtlas.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -67,7 +80,7 @@ export class EnvironmentStudioScene extends PhaserScene {
     super('EnvironmentStudioScene');
     this.objects = [];
     this.session = createEnvironmentStudioSession();
-    this.statusMessage = 'Generate a deterministic synthetic globe, select a small operational region, then generate regional bathymetry.';
+    this.statusMessage = 'Select a reference bathymetry bounding box, then generate regional 3D bathymetry. A real GEBCO/ETOPO fixture is not checked in yet.';
     this.lastError = null;
     this.worldBoundaryDrawing = false;
     this.worldPointerState = null;
@@ -113,6 +126,10 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   renderConsole() {
+    if (this.session.studioStage === 'referenceAtlas') {
+      this.renderReferenceAtlasConsole();
+      return;
+    }
     if (this.session.studioStage === 'worldMap') {
       this.renderWorldMapConsole();
       return;
@@ -128,6 +145,12 @@ export class EnvironmentStudioScene extends PhaserScene {
     const summary = environmentStudioSessionSummary(this.session);
     this.app.setPanel(worldMapConsoleHtml(this, summary));
     bindEnvironmentStudioWorldMapControls(this, this.app.elements?.consoleRoot ?? globalThis.document);
+  }
+
+  renderReferenceAtlasConsole() {
+    const summary = environmentStudioSessionSummary(this.session);
+    this.app.setPanel(referenceAtlasConsoleHtml(this, summary));
+    bindEnvironmentStudioReferenceAtlasControls(this, this.app.elements?.consoleRoot ?? globalThis.document);
   }
 
   renderRegionalBathymetryConsole() {
@@ -316,6 +339,10 @@ export class EnvironmentStudioScene extends PhaserScene {
   renderRightPanel() {
     const root = this.app.elements?.waypointTimelineRoot;
     if (!root) return;
+    if (this.session.studioStage === 'referenceAtlas') {
+      root.innerHTML = referenceAtlasRightPanelHtml(this.session);
+      return;
+    }
     if (this.session.studioStage === 'worldMap') {
       root.innerHTML = worldMapRightPanelHtml(this.session);
       return;
@@ -355,6 +382,11 @@ export class EnvironmentStudioScene extends PhaserScene {
     if (!this.previewHost) return;
     this.destroyGlobeRenderer();
     const project = buildEnvironmentStudioProject(this.session);
+    if (this.session.studioStage === 'referenceAtlas') {
+      this.previewHost.innerHTML = referenceAtlasPreviewHtml(this.session, project);
+      bindReferenceBathymetryPreview(this, this.previewHost);
+      return;
+    }
     if (this.session.studioStage === 'worldMap') {
       this.previewHost.innerHTML = worldMapPreviewHtml(this.session, project);
       bindEnvironmentStudioGlobePreview(this, this.previewHost);
@@ -410,6 +442,167 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.session = setEnvironmentStudioPreviewCameraState(this.session, patch);
     this.statusMessage = 'Preview camera updated. UI-only camera state is preserved in project exports as noncanonical metadata.';
     this.lastError = null;
+    this.render();
+  }
+
+  setSourceMode(sourceMode) {
+    this.worldTileCanvasCache?.clear?.();
+    this.session = setEnvironmentStudioSourceMode(this.session, sourceMode);
+    if (sourceMode === 'proceduralSyntheticSandbox') {
+      this.statusMessage = 'Procedural synthetic sandbox opened as an experimental compatibility path.';
+    } else if (sourceMode === 'referenceBathymetryAtlas') {
+      this.statusMessage = 'Reference Bathymetry Atlas is the default source path. Select a bounding box to extract a patch.';
+    } else {
+      this.statusMessage = `${labelize(sourceMode)} is staged; use Reference Bathymetry Atlas for the current browser path.`;
+    }
+    this.lastError = sourceMode === 'referenceBathymetryAtlas' || sourceMode === 'proceduralSyntheticSandbox'
+      ? null
+      : 'This source mode is planned and does not generate artifacts in REAL-BATHY-R1.';
+    this.render();
+  }
+
+  setReferenceLayer(layerId) {
+    this.session = setEnvironmentStudioReferenceLayer(this.session, layerId);
+    this.statusMessage = `Showing ${labelize(layerId)} reference layer.`;
+    this.lastError = null;
+    this.render();
+  }
+
+  resetReferenceView() {
+    this.session = setEnvironmentStudioWorldView(this.session, { panX: 0, panY: 0, rotationYawDegrees: -22, rotationPitchDegrees: 8, zoom: 1 });
+    this.statusMessage = 'Reference atlas view reset.';
+    this.lastError = null;
+    this.render();
+  }
+
+  adjustReferenceView(action) {
+    const view = this.session.worldView ?? {};
+    const patch = { ...view };
+    const panStep = 0.08;
+    if (action === 'left') patch.panX = Number(view.panX ?? 0) - panStep;
+    if (action === 'right') patch.panX = Number(view.panX ?? 0) + panStep;
+    if (action === 'up') patch.panY = Number(view.panY ?? 0) - panStep;
+    if (action === 'down') patch.panY = Number(view.panY ?? 0) + panStep;
+    if (action === 'zoom-in') patch.zoom = Number(view.zoom ?? 1) + 0.25;
+    if (action === 'zoom-out') patch.zoom = Number(view.zoom ?? 1) - 0.25;
+    if (action === 'reset') return this.resetReferenceView();
+    this.session = setEnvironmentStudioWorldView(this.session, patch);
+    this.statusMessage = 'Reference atlas view updated.';
+    this.lastError = null;
+    this.render();
+  }
+
+  toggleReferenceBoundaryDrawing() {
+    this.referenceBoundaryDrawing = !this.referenceBoundaryDrawing;
+    this.statusMessage = this.referenceBoundaryDrawing
+      ? 'Bounding-box selection enabled. Click the atlas map to place the reference patch.'
+      : 'Bounding-box selection disabled.';
+    this.render();
+  }
+
+  selectReferenceWindowAt(lon, lat) {
+    const widthDegrees = this.numberValue('env-reference-window-width-deg', 2.7);
+    const heightDegrees = this.numberValue('env-reference-window-height-deg', 1.8);
+    const westLon = clampNumber(Number(lon) - widthDegrees / 2, -180, 180 - widthDegrees);
+    const eastLon = clampNumber(westLon + widthDegrees, -180, 180);
+    const southLat = clampNumber(Number(lat) - heightDegrees / 2, -90, 90 - heightDegrees);
+    const northLat = clampNumber(southLat + heightDegrees, -90, 90);
+    this.session = selectEnvironmentStudioReferenceWindow(this.session, {
+      westLon,
+      eastLon,
+      southLat,
+      northLat,
+      selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
+      previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
+    });
+    this.referenceBoundaryDrawing = false;
+    this.statusMessage = 'Selected reference bathymetry bounding box.';
+    this.lastError = this.session.referenceAtlas?.provenance?.fixtureStatus === NO_REFERENCE_DATA_FIXTURE
+      ? 'NO_REFERENCE_DATA_FIXTURE: this preview uses a placeholder raster until a preprocessed public reference fixture is checked in.'
+      : null;
+    this.render();
+  }
+
+  selectReferenceWindowFromControls() {
+    const current = this.session.selectedReferenceWindow?.bounds;
+    const centerLon = Number.isFinite(Number(current?.westLon)) && Number.isFinite(Number(current?.eastLon))
+      ? (Number(current.westLon) + Number(current.eastLon)) / 2
+      : -123.05;
+    const centerLat = Number.isFinite(Number(current?.southLat)) && Number.isFinite(Number(current?.northLat))
+      ? (Number(current.southLat) + Number(current.northLat)) / 2
+      : 36.5;
+    this.selectReferenceWindowAt(centerLon, centerLat);
+  }
+
+  clearReferenceWindow() {
+    this.session = clearEnvironmentStudioReferenceWindow(this.session);
+    this.referenceBoundaryDrawing = false;
+    this.statusMessage = 'Cleared selected reference bathymetry patch.';
+    this.lastError = null;
+    this.render();
+  }
+
+  adjustReferenceWindow(action) {
+    const bounds = this.session.selectedReferenceWindow?.bounds ?? { westLon: -124.4, eastLon: -121.7, southLat: 35.6, northLat: 37.4 };
+    const width = Math.max(0.1, Number(bounds.eastLon) - Number(bounds.westLon));
+    const height = Math.max(0.1, Number(bounds.northLat) - Number(bounds.southLat));
+    const lonStep = width * 0.15;
+    const latStep = height * 0.15;
+    const patch = { ...bounds };
+    if (action === 'left') {
+      patch.westLon -= lonStep;
+      patch.eastLon -= lonStep;
+    }
+    if (action === 'right') {
+      patch.westLon += lonStep;
+      patch.eastLon += lonStep;
+    }
+    if (action === 'up') {
+      patch.southLat += latStep;
+      patch.northLat += latStep;
+    }
+    if (action === 'down') {
+      patch.southLat -= latStep;
+      patch.northLat -= latStep;
+    }
+    if (action === 'wider') {
+      patch.westLon -= lonStep / 2;
+      patch.eastLon += lonStep / 2;
+    }
+    if (action === 'narrower') {
+      patch.westLon += lonStep / 2;
+      patch.eastLon -= lonStep / 2;
+    }
+    if (action === 'taller') {
+      patch.southLat -= latStep / 2;
+      patch.northLat += latStep / 2;
+    }
+    if (action === 'shorter') {
+      patch.southLat += latStep / 2;
+      patch.northLat -= latStep / 2;
+    }
+    this.session = patchEnvironmentStudioReferenceWindow(this.session, {
+      ...patch,
+      selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
+      previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
+    });
+    this.statusMessage = 'Moved or resized selected reference patch.';
+    this.lastError = null;
+    this.render();
+  }
+
+  generateReferenceBathymetry() {
+    try {
+      if (!this.session.selectedReferenceWindow?.patchDigest) this.selectReferenceWindowFromControls();
+      this.session = generateEnvironmentStudioRegionFromReferenceWindow(this.session, { seed: this.readSeed() });
+      this.statusMessage = 'Generated regional 3D bathymetry from the selected reference patch.';
+      this.lastError = this.session.referenceAtlas?.provenance?.fixtureStatus === NO_REFERENCE_DATA_FIXTURE
+        ? 'REAL_BATHY_R1_BLOCKED_WAITING_FOR_REFERENCE_FIXTURE: generated artifact is a placeholder workflow exercise, not GEBCO/ETOPO-derived data.'
+        : null;
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Reference patch bathymetry generation failed.';
+    }
     this.render();
   }
 
@@ -970,6 +1163,21 @@ export class EnvironmentStudioScene extends PhaserScene {
 }
 
 function environmentStudioVisualAcceptanceMetrics(session = {}) {
+  if (session.sourceMode === 'referenceBathymetryAtlas' || session.studioStage === 'referenceAtlas') {
+    return {
+      ...referenceBathymetryVisualMetrics(session.referenceAtlas, session.selectedReferenceWindow),
+      sourceGridShape: session.sourceGridShape,
+      bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
+      rendererCleanup: {
+        activeRendererCount: 0,
+        activeRafCount: 0,
+        activeCanvasCount: 0
+      },
+      primaryLeftPanelForbiddenControlCount: null,
+      simulationChanged: false,
+      scoringChanged: false
+    };
+  }
   const viewport = syntheticGlobeViewportVisualMetrics(session.worldMap, session.worldView ?? {});
   const selected = session.selectedOperationalWindow;
   const bounds = selected?.bounds;
@@ -993,6 +1201,327 @@ function environmentStudioVisualAcceptanceMetrics(session = {}) {
     primaryLeftPanelForbiddenControlCount: null,
     simulationChanged: false,
     scoringChanged: false
+  };
+}
+
+function referenceAtlasConsoleHtml(scene, summary = {}) {
+  const session = scene.session;
+  const atlas = session.referenceAtlas ?? {};
+  const selected = session.selectedReferenceWindow;
+  const bounds = selected?.bounds ?? {};
+  return `
+    <section class="console-header">
+      <div class="console-kicker">Simulation Lab / Environment Studio</div>
+      <h1>Reference Bathymetry Atlas</h1>
+      <p>Select a lon/lat bounding box from the reference bathymetry atlas, then generate a regional 3D bathymetry patch. Procedural generation is available only as an experimental sandbox.</p>
+    </section>
+    <section class="console-status">
+      <span>Stage</span>
+      <strong>Reference Bathymetry Patch</strong>
+      <small>${escapeHtml(scene.statusMessage)}</small>
+    </section>
+    ${scene.lastError ? `<section class="console-section" data-keep-title="true"><h2>Warning</h2><div class="hud-muted">${escapeHtml(scene.lastError)}</div></section>` : ''}
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-studio-stage="referenceAtlas">
+      <h2>Bathymetry Source</h2>
+      <label class="compact-field">
+        Source Mode
+        <select id="env-reference-source-mode" data-env-reference-source-mode>
+          ${REFERENCE_BATHYMETRY_SOURCE_MODES.map((mode) => `<option value="${escapeAttr(mode.id)}" ${mode.id === session.sourceMode ? 'selected' : ''}>${escapeHtml(mode.label)}</option>`).join('')}
+        </select>
+      </label>
+      <div class="hud-muted">Reference Bathymetry Atlas is the default. Imported bathymetry and synthetic variants are staged; Procedural Synthetic Sandbox is compatibility only.</div>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Dataset', atlas.sourceDataset?.name ?? NO_REFERENCE_DATA_FIXTURE)}
+        ${metricHtml('Fixture', atlas.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE)}
+        ${metricHtml('Atlas Digest', shortDigest(atlas.atlasDigest))}
+      </div>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Reference Dataset</h2>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Provider', atlas.sourceDataset?.provider)}
+        ${metricHtml('Version', atlas.sourceDataset?.version)}
+        ${metricHtml('Resolution', atlas.sourceDataset?.sourceResolution)}
+        ${metricHtml('Units', atlas.sourceDataset?.verticalUnits)}
+        ${metricHtml('Frame', atlas.sourceDataset?.horizontalCoordinateFrame)}
+        ${metricHtml('Reference data', atlas.sourceDataset?.referenceDataAvailable === true ? 'available' : 'not checked in')}
+      </div>
+      <div class="hud-muted">${escapeHtml(atlas.sourceDataset?.citation ?? '')}</div>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Map Controls</h2>
+      <div class="environment-studio-camera-row" aria-label="Reference atlas view controls">
+        <button type="button" data-env-reference-view-action="left">Pan Left</button>
+        <button type="button" data-env-reference-view-action="right">Pan Right</button>
+        <button type="button" data-env-reference-view-action="up">Pan Up</button>
+        <button type="button" data-env-reference-view-action="down">Pan Down</button>
+        <button type="button" data-env-reference-view-action="zoom-in">Zoom In</button>
+        <button type="button" data-env-reference-view-action="zoom-out">Zoom Out</button>
+        <button type="button" data-env-reference-view-action="reset">Reset</button>
+      </div>
+      <div class="environment-studio-camera-row" aria-label="Reference layer controls">
+        ${REFERENCE_BATHYMETRY_LAYER_OPTIONS.map((layer) => `<button type="button" class="${layer.id === session.referenceLayer ? 'active' : ''}" data-env-reference-layer="${escapeAttr(layer.id)}">${escapeHtml(layer.label)}</button>`).join('')}
+      </div>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Boundary Selection</h2>
+      <div class="environment-studio-camera-row" aria-label="Reference boundary controls">
+        <button type="button" class="${scene.referenceBoundaryDrawing ? 'active' : ''}" data-action="env-reference-draw-boundary">Draw Bounding Box</button>
+        <button type="button" data-action="env-reference-select-boundary">Use Default Patch</button>
+        <button type="button" data-action="env-reference-clear-boundary">Clear</button>
+      </div>
+      ${numberInput('Window width deg', 'env-reference-window-width-deg', Number(bounds.eastLon ?? -121.7) - Number(bounds.westLon ?? -124.4), 0.1, 12, 0.1)}
+      ${numberInput('Window height deg', 'env-reference-window-height-deg', Number(bounds.northLat ?? 37.4) - Number(bounds.southLat ?? 35.6), 0.1, 8, 0.1)}
+      ${numberInput('Output resolution m', 'env-reference-output-resolution', selected?.selectedResolutionMeters ?? 1500, 250, 10000, 250)}
+      ${numberInput('Preview resolution m', 'env-reference-preview-resolution', selected?.previewResolutionMeters ?? 6000, 1000, 20000, 500)}
+      <div class="environment-studio-camera-row" aria-label="Move selected reference patch">
+        <button type="button" data-env-reference-window-action="left">Left</button>
+        <button type="button" data-env-reference-window-action="right">Right</button>
+        <button type="button" data-env-reference-window-action="up">Up</button>
+        <button type="button" data-env-reference-window-action="down">Down</button>
+        <button type="button" data-env-reference-window-action="narrower">Narrower</button>
+        <button type="button" data-env-reference-window-action="wider">Wider</button>
+        <button type="button" data-env-reference-window-action="shorter">Shorter</button>
+        <button type="button" data-env-reference-window-action="taller">Taller</button>
+      </div>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Patch Digest', shortDigest(selected?.patchDigest))}
+        ${metricHtml('Bounds', selected ? `${formatNumber(bounds.westLon)} to ${formatNumber(bounds.eastLon)} lon, ${formatNumber(bounds.southLat)} to ${formatNumber(bounds.northLat)} lat` : 'select patch')}
+        ${metricHtml('Depth range', selected ? `${formatNumber(selected.sampledStats?.minDepthMeters)}-${formatNumber(selected.sampledStats?.maxDepthMeters)} m` : 'n/a')}
+      </div>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Actions</h2>
+      <button class="console-button primary" type="button" data-action="env-reference-generate-bathymetry">Generate 3D Bathymetry</button>
+      <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
+      <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
+      <input id="env-studio-import-file" type="file" accept="application/json,.json" hidden data-env-studio-import />
+      <button class="console-button secondary" type="button" data-action="menu">Main Menu</button>
+    </section>
+  `;
+}
+
+function bindEnvironmentStudioReferenceAtlasControls(scene, root) {
+  root?.querySelector?.('[data-env-reference-source-mode]')?.addEventListener('change', (event) => scene.setSourceMode(event.target.value));
+  root?.querySelectorAll?.('[data-env-reference-view-action]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.adjustReferenceView(button.getAttribute('data-env-reference-view-action')));
+  });
+  root?.querySelectorAll?.('[data-env-reference-layer]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.setReferenceLayer(button.getAttribute('data-env-reference-layer')));
+  });
+  root?.querySelector?.('[data-action="env-reference-draw-boundary"]')?.addEventListener('click', () => scene.toggleReferenceBoundaryDrawing());
+  root?.querySelector?.('[data-action="env-reference-select-boundary"]')?.addEventListener('click', () => scene.selectReferenceWindowFromControls());
+  root?.querySelector?.('[data-action="env-reference-clear-boundary"]')?.addEventListener('click', () => scene.clearReferenceWindow());
+  root?.querySelectorAll?.('[data-env-reference-window-action]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.adjustReferenceWindow(button.getAttribute('data-env-reference-window-action')));
+  });
+  root?.querySelector?.('[data-action="env-reference-generate-bathymetry"]')?.addEventListener('click', () => scene.generateReferenceBathymetry());
+  root?.querySelector?.('[data-action="env-studio-export-project"]')?.addEventListener('click', () => scene.exportProject());
+  root?.querySelector?.('[data-env-studio-import]')?.addEventListener('change', (event) => scene.importProject(event.target.files?.[0]));
+  root?.querySelector?.('[data-action="menu"]')?.addEventListener('click', () => scene.scene.start('MainMenuScene'));
+}
+
+function referenceAtlasRightPanelHtml(session = {}) {
+  const atlas = session.referenceAtlas ?? {};
+  const selected = session.selectedReferenceWindow;
+  if (!selected) {
+    return `
+      <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
+        <div class="console-kicker">Reference Atlas Summary</div>
+        <h2>${escapeHtml(atlas.label ?? 'Reference Bathymetry Atlas')}</h2>
+        <p class="hud-muted">The workflow is reference atlas -> bounding box -> extracted patch -> regional 3D bathymetry. The checked-in fallback is a placeholder and is not GEBCO, ETOPO, certified navigation data, or an operational forecast.</p>
+        <div class="cell-inspector-metrics">
+          ${metricHtml('Dataset', atlas.sourceDataset?.name ?? NO_REFERENCE_DATA_FIXTURE)}
+          ${metricHtml('Provider', atlas.sourceDataset?.provider)}
+          ${metricHtml('Version', atlas.sourceDataset?.version)}
+          ${metricHtml('Source resolution', atlas.sourceDataset?.sourceResolution)}
+          ${metricHtml('Vertical units', atlas.sourceDataset?.verticalUnits)}
+          ${metricHtml('Frame', atlas.sourceDataset?.horizontalCoordinateFrame)}
+          ${metricHtml('Atlas Digest', shortDigest(atlas.atlasDigest))}
+          ${metricHtml('Fixture Status', atlas.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE)}
+        </div>
+        <p class="hud-muted">Draw a bounding box to inspect selected patch depth statistics, wet/land mask, coastline summary, and deferred field-artifact states.</p>
+      </section>
+    `;
+  }
+  const stats = selected.sampledStats ?? {};
+  const bounds = selected.bounds ?? {};
+  return `
+    <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
+      <div class="console-kicker">Selected Bathymetry Patch</div>
+      <h2>${escapeHtml(selected.label ?? 'Selected Bathymetry Patch')}</h2>
+      <p class="hud-muted">Patch statistics are sampled from the atlas source field. Currents, scalars, hotspots, start/drop zones, and benchmark bundles remain deferred until explicit regeneration.</p>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Patch Digest', shortDigest(selected.patchDigest))}
+        ${metricHtml('West / East lon', `${formatNumber(bounds.westLon)} / ${formatNumber(bounds.eastLon)}`)}
+        ${metricHtml('South / North lat', `${formatNumber(bounds.southLat)} / ${formatNumber(bounds.northLat)}`)}
+        ${metricHtml('Depth min / mean / max', `${formatNumber(stats.minDepthMeters)} / ${formatNumber(stats.meanDepthMeters)} / ${formatNumber(stats.maxDepthMeters)} m`)}
+        ${metricHtml('Land / Ocean', `${formatNumber(stats.landFraction)} / ${formatNumber(stats.oceanFraction)}`)}
+        ${metricHtml('Wet connectivity', formatNumber(stats.wetConnectedFraction))}
+        ${metricHtml('Slope mean', formatNumber(stats.slopeStats?.mean))}
+        ${metricHtml('Validation', selected.validation?.status ?? 'UNKNOWN')}
+      </div>
+      <table class="environment-studio-table">
+        <tbody>
+          <tr><td>Resolved tags</td><td>${escapeHtml((selected.detectedRegionTags ?? []).join(', ') || 'none')}</td></tr>
+          <tr><td>Expected artifacts</td><td>Bathymetry artifact, wet/land masks, coastline summary, validation report, and FIELD-REGEN inputs.</td></tr>
+          <tr><td>Current Artifact</td><td>REQUIRES_REGENERATION</td></tr>
+          <tr><td>Scalar Artifact</td><td>REQUIRES_REGENERATION</td></tr>
+          <tr><td>Hotspots</td><td>REQUIRES_REGENERATION</td></tr>
+          <tr><td>Starts / Drop Zones</td><td>NEEDS_VALIDATION</td></tr>
+          <tr><td>Benchmark Bundle</td><td>REQUIRES_REGENERATION</td></tr>
+          <tr><td>Claim boundary</td><td>Not certified navigation data, not calibrated ocean forecast, no hidden truth.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
+function referenceAtlasPreviewHtml(session = {}, project = {}) {
+  const selected = session.selectedReferenceWindow;
+  return `
+    <main id="environment-studio-route" class="environment-studio-route environment-studio-reference-route">
+      <header class="environment-studio-route-header">
+        <div>
+          <p class="console-kicker">Reference Bathymetry Atlas</p>
+          <h1>${escapeHtml(session.referenceAtlas?.label ?? 'Reference Bathymetry Atlas')}</h1>
+          <p>Pick a lon/lat bounding box and extract regional bathymetry. The current checked-in fallback is explicitly marked ${escapeHtml(NO_REFERENCE_DATA_FIXTURE)}.</p>
+        </div>
+        <div class="environment-studio-digest">
+          <span>Project Digest</span>
+          <strong>${escapeHtml(shortDigest(project.projectDigest))}</strong>
+          <span>Patch</span>
+          <strong>${escapeHtml(shortDigest(selected?.patchDigest))}</strong>
+        </div>
+      </header>
+      <section class="environment-studio-preview-grid" aria-label="Reference bathymetry atlas">
+        <section class="environment-studio-terrain-preview environment-studio-reference-preview" data-env-reference-preview-panel>
+          <h2>Reference Bathymetry Atlas</h2>
+          <div class="environment-studio-preview-meta">
+            ${metricHtml('Dataset', session.referenceAtlas?.sourceDataset?.name ?? NO_REFERENCE_DATA_FIXTURE)}
+            ${metricHtml('Layer', labelize(session.referenceLayer))}
+            ${metricHtml('Atlas Digest', shortDigest(session.referenceAtlas?.atlasDigest))}
+            ${metricHtml('Patch Digest', shortDigest(selected?.patchDigest))}
+            ${metricHtml('Zoom', `${formatNumber(session.worldView?.zoom ?? 1)}x`)}
+            <div><span>Coordinates</span><strong data-env-reference-coordinate>click map</strong></div>
+          </div>
+          <div class="environment-studio-reference-map-shell">
+            <canvas width="900" height="480" data-env-reference-bathymetry-map aria-label="Reference bathymetry map"></canvas>
+          </div>
+          <div class="environment-studio-camera-row" aria-label="Reference map controls">
+            <button type="button" data-env-reference-view-action="left">Pan Left</button>
+            <button type="button" data-env-reference-view-action="right">Pan Right</button>
+            <button type="button" data-env-reference-view-action="up">Pan Up</button>
+            <button type="button" data-env-reference-view-action="down">Pan Down</button>
+            <button type="button" data-env-reference-view-action="zoom-in">Zoom In</button>
+            <button type="button" data-env-reference-view-action="zoom-out">Zoom Out</button>
+            <button type="button" data-env-reference-view-action="reset">Reset</button>
+          </div>
+          <div class="environment-studio-depth-ramp" aria-label="Reference atlas legend">
+            <span style="background:#536f40">land</span>
+            <span style="background:#4bbdb8">shelf</span>
+            <span style="background:#184b8a">slope</span>
+            <span style="background:#061a4a">deep</span>
+          </div>
+          <p class="hud-muted">Three.js and canvas only visualize atlas values; generated artifacts come from the Environment Studio reference-patch builder.</p>
+        </section>
+      </section>
+      <section class="environment-studio-boundary">
+        <strong>Boundary</strong>
+        <span>Reference patch workflow only. Placeholder fixture status blocks any claim of real GEBCO/ETOPO completion until a preprocessed public fixture is checked in.</span>
+      </section>
+    </main>
+  `;
+}
+
+function bindReferenceBathymetryPreview(scene, root) {
+  const canvas = root?.querySelector?.('[data-env-reference-bathymetry-map]');
+  drawReferenceBathymetryCanvas(canvas, scene.session);
+  root?.querySelectorAll?.('[data-env-reference-view-action]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.adjustReferenceView(button.getAttribute('data-env-reference-view-action')));
+  });
+  canvas?.addEventListener?.('mousemove', (event) => {
+    const lonLat = referenceCanvasLonLat(canvas, scene.session, event);
+    const label = root.querySelector('[data-env-reference-coordinate]');
+    if (label) label.textContent = `${formatNumber(lonLat.lon)} lon, ${formatNumber(lonLat.lat)} lat`;
+  });
+  canvas?.addEventListener?.('click', (event) => {
+    const lonLat = referenceCanvasLonLat(canvas, scene.session, event);
+    scene.selectReferenceWindowAt(lonLat.lon, lonLat.lat);
+  });
+}
+
+function drawReferenceBathymetryCanvas(canvas, session = {}) {
+  if (!canvas?.getContext) return;
+  const context = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  const image = context.createImageData(width, height);
+  const layer = session.referenceLayer ?? 'topographyBathymetry';
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const { lon, lat } = referenceViewportLonLat(session, x / Math.max(1, width - 1), y / Math.max(1, height - 1));
+      const color = referenceBathymetryLayerColor(session.referenceAtlas, layer, lon, lat);
+      const index = (y * width + x) * 4;
+      image.data[index] = color[0];
+      image.data[index + 1] = color[1];
+      image.data[index + 2] = color[2];
+      image.data[index + 3] = color[3];
+    }
+  }
+  context.putImageData(image, 0, 0);
+  drawReferenceSelectionOverlay(context, session, width, height);
+}
+
+function drawReferenceSelectionOverlay(context, session = {}, width = 1, height = 1) {
+  const bounds = session.selectedReferenceWindow?.bounds;
+  if (!bounds) return;
+  const nw = referenceLonLatToCanvas(session, bounds.westLon, bounds.northLat, width, height);
+  const se = referenceLonLatToCanvas(session, bounds.eastLon, bounds.southLat, width, height);
+  const x = Math.min(nw.x, se.x);
+  const y = Math.min(nw.y, se.y);
+  const rectWidth = Math.abs(se.x - nw.x);
+  const rectHeight = Math.abs(se.y - nw.y);
+  context.save();
+  context.strokeStyle = '#f8e26c';
+  context.lineWidth = 4;
+  context.setLineDash([12, 8]);
+  context.strokeRect(x, y, rectWidth, rectHeight);
+  context.fillStyle = 'rgba(248, 226, 108, 0.12)';
+  context.fillRect(x, y, rectWidth, rectHeight);
+  context.restore();
+}
+
+function referenceCanvasLonLat(canvas, session = {}, event = {}) {
+  const rect = canvas.getBoundingClientRect();
+  const nx = (event.clientX - rect.left) / Math.max(1, rect.width);
+  const ny = (event.clientY - rect.top) / Math.max(1, rect.height);
+  return referenceViewportLonLat(session, nx, ny);
+}
+
+function referenceViewportLonLat(session = {}, nx = 0.5, ny = 0.5) {
+  const view = session.worldView ?? {};
+  const zoom = Math.max(0.75, Math.min(5, Number(view.zoom ?? 1)));
+  const lonSpan = 360 / zoom;
+  const latSpan = 180 / zoom;
+  const centerLon = clampNumber(Number(view.panX ?? 0) * 180, -180 + lonSpan / 2, 180 - lonSpan / 2);
+  const centerLat = clampNumber(-Number(view.panY ?? 0) * 90, -90 + latSpan / 2, 90 - latSpan / 2);
+  return {
+    lon: clampNumber(centerLon - lonSpan / 2 + clampNumber(nx, 0, 1) * lonSpan, -180, 180),
+    lat: clampNumber(centerLat + latSpan / 2 - clampNumber(ny, 0, 1) * latSpan, -90, 90)
+  };
+}
+
+function referenceLonLatToCanvas(session = {}, lon = 0, lat = 0, width = 1, height = 1) {
+  const view = session.worldView ?? {};
+  const zoom = Math.max(0.75, Math.min(5, Number(view.zoom ?? 1)));
+  const lonSpan = 360 / zoom;
+  const latSpan = 180 / zoom;
+  const centerLon = clampNumber(Number(view.panX ?? 0) * 180, -180 + lonSpan / 2, 180 - lonSpan / 2);
+  const centerLat = clampNumber(-Number(view.panY ?? 0) * 90, -90 + latSpan / 2, 90 - latSpan / 2);
+  return {
+    x: ((Number(lon) - (centerLon - lonSpan / 2)) / lonSpan) * width,
+    y: (((centerLat + latSpan / 2) - Number(lat)) / latSpan) * height
   };
 }
 
@@ -2530,6 +3059,12 @@ function formatNumber(value) {
 function roundMetric(value) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.round(number * 1000000) / 1000000 : 0;
+}
+
+function clampNumber(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return min;
+  return Math.max(min, Math.min(max, number));
 }
 
 function shortDigest(value) {

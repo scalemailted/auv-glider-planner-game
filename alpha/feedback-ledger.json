@@ -339,6 +339,36 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-015",
+      "title": "Environment Studio should start from a reference bathymetry atlas and user-selected real patch.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Bathymetry Atlas",
+      "summary": "Alpha review clarified that the issue is not 2D versus globe; the active front door should be a reference bathymetry atlas with lon/lat bounding-box selection and regional patch extraction. Procedural world and globe workflows should be demoted to an experimental sandbox.",
+      "decision": "Accepted for REAL-BATHY-R1 as a production-path correction. The workflow is reference bathymetry atlas -> bounding box -> extracted patch -> regional 3D bathymetry. If no preprocessed public GEBCO/ETOPO fixture is checked in, the browser must show an explicit NO_REFERENCE_DATA_FIXTURE placeholder and must not claim real-data completion.",
+      "proposedPhase": "REAL-BATHY-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Environment Studio defaults to Reference Bathymetry Atlas, not procedural synthetic world or globe.",
+        "Users can pan/zoom the reference atlas, select a lon/lat bounding box, inspect selected patch metadata, and generate regional 3D bathymetry from the selected patch.",
+        "Procedural synthetic world/globe remains reachable only as an experimental sandbox or compatibility path.",
+        "Owner-review screenshots and QA summary are written under `test-results/real-bathy-r1-owner-review/`.",
+        "Exports preserve reference dataset identity, atlas digest, selected patch digest, bathymetry artifact digest, validation status, and deferred current/scalar/hotspot dependencies.",
+        "If no public reference fixture exists, artifacts and docs clearly report `REAL_BATHY_R1_BLOCKED_WAITING_FOR_REFERENCE_FIXTURE` and `NO_REFERENCE_DATA_FIXTURE`.",
+        "Mission simulation, official scoring, planners, glider dynamics, current/scalar generation, and benchmark fairness remain unchanged."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

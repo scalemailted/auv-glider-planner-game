@@ -1,8 +1,8 @@
 # Environment Studio Architecture
 
-Environment Studio is the planned unified authoring surface for deterministic synthetic ANCHOR environments. It should help instructors and researchers define a reproducible domain, choose or edit synthetic bathymetry, inspect generated field dependencies, validate artifacts, and export public-safe JSON.
+Environment Studio is the planned unified authoring surface for ANCHOR environment projects. It should help instructors and researchers select or import bathymetry context, generate reproducible regional bathymetry, inspect generated field dependencies, validate artifacts, and export public-safe JSON.
 
-R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1/R1.1 added a structured atlas field engine and window-conditioned bathymetry builder. ENV-STUDIO-R2 and ENV-WORLD-R1/R1A introduced the world-selection front door. ENV-GLOBE-R1 makes the active front door a deterministic, high-resolution `anchor.synthetic-globe-world` equirectangular field artifact rendered through an interactive globe selector: users generate a synthetic globe, inspect layers, select a small operational globe region, inspect sampled context, then generate regional 3D bathymetry from that selected window.
+R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1/R1.1 added a structured atlas field engine and window-conditioned bathymetry builder. ENV-STUDIO-R2, ENV-WORLD-R1/R1A, and ENV-GLOBE-R1 explored procedural synthetic world/globe selectors. REAL-BATHY-R1 makes the active browser front door a **Reference Bathymetry Atlas** workflow: users inspect source metadata, select a lon/lat bounding box, review selected patch statistics, then generate regional 3D bathymetry from that patch. The procedural world/globe workflow remains available only as an experimental sandbox / compatibility path.
 
 ## Product Placement
 
@@ -33,32 +33,35 @@ bottomDepthMeters = h(x,y)
 
 It is not a volumetric geology editor. It does not create caves, tunnels, overhangs, arbitrary freeform solid geology, or calibrated regional survey products.
 
-## ENV-GLOBE-R1 Synthetic Globe Front Door
+## REAL-BATHY-R1 Reference Bathymetry Front Door
 
 The primary workflow is now:
 
 ```text
-Synthetic Globe
--> selected operational globe window
--> sampled environmental context
--> regional environment recipe
+Reference Bathymetry Atlas
+-> selected lon/lat bounding box
+-> extracted reference patch summary
 -> generated regional 3D bathymetry detail
 -> dependency/validation/export
 ```
 
-The synthetic globe is not a real Earth map or operational ocean product. It is a deterministic synthetic equirectangular field artifact for selecting benchmark-oriented operational windows. Coordinates are normalized longitude/latitude positions over a synthetic sphere. The `anchor.synthetic-globe-world` artifact records canonical equirectangular resolution, display texture resolution, broad generator parameters, land/ocean mask, distance to coast, shelf zone, shelf break, deep-basin potential, island/seamount potential, canyon potential, river-mouth influence, strait/sill influence, gulf/bay influence, open-ocean corridor, coarse flow-regime hints, scalar-regime hints, environment diversity, suitability, structured features, validation, provenance, claim boundaries, and `worldDigest`. The default canonical resolution is 4096 x 2048, and accepted generated worlds must be at least 2048 x 1024. Display textures may be downsampled for browser performance.
+The active source mode is `referenceBathymetryAtlas`. The `anchor.reference-bathymetry-atlas` artifact records source dataset identity, provider/version/resolution/unit metadata, preview extent, preview raster digest, layer summaries, provenance, claim boundaries, and `atlasDigest`. The selected `anchor.reference-bathymetry-window` records lon/lat bounds, local projection metadata, output/preview resolution, sampled depth/wet-land/slope statistics, detected tags, validation, provenance, claim boundaries, and `patchDigest`.
 
-The browser view renders the generated fields onto a visible Three.js sphere. The primary selector supports rotate, tilt, zoom, reset, layer controls, and a highlighted selected operational region. A flat projection may exist only as a secondary diagnostic/precision view. The primary left panel is intentionally simple: globe style/seed, globe layer, region selection, bathymetry action, and import/export; broad world tuning and boundary size controls are advanced disclosure controls. Mission duration, glider count, route planning, current/scalar hint lists, dependency tables, atlas preset examples, tile role controls, and source-tile diagnostics stay out of the Stage 1 primary Environment Studio controls.
+No preprocessed public GEBCO/ETOPO fixture is currently checked in. The bundled fallback is explicitly labeled `NO_REFERENCE_DATA_FIXTURE` and exists only to exercise the browser workflow. It must not be presented as GEBCO, ETOPO, calibrated survey bathymetry, certified navigation data, HYCOM, Copernicus, an operational ocean forecast, or a validated real-world ocean product. REAL-BATHY-R1 is therefore functionally wired but remains blocked for true public-reference-data claims until a preprocessed fixture is added.
 
-ENV-GLOBE-R1 adds a hard visual acceptance gate for this front door. The focused Playwright workflows write `test-results/env-globe-r1-owner-review/` with screenshots for default globe, rotated globe, zoomed globe, bathymetry layer, flow layer, selected globe region, and generated regional bathymetry. `qa-summary.json` records globe-rendering flags, canonical/display resolutions, world/window digests, rotation and zoom evidence, visible land/ocean/island metrics, selected-window area below 0.05 of the globe, source grid shape, bathymetry digest, forbidden Stage 1 control count, pixel-grid/flat-map flags, hidden-truth status, renderer cleanup, and unchanged simulation/scoring flags. `tools/js/audit_env_globe_r1_visual_acceptance.mjs` fails with `ENV_GLOBE_R1_VISUAL_ACCEPTANCE_FAIL` if the package does not satisfy those thresholds.
+The focused Playwright workflows write `test-results/real-bathy-r1-owner-review/` with screenshots for default atlas, zoomed atlas, selected bounding box, selected patch summary, and generated regional bathymetry. `qa-summary.json` records default source mode, procedural sandbox default status, reference dataset name, reference atlas digest, selected patch digest, bathymetry artifact digest, forbidden primary control count, hidden-truth status, validation status, and unchanged simulation/scoring flags.
 
-The selected `anchor.operational-globe-window` samples those fields to record normalized bounds, detected context, sampled stats, recommended domain size, source/preview resolution, bathymetry/flow/scalar regimes, suitability warnings, dataset tags, and `windowDigest`. Glider count, deployment, route planning, dive profiles, execution, replanning, and scoring remain Mission Workspace responsibilities. Environment Studio may show suggested use tags, but those are not mission settings.
+Glider count, deployment, route planning, dive profiles, execution, replanning, and scoring remain Mission Workspace responsibilities. Environment Studio may show source or patch context, but those are not mission settings.
 
-The derived `anchor.regional-mission-recipe` is the bridge into the window-conditioned bathymetry builder. It does not claim that currents, scalar fields, hotspots, starts, or benchmark bundles have been regenerated by selection alone. Those downstream artifacts remain `REQUIRES_REGENERATION`, `NOT_GENERATED`, or `NEEDS_VALIDATION` until the explicit FIELD-REGEN-R1 action updates them.
+Reference patch generation produces a bathymetry artifact and compact FIELD-REGEN inputs. It does not claim that currents, scalar fields, hotspots, starts, or benchmark bundles have been regenerated by selection alone. Those downstream artifacts remain `REQUIRES_REGENERATION`, `NOT_GENERATED`, or `NEEDS_VALIDATION` until an explicit regeneration action updates them.
+
+## ENV-GLOBE-R1 Synthetic Globe Compatibility Path
+
+The earlier synthetic globe front door remains a compatibility and experimental sandbox path. It can still create deterministic `anchor.synthetic-globe-world` artifacts, sample `anchor.operational-globe-window` regions, and generate regional bathymetry for synthetic benchmark experiments. It is not the default browser source mode after REAL-BATHY-R1.
 
 ## ENV-ATLAS-R1/R1.1 Compatibility Substrate
 
-The earlier Synthetic Ocean Atlas and Synthetic World Map modules remain pure compatibility substrates and algorithm sources for structured fields. They should not be treated as the primary browser UX. The current browser first screen is the synthetic globe and user-selected operational globe window.
+The earlier Synthetic Ocean Atlas, Synthetic World Map, and Synthetic Globe modules remain pure compatibility substrates and algorithm sources for structured fields. They should not be treated as the primary browser UX. The current browser first screen is the Reference Bathymetry Atlas and user-selected lon/lat reference patch.
 
 ## ENV-ATLAS-R1.1 Field Engine And Builder
 
