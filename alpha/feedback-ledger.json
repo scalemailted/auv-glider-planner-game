@@ -310,6 +310,35 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-014",
+      "title": "Flat synthetic world-map UI rejected; Environment Studio needs high-resolution synthetic globe selector.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Synthetic Globe Selector",
+      "summary": "Alpha review rejected the low-resolution local flat-map mental model. Environment Studio Stage 1 should generate a deterministic high-resolution equirectangular synthetic world-field artifact, render it as the primary interactive globe selector, let users select a small operational globe region, and generate regional 2.5D bathymetry from that selected context.",
+      "decision": "Accepted for ENV-GLOBE-R1 as a front-door reauthoring pass. The globe is the selector, the equirectangular fields are the canonical generated artifact, and regional bathymetry is the output. Currents, scalars, hotspots, launch-to-planning, simulation, scoring, planner behavior, and benchmark fairness remain unchanged.",
+      "proposedPhase": "ENV-GLOBE-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Environment Studio Stage 1 default is a visible interactive globe, not a flat rectangle or pixel-grid map.",
+        "The first artifact is `anchor.synthetic-globe-world` with canonical equirectangular resolution at least 2048 x 1024 and default 4096 x 2048.",
+        "Users can rotate and zoom the globe, inspect synthetic layers, and select a small operational region below 5 percent of the globe.",
+        "Selected regions produce `anchor.operational-globe-window` context and can generate regional 3D bathymetry through the existing builder.",
+        "Owner-review screenshots and QA summary are written under `test-results/env-globe-r1-owner-review/`.",
+        "No exported public artifact claims real Earth, GEBCO, ETOPO, HYCOM, Copernicus, calibrated survey data, operational forecast, certified navigation, hidden truth, simulation changes, or scoring changes."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

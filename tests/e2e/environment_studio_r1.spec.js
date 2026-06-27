@@ -8,14 +8,14 @@ import { launchFromMainMenuHub } from './helpers/SmokeSpecShared.js';
 
 let server;
 const BASE = 'http://127.0.0.1:9391';
-const OWNER_REVIEW_DIR = path.resolve('test-results', 'env-world-r1a-owner-review');
+const OWNER_REVIEW_DIR = path.resolve('test-results', 'env-globe-r1-owner-review');
 const REQUIRED_SCREENSHOTS = [
-  '01-world-default.png',
-  '02-world-pan.png',
-  '03-world-zoomed-out.png',
-  '04-world-layer-bathymetry.png',
-  '05-world-layer-flow.png',
-  '06-boundary-selected.png',
+  '01-globe-default.png',
+  '02-globe-rotated.png',
+  '03-globe-zoomed.png',
+  '04-globe-layer-bathymetry.png',
+  '05-globe-layer-flow.png',
+  '06-globe-region-selected.png',
   '07-regional-bathymetry-generated.png'
 ];
 const FORBIDDEN_STAGE_ONE_PATTERNS = [
@@ -35,8 +35,8 @@ const FORBIDDEN_STAGE_ONE_PATTERNS = [
 ];
 
 export const EXACT_TITLES = [
-  'Synthetic World Map Viewport',
-  'Boundary Window Generates Bathymetry'
+  'Synthetic Globe Selector',
+  'Globe Region Generates Bathymetry'
 ];
 
 test.setTimeout(180000);
@@ -56,19 +56,23 @@ test(EXACT_TITLES[0], async ({ page }) => {
   await openEnvironmentStudio(page);
 
   await expect(page.locator('#environment-studio-route')).toBeVisible();
-  await expect(page.locator('#mission-console')).toContainText('Synthetic World Map');
+  await expect(page.locator('#mission-console')).toContainText('Synthetic Globe');
   await expect(page.locator('#env-studio-world-style')).toBeVisible();
   await expect(page.locator('#env-studio-world-seed')).toBeVisible();
   await expect(page.locator('[data-env-studio-advanced-world-controls]')).toBeVisible();
   await expect(page.locator('[data-env-studio-advanced-world-controls]')).not.toHaveAttribute('open', '');
   await expect(page.locator('#env-world-island-density')).toHaveCount(1);
-  await expect(page.locator('[data-env-studio-world-map]')).toBeVisible();
+  await expect(page.locator('[data-env-studio-globe-host]')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.globeRendered), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.sphereVisible), { timeout: 15000 }).toBe(true);
+  await expect(page.locator('[data-env-studio-globe-canvas]')).toBeVisible();
+  await expect(page.locator('[data-env-studio-world-map]')).toHaveCount(0);
   await expect(page.locator('#mission-console')).toContainText('Land / Ocean');
   await expect(page.locator('#mission-console')).toContainText('Bathymetry Context');
-  await expect(page.locator('#mission-console')).toContainText('Flow Regime');
+  await expect(page.locator('#mission-console')).toContainText('Coarse Flow');
   await expect(page.locator('#mission-console')).toContainText('Scalar Regime');
   await expect(page.locator('#mission-console')).toContainText('Suitability');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('World Summary');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Globe Summary');
   await expect(page.locator('#mission-console')).not.toContainText('Intended Gliders');
   await expect(page.locator('#mission-console')).not.toContainText('Mission Duration');
   await expect(page.locator('#mission-console')).not.toContainText('Mission Scale');
@@ -80,19 +84,18 @@ test(EXACT_TITLES[0], async ({ page }) => {
   expect(styleDigest).toBeTruthy();
   expect(styleDigest).not.toBe(initialDigest);
 
-  const beforePan = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport);
-  await page.locator('[data-env-studio-world-map]').dragTo(page.locator('[data-env-studio-world-map]'), {
-    sourcePosition: { x: 420, y: 260 },
-    targetPosition: { x: 520, y: 310 }
-  });
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport?.panX), { timeout: 15000 }).not.toBe(beforePan.panX);
-  const afterPan = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport);
+  const rotationStart = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.rotationYawDegrees);
+  await page.locator('[data-env-globe-view-action="rotate-right"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.rotationYawDegrees), { timeout: 15000 }).not.toBe(rotationStart);
+  const rotationEnd = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.rotationYawDegrees);
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[1]);
-  const zoomStart = afterPan.zoom;
-  await page.locator('[data-env-world-view-action="zoom-out"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport?.zoom), { timeout: 15000 }).toBeLessThan(zoomStart);
-  const zoomEnd = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.viewport?.zoom);
+
+  const zoomStart = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.zoom);
+  await page.locator('[data-env-globe-view-action="zoom-in"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.zoom), { timeout: 15000 }).toBeGreaterThan(zoomStart);
+  const zoomEnd = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.cameraState?.zoom);
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[2]);
+
   await page.locator('[data-env-studio-world-layer="bathymetryContext"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldLayer), { timeout: 15000 }).toBe('bathymetryContext');
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[3]);
@@ -101,24 +104,23 @@ test(EXACT_TITLES[0], async ({ page }) => {
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[4]);
 
   await page.locator('[data-action="env-studio-draw-boundary"]').click();
-  await page.locator('[data-env-studio-world-map]').dragTo(page.locator('[data-env-studio-world-map]'), {
-    sourcePosition: { x: 470, y: 235 },
-    targetPosition: { x: 650, y: 375 }
-  });
+  await clickGlobeAtFraction(page, 0.72, 0.44);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindowDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[5]);
-  await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Environment Window');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Globe Region');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Flow-regime hints');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar-regime hints');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Suggested use tags');
 
   const debug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
   expect(debug.studioStage).toBe('worldMap');
-  expect(debug.worldArtifactType).toBe('anchor.synthetic-world-map');
+  expect(debug.worldArtifactType).toBe('anchor.synthetic-globe-world');
   expect(debug.worldDigest).toMatch(/^fnv1a32:/);
-  expect(debug.worldResolution.columns).toBeGreaterThan(0);
+  expect(debug.canonicalWorldResolution.width).toBeGreaterThanOrEqual(2048);
+  expect(debug.canonicalWorldResolution.height).toBeGreaterThanOrEqual(1024);
+  expect(debug.displayTextureResolution.width).toBeGreaterThan(0);
   expect(debug.selectedWindowDigest).toMatch(/^fnv1a32:/);
-  expect(debug.selectedWindowBounds.width).toBeGreaterThan(0);
+  expect(debug.selectedWindowBounds.widthNormalized).toBeGreaterThan(0);
   expect(debug.detectedContext.primary).toBeTruthy();
   expect(debug.sampledFieldStats.fieldStatsDigest).toMatch(/^fnv1a32:/);
   expect(debug.flowGenerationInputs.generatedArtifacts.currentField4D).toBe(false);
@@ -126,14 +128,17 @@ test(EXACT_TITLES[0], async ({ page }) => {
   expect(debug.hiddenTruthExposed).toBe(false);
   expect(debug.simulationChanged).toBe(false);
   expect(debug.scoringChanged).toBe(false);
+
   await writeQaSummary({
     ...ownerReviewSummaryFromDebug(debug),
-    panDelta: roundMetric(Math.hypot((afterPan.panX ?? 0) - (beforePan.panX ?? 0), (afterPan.panY ?? 0) - (beforePan.panY ?? 0))),
-    zoomStart,
-    zoomEnd,
-    primaryLeftPanelForbiddenControlCount: await countForbiddenStageOneControls(page),
+    rotationStart: roundMetric(rotationStart),
+    rotationEnd: roundMetric(rotationEnd),
+    zoomStart: roundMetric(zoomStart),
+    zoomEnd: roundMetric(zoomEnd),
+    forbiddenPrimaryControlCount: await countForbiddenStageOneControls(page),
     symbolicAtlasShapeCount: await countSymbolicAtlasShapes(page),
-    visibleCellGridDefault: await hasVisibleCellGrid(page),
+    pixelGridPrimaryView: await hasVisibleCellGrid(page),
+    flatMapPrimaryView: await hasFlatMapPrimaryView(page),
     screenshots: REQUIRED_SCREENSHOTS
   });
   browserErrors.assertClean();
@@ -165,9 +170,9 @@ test(EXACT_TITLES[1], async ({ page }) => {
 
   const exported = await downloadStudioProject(page);
   expect(exported.data.studioStage).toBe('regionalBathymetry');
-  expect(exported.data.worldMap.artifactType).toBe('anchor.synthetic-world-map');
+  expect(exported.data.worldMap.artifactType).toBe('anchor.synthetic-globe-world');
   expect(exported.data.worldDigest).toMatch(/^fnv1a32:/);
-  expect(exported.data.selectedOperationalWindow.artifactType).toBe('anchor.operational-window');
+  expect(exported.data.selectedOperationalWindow.artifactType).toBe('anchor.operational-globe-window');
   expect(exported.data.selectedOperationalWindow.windowDigest).toMatch(/^fnv1a32:/);
   expect(exported.data.regionalMissionRecipe.recipeDigest).toMatch(/^fnv1a32:/);
   expect(exported.data.bathymetryBuilderResult.builderDigest).toMatch(/^fnv1a32:/);
@@ -189,6 +194,7 @@ test(EXACT_TITLES[1], async ({ page }) => {
     simulationChanged: false,
     scoringChanged: false
   });
+
   const originalDigest = exported.data.projectDigest;
   const originalWindowDigest = exported.data.selectedOperationalWindow.windowDigest;
   const originalBathymetryDigest = exported.data.bathymetryArtifactDigest;
@@ -204,7 +210,9 @@ test(EXACT_TITLES[1], async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.routeActive === false), { timeout: 15000 }).toBe(true);
   await expect(page.locator('[data-environment-studio-preview-host]')).toHaveCount(0);
   const cleanup = await page.evaluate(() => ({
+    activeRendererCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.activeRendererCount,
     activeRafCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.activeRafCount,
+    activeCanvasCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.activeCanvasCount,
     previewRendererCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.previewRendererCount,
     terrainPreviewRafCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.terrainPreviewRafCount,
     terrainPreviewRendererCount: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.terrainPreviewRendererCount,
@@ -212,12 +220,21 @@ test(EXACT_TITLES[1], async ({ page }) => {
     hiddenTruthExposed: window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.hiddenTruthExposed
   }));
   expect(cleanup).toEqual({
+    activeRendererCount: 0,
     activeRafCount: 0,
+    activeCanvasCount: 0,
     previewRendererCount: 0,
     terrainPreviewRafCount: 0,
     terrainPreviewRendererCount: 0,
     stalePreviewObjects: 0,
     hiddenTruthExposed: false
+  });
+  await writeQaSummary({
+    rendererCleanup: {
+      activeRendererCount: cleanup.activeRendererCount,
+      activeRafCount: cleanup.activeRafCount,
+      activeCanvasCount: cleanup.activeCanvasCount
+    }
   });
   browserErrors.assertClean();
 });
@@ -239,6 +256,18 @@ async function configureOwnerReviewWorld(page) {
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.worldGeneratorParameters?.islandDensity), { timeout: 15000 }).toBe(0.77);
+}
+
+async function clickGlobeAtFraction(page, xFraction, yFraction) {
+  const host = page.locator('[data-env-studio-globe-host]');
+  const box = await host.boundingBox();
+  expect(box).toBeTruthy();
+  await host.click({
+    position: {
+      x: Math.max(1, Math.min(box.width - 1, box.width * xFraction)),
+      y: Math.max(1, Math.min(box.height - 1, box.height * yFraction))
+    }
+  });
 }
 
 async function resetOwnerReviewPackage() {
@@ -274,20 +303,31 @@ async function writeQaSummary(patch) {
 
 function ownerReviewSummaryFromDebug(debug = {}) {
   const visual = debug.visualAcceptance ?? {};
+  const selectedArea = visual.selectedWindowAreaFractionOfGlobe ?? visual.selectedWindowAreaFractionOfWorld ?? 0;
   return {
+    globeRendered: Boolean(debug.globeRendered || visual.globeRendered),
+    sphereVisible: Boolean(debug.sphereVisible || visual.sphereVisible),
+    flatMapPrimaryView: false,
+    canonicalWorldResolution: debug.canonicalWorldResolution ?? visual.canonicalWorldResolution ?? null,
+    displayTextureResolution: debug.displayTextureResolution ?? visual.displayTextureResolution ?? null,
     worldDigest: debug.worldDigest ?? visual.worldDigest ?? null,
     worldStyle: debug.worldStyle ?? visual.worldStyle ?? null,
     worldSeed: debug.worldSeed ?? visual.worldSeed ?? null,
     worldGeneratorParameters: debug.worldGeneratorParameters ?? null,
-    viewportWorldFraction: visual.viewportWorldFraction ?? null,
-    visibleLandmassCount: visual.visibleLandmassCount ?? 0,
+    selectedWindowAreaFractionOfGlobe: selectedArea,
+    selectedWindowDigest: debug.selectedWindowDigest ?? visual.selectedWindowDigest ?? null,
+    visibleLandFraction: visual.visibleLandFraction ?? 0,
+    visibleOceanFraction: visual.visibleOceanFraction ?? 0,
     visibleIslandCount: visual.visibleIslandCount ?? 0,
     visibleCoastlineComplexity: visual.visibleCoastlineComplexity ?? 0,
-    visibleOpenOceanFraction: visual.visibleOpenOceanFraction ?? 0,
-    selectedWindowAreaFractionOfWorld: visual.selectedWindowAreaFractionOfWorld ?? 0,
-    selectedWindowDigest: debug.selectedWindowDigest ?? visual.selectedWindowDigest ?? null,
     sourceGridShape: visual.sourceGridShape ?? debug.sourceGridShape ?? null,
     bathymetryArtifactDigest: visual.bathymetryArtifactDigest ?? debug.bathymetryArtifactDigest ?? null,
+    pixelGridPrimaryView: false,
+    rendererCleanup: visual.rendererCleanup ?? {
+      activeRendererCount: 0,
+      activeRafCount: 0,
+      activeCanvasCount: 0
+    },
     hiddenTruthExposed: false,
     simulationChanged: false,
     scoringChanged: false
@@ -308,6 +348,11 @@ async function hasVisibleCellGrid(page) {
   return count > 0;
 }
 
+async function hasFlatMapPrimaryView(page) {
+  const count = await page.locator('[data-env-studio-world-map]').count();
+  return count > 0;
+}
+
 function roundMetric(value) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.round(number * 1000000) / 1000000 : 0;
@@ -318,11 +363,11 @@ async function downloadStudioProject(page) {
     page.waitForEvent('download'),
     page.locator('#mission-console [data-action="env-studio-export-project"]').click()
   ]);
-  const path = await download.path();
-  const text = await fs.readFile(path, 'utf8');
+  const filePath = await download.path();
+  const text = await fs.readFile(filePath, 'utf8');
   return {
     filename: download.suggestedFilename(),
-    path,
+    path: filePath,
     data: JSON.parse(text)
   };
 }

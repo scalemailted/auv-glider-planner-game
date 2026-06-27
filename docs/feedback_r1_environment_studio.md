@@ -1,10 +1,10 @@
 # ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1/R1.1 responded to `ALPHA-FB-008` and `ALPHA-FB-009` with a structured atlas field engine and window-conditioned bathymetry builder. FIELD-REGEN-R1 responded to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from atlas-conditioned regional context. ENV-STUDIO-R2 responded to `ALPHA-FB-011` by making the browser workflow start from a deterministic synthetic world-map artifact and a user-selected operational boundary. ENV-WORLD-R1 responds to `ALPHA-FB-012` by hardening that front door into a pan/zoomable tiled procedural world map with drag-based boundary selection. ENV-WORLD-R1A responds to `ALPHA-FB-013` by adding hard browser visual acceptance evidence for that world-map-first workflow. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1/R1.1 responded to `ALPHA-FB-008` and `ALPHA-FB-009` with a structured atlas field engine and window-conditioned bathymetry builder. FIELD-REGEN-R1 responded to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from atlas-conditioned regional context. ENV-STUDIO-R2 responded to `ALPHA-FB-011` by making the browser workflow start from a deterministic synthetic world-map artifact and a user-selected operational boundary. ENV-WORLD-R1 responds to `ALPHA-FB-012` by hardening that front door into a pan/zoomable tiled procedural world map with drag-based boundary selection. ENV-WORLD-R1A responds to `ALPHA-FB-013` by adding hard browser visual acceptance evidence for that world-map-first workflow. ENV-GLOBE-R1 responds to `ALPHA-FB-014` by replacing the active Stage 1 front door with a high-resolution synthetic globe selector backed by canonical equirectangular world fields. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
 
 ## Feedback Classification
 
-The feedback is not a P0/P1 release blocker for the current Alpha because the Guided Mission, benchmark, solver-packet, Colab, Methods & Validation, and diagnostic workflows still operate on the curated deterministic environments.
+The original R0-R1 environment-authoring feedback was not a P0/P1 release blocker because the Guided Mission, benchmark, solver-packet, Colab, Methods & Validation, and diagnostic workflows still operated on curated deterministic environments. `ALPHA-FB-014` is tracked as P1 because the active Environment Studio front door risked a major scientific/product misrepresentation when a flat local map was presented as the generated world selector.
 
 It is classified as:
 
@@ -193,6 +193,27 @@ Scope:
 5. `tools/js/audit_env_world_r1a_visual_acceptance.mjs` enforces those thresholds and reports `ENV_WORLD_R1A_VISUAL_ACCEPTANCE_FAIL` on regression.
 
 R1A is a visual/product workflow gate. It does not add new fields, change field equations, launch missions from Studio projects, alter scoring, or change planner behavior.
+
+## What ENV-GLOBE-R1 Implements
+
+Implemented globe-first front-door reauthoring:
+
+```text
+ENV-GLOBE-R1 - High-Resolution Synthetic Globe Selector
+```
+
+Scope:
+
+1. Stage 1 now opens to a visible interactive **Synthetic Globe**, not a flat rectangle, local schematic, or pixel-grid world map.
+2. The first generated artifact is `anchor.synthetic-globe-world`: deterministic high-resolution equirectangular synthetic world fields with default canonical resolution 4096 x 2048 and accepted minimum 2048 x 1024.
+3. The globe supports rotate, tilt, zoom, reset, layer controls, and a selected operational-region overlay.
+4. Region selection creates `anchor.operational-globe-window` with normalized bounds, sampled field stats, detected context, recommended source/preview domain, regime hints, suitability, and digest.
+5. Generate 3D Bathymetry creates regional bathymetry from the selected globe window through the existing window-conditioned builder path.
+6. The browser workflows generate `test-results/env-globe-r1-owner-review/` screenshots for default globe, rotated globe, zoomed globe, bathymetry layer, flow layer, selected region, and generated regional bathymetry states.
+7. `qa-summary.json` records globe rendering, sphere visibility, canonical/display resolutions, world/window digests, rotation/zoom evidence, selected-window area below 5 percent of the globe, visible land/ocean/island metrics, forbidden primary-control count, pixel-grid/flat-map flags, bathymetry digest, renderer cleanup, hidden-truth status, and unchanged simulation/scoring flags.
+8. `tools/js/audit_env_globe_r1_visual_acceptance.mjs` enforces those thresholds and reports `ENV_GLOBE_R1_VISUAL_ACCEPTANCE_FAIL` on regression.
+
+ENV-GLOBE-R1 keeps current/scalar/hotspot regeneration separate. It does not add final CurrentField4D or ScalarField4D generation, change glider dynamics, launch missions from Studio projects, alter scoring, or change planner behavior.
 
 ## Staged Follow-Ups
 

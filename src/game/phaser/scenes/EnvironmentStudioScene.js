@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { markAnchorRouteReady } from '../../../app/production/AnchorAppBootReadiness.js';
 import { downloadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
 import {
@@ -53,11 +54,9 @@ import {
   sampleAtlasLayer
 } from '../../../core/editor/SyntheticOceanAtlas.js';
 import {
-  createSyntheticWorldTile,
-  syntheticWorldViewportVisualMetrics,
-  visibleSyntheticWorldTileKeys,
-  sampleWorldMapLayer
-} from '../../../core/editor/SyntheticWorldMap.js';
+  syntheticGlobeLayerColor,
+  syntheticGlobeViewportVisualMetrics
+} from '../../../core/editor/SyntheticGlobeWorld.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -68,11 +67,13 @@ export class EnvironmentStudioScene extends PhaserScene {
     super('EnvironmentStudioScene');
     this.objects = [];
     this.session = createEnvironmentStudioSession();
-    this.statusMessage = 'Generate a synthetic world map, select an operational boundary, then generate regional bathymetry.';
+    this.statusMessage = 'Generate a deterministic synthetic globe, select a small operational region, then generate regional bathymetry.';
     this.lastError = null;
     this.worldBoundaryDrawing = false;
     this.worldPointerState = null;
     this.worldTileCanvasCache = new Map();
+    this.globeRendererContext = null;
+    this.globeRegionSelectionMode = false;
   }
 
   create() {
@@ -352,11 +353,12 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   renderPreview() {
     if (!this.previewHost) return;
+    this.destroyGlobeRenderer();
     const project = buildEnvironmentStudioProject(this.session);
     if (this.session.studioStage === 'worldMap') {
       this.previewHost.innerHTML = worldMapPreviewHtml(this.session, project);
-      bindEnvironmentStudioWorldMapPreview(this, this.previewHost);
-      paintSyntheticWorldCanvas(this);
+      bindEnvironmentStudioGlobePreview(this, this.previewHost);
+      mountSyntheticGlobeRenderer(this, this.previewHost);
       return;
     }
     if (this.session.studioStage === 'atlasWindow') {
@@ -414,7 +416,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   setWorldStyle(styleId) {
     this.worldTileCanvasCache?.clear?.();
     this.session = setEnvironmentStudioWorldStyle(this.session, styleId, { seed: this.readWorldSeed() });
-    this.statusMessage = 'Generated a deterministic synthetic world map for the selected style.';
+    this.statusMessage = 'Generated a deterministic synthetic globe for the selected style.';
     this.lastError = null;
     this.render();
   }
@@ -423,7 +425,7 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.worldTileCanvasCache?.clear?.();
     this.session = setEnvironmentStudioWorldSeed(this.session, this.readWorldSeed());
     this.session = setEnvironmentStudioWorldGeneratorParameters(this.session, this.readWorldGeneratorParameters());
-    this.statusMessage = 'Generated synthetic world map from the current seed.';
+    this.statusMessage = 'Generated synthetic globe fields from the current seed.';
     this.lastError = null;
     this.render();
   }
@@ -431,7 +433,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   randomizeWorldSeed() {
     this.worldTileCanvasCache?.clear?.();
     this.session = randomizeEnvironmentStudioWorldSeed(this.session);
-    this.statusMessage = 'Randomized world seed and regenerated the synthetic world map.';
+    this.statusMessage = 'Randomized world seed and regenerated the synthetic globe.';
     this.lastError = null;
     this.render();
   }
@@ -439,7 +441,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   setWorldGeneratorParameters() {
     this.worldTileCanvasCache?.clear?.();
     this.session = setEnvironmentStudioWorldGeneratorParameters(this.session, this.readWorldGeneratorParameters());
-    this.statusMessage = 'Updated broad synthetic world-generation controls and regenerated the world map.';
+    this.statusMessage = 'Updated broad synthetic globe controls and regenerated equirectangular fields.';
     this.lastError = null;
     this.render();
   }
@@ -452,79 +454,82 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   resetWorldView() {
-    this.session = setEnvironmentStudioWorldView(this.session, { panX: 0, panY: 0, zoom: 1 });
-    this.statusMessage = 'World map view reset.';
+    this.session = setEnvironmentStudioWorldView(this.session, { panX: 0, panY: 0, rotationYawDegrees: -22, rotationPitchDegrees: 8, zoom: 1 });
+    this.statusMessage = 'Globe view reset.';
     this.lastError = null;
     this.render();
   }
 
   toggleBoundaryDrawing() {
-    this.worldBoundaryDrawing = !this.worldBoundaryDrawing;
-    this.statusMessage = this.worldBoundaryDrawing
-      ? 'Boundary drawing enabled. Drag on the world map to define the operational window.'
-      : 'Boundary drawing disabled.';
+    this.globeRegionSelectionMode = !this.globeRegionSelectionMode;
+    this.worldBoundaryDrawing = this.globeRegionSelectionMode;
+    this.statusMessage = this.globeRegionSelectionMode
+      ? 'Region selection enabled. Click the globe to place the operational region.'
+      : 'Region selection disabled.';
     this.render();
   }
 
   selectWorldWindowAt(x, y) {
-    const width = this.numberValue('env-studio-window-width', 0.28);
-    const height = this.numberValue('env-studio-window-height', 0.22);
+    const width = this.numberValue('env-studio-window-width', 0.18);
+    const height = this.numberValue('env-studio-window-height', 0.16);
     this.session = selectEnvironmentStudioWorldWindow(this.session, {
-      x: x - width / 2,
-      y: y - height / 2,
-      width,
-      height,
+      centerLonNormalized: x,
+      centerLatNormalized: y,
+      widthNormalized: width,
+      heightNormalized: height,
       sourceResolutionMeters: this.numberValue('env-studio-source-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-studio-preview-resolution', 6000),
-      selectedBy: 'world-map-click'
+      selectedBy: 'globe-click'
     });
-    this.statusMessage = 'Selected operational boundary from synthetic world-map fields.';
+    this.statusMessage = 'Selected operational region from synthetic globe fields.';
     this.lastError = null;
     this.worldBoundaryDrawing = false;
+    this.globeRegionSelectionMode = false;
     this.render();
   }
 
   selectWorldWindowFromControls() {
-    const current = this.session.selectedOperationalWindow?.bounds ?? { x: 0.28, y: 0.24 };
+    const current = this.session.selectedOperationalWindow?.bounds ?? { centerLonNormalized: 0.75, centerLatNormalized: 0.44 };
     this.session = selectEnvironmentStudioWorldWindow(this.session, {
-      x: current.x,
-      y: current.y,
-      width: this.numberValue('env-studio-window-width', 0.28),
-      height: this.numberValue('env-studio-window-height', 0.22),
+      centerLonNormalized: current.centerLonNormalized ?? 0.75,
+      centerLatNormalized: current.centerLatNormalized ?? 0.44,
+      widthNormalized: this.numberValue('env-studio-window-width', 0.18),
+      heightNormalized: this.numberValue('env-studio-window-height', 0.16),
       sourceResolutionMeters: this.numberValue('env-studio-source-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-studio-preview-resolution', 6000),
-      selectedBy: 'world-map-controls'
+      selectedBy: 'globe-controls'
     });
-    this.statusMessage = 'Selected operational boundary from current control values.';
+    this.statusMessage = 'Selected operational globe region from current control values.';
     this.lastError = null;
     this.render();
   }
 
   clearWorldWindow() {
     this.session = clearEnvironmentStudioWorldWindow(this.session);
-    this.statusMessage = 'Cleared selected operational boundary.';
+    this.globeRegionSelectionMode = false;
+    this.statusMessage = 'Cleared selected operational globe region.';
     this.lastError = null;
     this.render();
   }
 
   adjustWorldWindow(action) {
-    const bounds = this.session.selectedOperationalWindow?.bounds ?? { x: 0.28, y: 0.24, width: 0.28, height: 0.22 };
+    const bounds = this.session.selectedOperationalWindow?.bounds ?? { centerLonNormalized: 0.75, centerLatNormalized: 0.44, widthNormalized: 0.18, heightNormalized: 0.16 };
     const patch = { ...bounds };
-    const step = 0.035;
-    if (action === 'left') patch.x -= step;
-    if (action === 'right') patch.x += step;
-    if (action === 'up') patch.y -= step;
-    if (action === 'down') patch.y += step;
-    if (action === 'wider') patch.width += step;
-    if (action === 'narrower') patch.width -= step;
-    if (action === 'taller') patch.height += step;
-    if (action === 'shorter') patch.height -= step;
+    const step = 0.025;
+    if (action === 'left') patch.centerLonNormalized -= step;
+    if (action === 'right') patch.centerLonNormalized += step;
+    if (action === 'up') patch.centerLatNormalized -= step;
+    if (action === 'down') patch.centerLatNormalized += step;
+    if (action === 'wider') patch.widthNormalized += step;
+    if (action === 'narrower') patch.widthNormalized -= step;
+    if (action === 'taller') patch.heightNormalized += step;
+    if (action === 'shorter') patch.heightNormalized -= step;
     this.session = patchEnvironmentStudioWorldWindow(this.session, {
       ...patch,
       sourceResolutionMeters: this.numberValue('env-studio-source-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-studio-preview-resolution', 6000)
     });
-    this.statusMessage = 'Moved or resized selected operational boundary.';
+    this.statusMessage = 'Moved or resized selected operational globe region.';
     this.lastError = null;
     this.render();
   }
@@ -533,7 +538,7 @@ export class EnvironmentStudioScene extends PhaserScene {
     try {
       if (!this.session.selectedOperationalWindow?.windowDigest) this.selectWorldWindowFromControls();
       this.session = generateEnvironmentStudioRegionFromWorldWindow(this.session, { seed: this.readWorldSeed() });
-      this.statusMessage = 'Generated regional 3D bathymetry from the selected synthetic world-map window.';
+      this.statusMessage = 'Generated regional 3D bathymetry from the selected synthetic globe region.';
       this.lastError = null;
     } catch (error) {
       this.lastError = error?.message ?? String(error);
@@ -543,8 +548,8 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   exportWorldMap() {
-    downloadJSON('anchor_synthetic_world_map.json', this.session.worldMap);
-    this.statusMessage = 'Exported synthetic world-map artifact JSON.';
+    downloadJSON('anchor_synthetic_globe_world.json', this.session.worldMap);
+    this.statusMessage = 'Exported synthetic globe artifact JSON.';
     this.render();
   }
 
@@ -770,18 +775,18 @@ export class EnvironmentStudioScene extends PhaserScene {
         worldSeed: payload.seed,
         selectedOperationalWindow: null
       });
-      this.statusMessage = `Imported world map ${file.name}.`;
+      this.statusMessage = `Imported synthetic globe ${file.name}.`;
       this.lastError = null;
     } catch (error) {
       this.lastError = error?.message ?? String(error);
-      this.statusMessage = 'World map import failed.';
+      this.statusMessage = 'Synthetic globe import failed.';
       this.app.toast?.(this.lastError, 'warning');
     }
     this.render();
   }
 
   readWorldSeed() {
-    return String(this.app.elements?.consoleRoot?.querySelector?.('#env-studio-world-seed')?.value ?? this.session.worldSeed ?? 'env-world-001');
+    return String(this.app.elements?.consoleRoot?.querySelector?.('#env-studio-world-seed')?.value ?? this.session.worldSeed ?? 'env-globe-001');
   }
 
   readWorldGeneratorParameters() {
@@ -901,8 +906,23 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   destroyPreviewHost() {
+    this.destroyGlobeRenderer();
     this.previewHost?.remove?.();
     this.previewHost = null;
+  }
+
+  destroyGlobeRenderer() {
+    const context = this.globeRendererContext;
+    if (!context) return;
+    if (context.rafId != null) globalThis.cancelAnimationFrame?.(context.rafId);
+    context.texture?.dispose?.();
+    context.geometry?.dispose?.();
+    context.material?.dispose?.();
+    context.overlayGeometry?.dispose?.();
+    context.overlayMaterial?.dispose?.();
+    context.renderer?.dispose?.();
+    context.renderer?.domElement?.remove?.();
+    this.globeRendererContext = null;
   }
 
   clearRightPanel() {
@@ -932,11 +952,16 @@ export class EnvironmentStudioScene extends PhaserScene {
       version: ENVIRONMENT_STUDIO_SCENE_VERSION,
       routeActive: Boolean(active),
       visualAcceptance: environmentStudioVisualAcceptanceMetrics(this.session),
+      globeRendered: Boolean(active && this.globeRendererContext?.renderer),
+      sphereVisible: Boolean(active && this.globeRendererContext?.sphere),
+      flatMapPrimaryView: false,
       terrainPreviewRendererCount: 0,
       terrainPreviewRafCount: 0,
       stalePreviewObjects: 0,
-      previewRendererCount: 0,
-      activeRafCount: 0,
+      previewRendererCount: Boolean(active && this.globeRendererContext?.renderer) ? 1 : 0,
+      activeRendererCount: Boolean(active && this.globeRendererContext?.renderer) ? 1 : 0,
+      activeRafCount: Boolean(active && this.globeRendererContext?.rafId != null) ? 1 : 0,
+      activeCanvasCount: Boolean(active && this.globeRendererContext?.renderer?.domElement?.isConnected) ? 1 : 0,
       hiddenTruthExposed: false,
       simulationChanged: false,
       scoringChanged: false
@@ -945,22 +970,26 @@ export class EnvironmentStudioScene extends PhaserScene {
 }
 
 function environmentStudioVisualAcceptanceMetrics(session = {}) {
-  const viewport = syntheticWorldViewportVisualMetrics(session.worldMap, {
-    ...(session.worldView ?? {}),
-    layer: session.worldLayer ?? 'bathymetryContext',
-    canvasWidth: 960,
-    canvasHeight: 520
-  });
+  const viewport = syntheticGlobeViewportVisualMetrics(session.worldMap, session.worldView ?? {});
   const selected = session.selectedOperationalWindow;
   const bounds = selected?.bounds;
   const domain = selected?.recommendedDomain;
+  const selectedArea = bounds
+    ? Number(bounds.widthNormalized ?? bounds.width ?? 0) * Number(bounds.heightNormalized ?? bounds.height ?? 0)
+    : 0;
   return {
     ...viewport,
-    selectedWindowAreaFractionOfWorld: bounds ? roundMetric(Number(bounds.width) * Number(bounds.height)) : 0,
+    selectedWindowAreaFractionOfGlobe: roundMetric(selectedArea),
+    selectedWindowAreaFractionOfWorld: roundMetric(selectedArea),
     selectedWindowDigest: selected?.windowDigest ?? null,
     selectedWindowBounds: bounds ?? null,
     sourceGridShape: domain ? { columns: domain.columns, rows: domain.rows } : null,
     bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
+    rendererCleanup: {
+      activeRendererCount: 0,
+      activeRafCount: 0,
+      activeCanvasCount: 0
+    },
     primaryLeftPanelForbiddenControlCount: null,
     simulationChanged: false,
     scoringChanged: false
@@ -970,22 +999,22 @@ function environmentStudioVisualAcceptanceMetrics(session = {}) {
 function worldMapConsoleHtml(scene, summary = {}) {
   const session = scene.session;
   const selected = session.selectedOperationalWindow;
-  const bounds = selected?.bounds ?? { width: 0.28, height: 0.22 };
+  const bounds = selected?.bounds ?? { widthNormalized: 0.18, heightNormalized: 0.16 };
   const parameters = session.worldMap?.generatorParameters ?? {};
   return `
     <section class="console-header">
       <div class="console-kicker">Simulation Lab / Environment Studio</div>
-      <h1>Synthetic World Map</h1>
-      <p>Generate a deterministic synthetic ocean world, select an operational boundary, then generate regional 3D bathymetry.</p>
+      <h1>Synthetic Globe</h1>
+      <p>Generate deterministic synthetic equirectangular world fields, select a small globe region, then generate regional 3D bathymetry.</p>
     </section>
     <section class="console-status">
       <span>Stage</span>
-      <strong>World Map</strong>
+      <strong>Synthetic Globe</strong>
       <small>${escapeHtml(scene.statusMessage)}</small>
     </section>
     ${scene.lastError ? `<section class="console-section" data-keep-title="true"><h2>Warning</h2><div class="hud-muted">${escapeHtml(scene.lastError)}</div></section>` : ''}
     <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-studio-stage="worldMap">
-      <h2>Synthetic World</h2>
+      <h2>Synthetic Globe</h2>
       <label class="compact-field">
         World Style
         <select id="env-studio-world-style" data-env-studio-world-style>
@@ -996,13 +1025,13 @@ function worldMapConsoleHtml(scene, summary = {}) {
         World Seed
         <input id="env-studio-world-seed" data-env-studio-world-seed type="text" value="${escapeAttr(session.worldSeed)}" />
       </label>
-      <button class="console-button primary" type="button" data-action="env-studio-generate-world">Generate New World</button>
+      <button class="console-button primary" type="button" data-action="env-studio-generate-world">Generate New Globe</button>
       <button class="console-button secondary" type="button" data-action="env-studio-randomize-world-seed">Randomize Seed</button>
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Advanced</h2>
       <details data-env-studio-advanced-world-controls>
-        <summary>Advanced World Controls</summary>
+        <summary>Advanced Globe Controls</summary>
         ${rangeInput('Water Level', 'env-world-water-level', parameters.waterLevel ?? 0.5, 0.05, 0.95, 0.01)}
         ${rangeInput('Landmass Scale', 'env-world-landmass-scale', parameters.landmassScale ?? 0.55, 0.05, 1, 0.01)}
         ${rangeInput('Island Density', 'env-world-island-density', parameters.islandDensity ?? 0.5, 0, 1, 0.01)}
@@ -1014,25 +1043,25 @@ function worldMapConsoleHtml(scene, summary = {}) {
       </details>
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
-      <h2>Map Layers</h2>
-      <div class="environment-studio-camera-row" aria-label="Map layer controls">
+      <h2>Globe Layer</h2>
+      <div class="environment-studio-camera-row" aria-label="Globe layer controls">
         ${SYNTHETIC_WORLD_LAYER_OPTIONS.map((layer) => `<button type="button" class="${layer.id === session.worldLayer ? 'active' : ''}" data-env-studio-world-layer="${escapeAttr(layer.id)}">${escapeHtml(layer.label)}</button>`).join('')}
       </div>
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
-      <h2>Boundary Selection</h2>
-      <div class="environment-studio-camera-row" aria-label="Boundary controls">
-        <button type="button" class="${scene.worldBoundaryDrawing ? 'active' : ''}" data-action="env-studio-draw-boundary">Draw Boundary</button>
-        <button type="button" data-action="env-studio-select-boundary">Select Boundary</button>
-        <button type="button" data-action="env-studio-clear-boundary">Clear Boundary</button>
+      <h2>Region Selection</h2>
+      <div class="environment-studio-camera-row" aria-label="Region controls">
+        <button type="button" class="${scene.globeRegionSelectionMode ? 'active' : ''}" data-action="env-studio-draw-boundary">Select Region</button>
+        <button type="button" data-action="env-studio-select-boundary">Use Current Region</button>
+        <button type="button" data-action="env-studio-clear-boundary">Clear Region</button>
       </div>
       <details data-env-studio-boundary-details>
-        <summary>Boundary Details</summary>
-        ${numberInput('Window Width', 'env-studio-window-width', bounds.width, 0.08, 0.78, 0.01)}
-        ${numberInput('Window Height', 'env-studio-window-height', bounds.height, 0.08, 0.78, 0.01)}
+        <summary>Region Details</summary>
+        ${numberInput('Region Width', 'env-studio-window-width', bounds.widthNormalized ?? bounds.width ?? 0.18, 0.05, 0.22, 0.01)}
+        ${numberInput('Region Height', 'env-studio-window-height', bounds.heightNormalized ?? bounds.height ?? 0.16, 0.05, 0.2, 0.01)}
         ${numberInput('Source Resolution', 'env-studio-source-resolution', selected?.recommendedDomain?.sourceResolutionMeters ?? 1500, 500, 6000, 100)}
         ${numberInput('Preview Resolution', 'env-studio-preview-resolution', selected?.recommendedDomain?.previewResolutionMeters ?? 6000, 1000, 12000, 500)}
-        <div class="environment-studio-camera-row" aria-label="Move or resize selected boundary">
+        <div class="environment-studio-camera-row" aria-label="Move or resize selected region">
           <button type="button" data-env-studio-world-window-action="left">Left</button>
           <button type="button" data-env-studio-world-window-action="right">Right</button>
           <button type="button" data-env-studio-world-window-action="up">Up</button>
@@ -1045,16 +1074,16 @@ function worldMapConsoleHtml(scene, summary = {}) {
       </details>
       <div class="cell-inspector-metrics">
         ${metricHtml('World Digest', shortDigest(session.worldMap?.worldDigest))}
-        ${metricHtml('Window Digest', shortDigest(selected?.windowDigest))}
-        ${metricHtml('Source grid', selected?.recommendedDomain ? `${selected.recommendedDomain.columns} x ${selected.recommendedDomain.rows}` : 'select window')}
+        ${metricHtml('Region Digest', shortDigest(selected?.windowDigest))}
+        ${metricHtml('Source grid', selected?.recommendedDomain ? `${selected.recommendedDomain.columns} x ${selected.recommendedDomain.rows}` : 'select region')}
         ${metricHtml('Layer', labelize(session.worldLayer))}
       </div>
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Actions</h2>
       <button class="console-button primary" type="button" data-action="env-studio-generate-world-bathymetry">Generate 3D Bathymetry</button>
-      <button class="console-button secondary" type="button" data-action="env-studio-export-world-map">Export World Map</button>
-      <label class="console-button secondary" for="env-studio-import-world-map-file">Import World Map</label>
+      <button class="console-button secondary" type="button" data-action="env-studio-export-world-map">Export Globe</button>
+      <label class="console-button secondary" for="env-studio-import-world-map-file">Import Globe</label>
       <input id="env-studio-import-world-map-file" type="file" accept="application/json,.json" hidden data-env-studio-import-world-map />
       <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
       <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
@@ -1167,14 +1196,15 @@ function worldMapRightPanelHtml(session = {}) {
   if (!selected) {
     return `
       <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
-        <div class="console-kicker">World Summary</div>
+        <div class="console-kicker">Globe Summary</div>
         <h2>${escapeHtml(world.styleLabel ?? labelize(session.worldStyle))}</h2>
-        <p class="hud-muted">Deterministic synthetic semantic field artifact. Not Earth, not calibrated survey data, and not an operational forecast. Draw a boundary box to define the operational region.</p>
+        <p class="hud-muted">Deterministic synthetic equirectangular world fields rendered on a globe. Not Earth, not calibrated survey data, and not an operational forecast. Select a region on the globe to generate regional bathymetry.</p>
         <div class="cell-inspector-metrics">
           ${metricHtml('Style', world.styleLabel ?? labelize(session.worldStyle))}
           ${metricHtml('Seed', session.worldSeed)}
           ${metricHtml('World Digest', shortDigest(world.worldDigest))}
-          ${metricHtml('Resolution', `${world.resolution?.columns ?? 0} x ${world.resolution?.rows ?? 0}`)}
+          ${metricHtml('Source fields', `${world.canonicalWorldResolution?.width ?? world.resolution?.columns ?? 0} x ${world.canonicalWorldResolution?.height ?? world.resolution?.rows ?? 0}`)}
+          ${metricHtml('Display texture', `${world.displayTextureResolution?.width ?? 0} x ${world.displayTextureResolution?.height ?? 0}`)}
           ${metricHtml('Land fraction', formatNumber(world.layerSummaries?.landOceanMask?.mean))}
           ${metricHtml('Ocean fraction', formatNumber(1 - Number(world.layerSummaries?.landOceanMask?.mean ?? 0)))}
           ${metricHtml('Shelf fraction', formatNumber(world.layerSummaries?.shelfZone?.mean))}
@@ -1187,13 +1217,16 @@ function worldMapRightPanelHtml(session = {}) {
     `;
   }
   const stats = selected.sampledFieldStats?.layerMeans ?? {};
+  const bounds = selected.bounds ?? {};
   return `
     <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
-      <div class="console-kicker">Selected Environment Window</div>
-      <h2>${escapeHtml(selected.detectedContext?.primaryLabel ?? selected.detectedContext?.primaryContextLabel ?? 'Selected Window')}</h2>
-      <p class="hud-muted">Window context comes from sampled synthetic world fields. Suggested use tags are not mission settings.</p>
+      <div class="console-kicker">Selected Globe Region</div>
+      <h2>${escapeHtml(selected.detectedContext?.primaryLabel ?? selected.detectedContext?.primaryContextLabel ?? 'Selected Region')}</h2>
+      <p class="hud-muted">Region context comes from sampled synthetic globe fields. Suggested use tags are not mission settings.</p>
       <div class="cell-inspector-metrics">
-        ${metricHtml('Bounds', `${formatNumber(selected.bounds?.x)}, ${formatNumber(selected.bounds?.y)} / ${formatNumber(selected.bounds?.width)} x ${formatNumber(selected.bounds?.height)}`)}
+        ${metricHtml('Normalized center', `${formatNumber(bounds.centerLonNormalized)}, ${formatNumber(bounds.centerLatNormalized)}`)}
+        ${metricHtml('Normalized size', `${formatNumber(bounds.widthNormalized)} x ${formatNumber(bounds.heightNormalized)}`)}
+        ${metricHtml('Area fraction', formatNumber(Number(bounds.widthNormalized ?? 0) * Number(bounds.heightNormalized ?? 0)))}
         ${metricHtml('Domain', `${formatNumber((selected.recommendedDomain?.widthMeters ?? 0) / 1000)} x ${formatNumber((selected.recommendedDomain?.heightMeters ?? 0) / 1000)} km`)}
         ${metricHtml('Source resolution', `${selected.recommendedDomain?.sourceResolutionMeters ?? 'n/a'} m`)}
         ${metricHtml('Preview resolution', `${selected.recommendedDomain?.previewResolutionMeters ?? 'n/a'} m`)}
@@ -1222,44 +1255,45 @@ function worldMapPreviewHtml(session = {}, project = {}) {
     <main id="environment-studio-route" class="environment-studio-route environment-studio-world-route">
       <header class="environment-studio-route-header">
         <div>
-          <p class="console-kicker">Synthetic World Map</p>
+          <p class="console-kicker">Synthetic Globe Selector</p>
           <h1>${escapeHtml(session.worldMap?.styleLabel ?? labelize(session.worldStyle))}</h1>
-          <p>The map is the first generated artifact: semantic synthetic ocean fields in normalized coordinates, not a real-world basemap.</p>
+          <p>The first artifact is deterministic high-resolution synthetic equirectangular world fields. The globe visualizes those fields; it is not Earth.</p>
         </div>
         <div class="environment-studio-digest">
           <span>World Digest</span>
           <strong>${escapeHtml(shortDigest(session.worldMap?.worldDigest))}</strong>
-          <span>Window</span>
+          <span>Region</span>
           <strong>${escapeHtml(shortDigest(selected?.windowDigest))}</strong>
         </div>
       </header>
-      <section class="environment-studio-preview-grid" aria-label="Synthetic world map preview">
-        <section class="environment-studio-terrain-preview" data-env-studio-world-map-panel>
-          <h2>Synthetic World Map</h2>
+      <section class="environment-studio-preview-grid" aria-label="Synthetic globe preview">
+        <section class="environment-studio-terrain-preview environment-studio-globe-preview" data-env-studio-globe-panel>
+          <h2>Synthetic Globe</h2>
           <div class="environment-studio-preview-meta">
             ${metricHtml('Style', session.worldMap?.styleLabel ?? labelize(session.worldStyle))}
             ${metricHtml('Seed', session.worldSeed)}
             ${metricHtml('Layer', labelize(session.worldLayer))}
+            ${metricHtml('Source fields', `${session.worldMap?.canonicalWorldResolution?.width ?? 0} x ${session.worldMap?.canonicalWorldResolution?.height ?? 0}`)}
             ${metricHtml('Zoom', `${formatNumber(session.worldView?.zoom ?? 1)}x`)}
-            <div><span>Coordinates</span><strong data-env-world-coordinate>move over map</strong></div>
+            <div><span>Coordinates</span><strong data-env-world-coordinate>click globe</strong></div>
           </div>
-          <canvas data-env-studio-world-map width="960" height="520" style="width:100%;max-height:62vh;border-radius:8px;background:#04101d;display:block;"></canvas>
-          <div class="environment-studio-camera-row" aria-label="World map view controls">
-            <button type="button" data-env-world-view-action="zoom-out">Zoom Out</button>
-            <button type="button" data-env-world-view-action="zoom-in">Zoom In</button>
-            <button type="button" data-env-world-view-action="pan-left">Pan Left</button>
-            <button type="button" data-env-world-view-action="pan-right">Pan Right</button>
-            <button type="button" data-env-world-view-action="pan-up">Pan Up</button>
-            <button type="button" data-env-world-view-action="pan-down">Pan Down</button>
+          <div class="environment-studio-globe-host" data-env-studio-globe-host aria-label="Interactive synthetic globe"></div>
+          <div class="environment-studio-camera-row" aria-label="Globe view controls">
+            <button type="button" data-env-globe-view-action="rotate-left">Rotate Left</button>
+            <button type="button" data-env-globe-view-action="rotate-right">Rotate Right</button>
+            <button type="button" data-env-globe-view-action="tilt-up">Tilt Up</button>
+            <button type="button" data-env-globe-view-action="tilt-down">Tilt Down</button>
+            <button type="button" data-env-globe-view-action="zoom-in">Zoom In</button>
+            <button type="button" data-env-globe-view-action="zoom-out">Zoom Out</button>
             <button type="button" data-env-world-view-action="reset">Reset View</button>
           </div>
-          <div class="environment-studio-depth-ramp" aria-label="World map legend">
+          <div class="environment-studio-depth-ramp" aria-label="Globe legend">
             <span style="background:#6e7749">land</span>
             <span style="background:#2f9a9c">shelf</span>
             <span style="background:#215f9b">basin</span>
             <span style="background:#6844aa">feature</span>
           </div>
-          <p class="hud-muted">Drag while Draw Boundary is active to define the selected operational window. Three.js only visualizes later regional artifacts; it does not create these fields.</p>
+          <p class="hud-muted">Click Select Region, then click the globe to place a small operational region. Three.js visualizes the generated fields; it does not create them.</p>
         </section>
       </section>
       <section class="environment-studio-boundary">
@@ -1270,151 +1304,117 @@ function worldMapPreviewHtml(session = {}, project = {}) {
   `;
 }
 
-function bindEnvironmentStudioWorldMapPreview(scene, root) {
-  const canvas = root?.querySelector?.('[data-env-studio-world-map]');
-  canvas?.addEventListener('pointerdown', (event) => {
-    const point = worldPointFromCanvas(scene, canvas, event);
-    canvas.setPointerCapture?.(event.pointerId);
-    scene.worldPointerState = {
-      mode: scene.worldBoundaryDrawing ? 'boundary' : 'pan',
-      pointerId: event.pointerId,
-      startPoint: point,
-      lastClientX: event.clientX,
-      lastClientY: event.clientY,
-      moved: false
-    };
+function bindEnvironmentStudioGlobePreview(scene, root) {
+  const host = root?.querySelector?.('[data-env-studio-globe-host]');
+  host?.addEventListener('click', (event) => {
+    const point = globePointFromPointer(scene, host, event);
+    const label = root?.querySelector?.('[data-env-world-coordinate]');
+    if (label) label.textContent = `${formatNumber(point.x)}, ${formatNumber(point.y)}`;
+    if (scene.globeRegionSelectionMode || !scene.session.selectedOperationalWindow) scene.selectWorldWindowAt(point.x, point.y);
   });
-  canvas?.addEventListener('mousemove', (event) => {
-    const point = worldPointFromCanvas(scene, canvas, event);
+  host?.addEventListener('mousemove', (event) => {
+    const point = globePointFromPointer(scene, host, event);
     const label = root?.querySelector?.('[data-env-world-coordinate]');
     if (label) label.textContent = `${formatNumber(point.x)}, ${formatNumber(point.y)}`;
   });
-  canvas?.addEventListener('pointermove', (event) => {
-    const state = scene.worldPointerState;
-    if (!state || state.pointerId !== event.pointerId) return;
-    state.moved = true;
-    if (state.mode === 'pan') {
-      const rect = canvas.getBoundingClientRect();
-      const zoom = Math.max(0.75, Number(scene.session.worldView?.zoom ?? 1));
-      const dx = (event.clientX - state.lastClientX) / Math.max(1, rect.width) / zoom;
-      const dy = (event.clientY - state.lastClientY) / Math.max(1, rect.height) / zoom;
-      state.lastClientX = event.clientX;
-      state.lastClientY = event.clientY;
-      scene.session = setEnvironmentStudioWorldView(scene.session, {
-        panX: Number(scene.session.worldView?.panX ?? 0) + dx,
-        panY: Number(scene.session.worldView?.panY ?? 0) + dy
-      });
-      paintSyntheticWorldCanvas(scene);
-    }
-  });
-  canvas?.addEventListener('pointerup', (event) => {
-    const state = scene.worldPointerState;
-    if (!state || state.pointerId !== event.pointerId) return;
-    canvas.releasePointerCapture?.(event.pointerId);
-    const point = worldPointFromCanvas(scene, canvas, event);
-    scene.worldPointerState = null;
-    if (state.mode === 'boundary') {
-      const minX = Math.min(state.startPoint.x, point.x);
-      const maxX = Math.max(state.startPoint.x, point.x);
-      const minY = Math.min(state.startPoint.y, point.y);
-      const maxY = Math.max(state.startPoint.y, point.y);
-      const width = Math.max(0.09, maxX - minX || scene.numberValue('env-studio-window-width', 0.28));
-      const height = Math.max(0.09, maxY - minY || scene.numberValue('env-studio-window-height', 0.22));
-      scene.session = selectEnvironmentStudioWorldWindow(scene.session, {
-        x: state.moved ? minX : point.x - width / 2,
-        y: state.moved ? minY : point.y - height / 2,
-        width,
-        height,
-        sourceResolutionMeters: scene.numberValue('env-studio-source-resolution', 1500),
-        previewResolutionMeters: scene.numberValue('env-studio-preview-resolution', 6000),
-        selectedBy: state.moved ? 'world-map-drag-boundary' : 'world-map-click'
-      });
-      scene.statusMessage = 'Selected operational boundary from synthetic world-map fields.';
-      scene.lastError = null;
-      scene.worldBoundaryDrawing = false;
-      scene.render();
-      return;
-    }
-    if (!state.moved && !scene.session.selectedOperationalWindow) scene.selectWorldWindowAt(point.x, point.y);
-    else scene.render();
-  });
-  canvas?.addEventListener('pointercancel', (event) => {
-    if (scene.worldPointerState?.pointerId === event.pointerId) scene.worldPointerState = null;
-  });
-  canvas?.addEventListener('wheel', (event) => {
+  host?.addEventListener('wheel', (event) => {
     event.preventDefault();
     const current = scene.session.worldView ?? {};
     scene.session = setEnvironmentStudioWorldView(scene.session, {
-      zoom: Number(current.zoom ?? 1) + (event.deltaY < 0 ? 0.25 : -0.25)
+      zoom: Number(current.zoom ?? 1) + (event.deltaY < 0 ? 0.18 : -0.18)
     });
     scene.render();
   }, { passive: false });
-  root?.querySelectorAll?.('[data-env-world-view-action]')?.forEach((button) => {
+  root?.querySelectorAll?.('[data-env-globe-view-action], [data-env-world-view-action]')?.forEach((button) => {
     button.addEventListener('click', () => {
-      const action = button.getAttribute('data-env-world-view-action');
+      const action = button.getAttribute('data-env-globe-view-action') ?? button.getAttribute('data-env-world-view-action');
       const view = scene.session.worldView ?? {};
       if (action === 'reset') return scene.resetWorldView();
       const patch = { ...view };
-      if (action === 'zoom-in') patch.zoom = Number(view.zoom ?? 1) + 0.25;
-      if (action === 'zoom-out') patch.zoom = Number(view.zoom ?? 1) - 0.25;
-      if (action === 'pan-left') patch.panX = Number(view.panX ?? 0) - 0.04;
-      if (action === 'pan-right') patch.panX = Number(view.panX ?? 0) + 0.04;
-      if (action === 'pan-up') patch.panY = Number(view.panY ?? 0) - 0.04;
-      if (action === 'pan-down') patch.panY = Number(view.panY ?? 0) + 0.04;
+      if (action === 'zoom-in') patch.zoom = Number(view.zoom ?? 1) + 0.2;
+      if (action === 'zoom-out') patch.zoom = Number(view.zoom ?? 1) - 0.2;
+      if (action === 'rotate-left') patch.rotationYawDegrees = Number(view.rotationYawDegrees ?? -22) - 16;
+      if (action === 'rotate-right') patch.rotationYawDegrees = Number(view.rotationYawDegrees ?? -22) + 16;
+      if (action === 'tilt-up') patch.rotationPitchDegrees = Number(view.rotationPitchDegrees ?? 8) + 8;
+      if (action === 'tilt-down') patch.rotationPitchDegrees = Number(view.rotationPitchDegrees ?? 8) - 8;
       scene.session = setEnvironmentStudioWorldView(scene.session, patch);
       scene.render();
     });
   });
 }
 
-function paintSyntheticWorldCanvas(scene) {
-  const canvas = scene.previewHost?.querySelector?.('[data-env-studio-world-map]');
-  if (!canvas?.getContext) return;
-  const width = Math.max(240, Number(canvas.width) || 960);
-  const height = Math.max(160, Number(canvas.height) || 520);
-  const ctx = canvas.getContext('2d');
-  const layer = scene.session.worldLayer ?? 'bathymetryContext';
-  const visible = visibleSyntheticWorldTileKeys(scene.session.worldMap, {
-    ...scene.session.worldView,
-    canvasWidth: width,
-    canvasHeight: height,
-    layer
-  });
-  ctx.save();
-  ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = '#03111f';
-  ctx.fillRect(0, 0, width, height);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  for (const key of visible.keys) {
-    const tile = createSyntheticWorldTile(scene.session.worldMap, { ...key, layer, gridSize: 36 });
-    const tileCanvas = worldTileCanvas(scene, tile, layer);
-    const rect = tileCanvasRect(tile.bounds, visible.worldBounds, width, height);
-    if (rect.width <= 0 || rect.height <= 0) continue;
-    ctx.drawImage(tileCanvas, rect.x, rect.y, rect.width, rect.height);
-  }
-  drawWorldFlowOverlay(ctx, scene.session, visible.worldBounds, width, height);
-  drawWorldWindowOverlay(ctx, scene.session, width, height, visible.worldBounds);
-  ctx.restore();
+function mountSyntheticGlobeRenderer(scene, root) {
+  const host = root?.querySelector?.('[data-env-studio-globe-host]');
+  if (!host || !THREE?.WebGLRenderer) return;
+  const rect = host.getBoundingClientRect();
+  const width = Math.max(480, Math.round(rect.width || 960));
+  const height = Math.max(360, Math.round(rect.height || 560));
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio || 1));
+  renderer.setSize(width, height, false);
+  renderer.domElement.className = 'environment-studio-globe-canvas';
+  renderer.domElement.setAttribute('data-env-studio-globe-canvas', 'true');
+  host.replaceChildren(renderer.domElement);
+
+  const threeScene = new THREE.Scene();
+  threeScene.background = new THREE.Color(0x04111f);
+  const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 20);
+  const zoom = Math.max(0.75, Number(scene.session.worldView?.zoom ?? 1));
+  camera.position.set(0, 0, 3.2 / zoom);
+  camera.lookAt(0, 0, 0);
+  threeScene.add(new THREE.HemisphereLight(0xcaf7ff, 0x06111f, 1.4));
+  const light = new THREE.DirectionalLight(0xffffff, 1.8);
+  light.position.set(3, 2, 4);
+  threeScene.add(light);
+
+  const textureCanvas = createGlobeTextureCanvas(scene.session.worldMap, scene.session.worldLayer);
+  const texture = new THREE.CanvasTexture(textureCanvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = Math.min(4, renderer.capabilities?.getMaxAnisotropy?.() ?? 1);
+  const geometry = new THREE.SphereGeometry(1, 96, 48);
+  const material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, metalness: 0.02 });
+  const sphere = new THREE.Mesh(geometry, material);
+  const rootGroup = new THREE.Group();
+  rootGroup.add(sphere);
+  const yaw = degreesToRadians(scene.session.worldView?.rotationYawDegrees ?? -22);
+  const pitch = degreesToRadians(scene.session.worldView?.rotationPitchDegrees ?? 8);
+  rootGroup.rotation.y = yaw;
+  rootGroup.rotation.x = pitch;
+  const overlay = createGlobeRegionOverlay(scene.session.selectedOperationalWindow?.bounds);
+  if (overlay) rootGroup.add(overlay.line);
+  threeScene.add(rootGroup);
+  renderer.render(threeScene, camera);
+  scene.globeRendererContext = {
+    renderer,
+    threeScene,
+    camera,
+    rootGroup,
+    sphere,
+    texture,
+    geometry,
+    material,
+    overlayGeometry: overlay?.geometry ?? null,
+    overlayMaterial: overlay?.material ?? null,
+    rafId: null
+  };
+  scene.publishDebug(true);
 }
 
-function worldTileCanvas(scene, tile = {}, layer = 'bathymetryContext') {
-  const cacheKey = `${tile.tileDigest}:${layer}`;
-  if (scene.worldTileCanvasCache?.has?.(cacheKey)) return scene.worldTileCanvasCache.get(cacheKey);
-  const size = 96;
+function createGlobeTextureCanvas(worldMap = {}, layer = 'bathymetryContext') {
+  const resolution = worldMap.displayTextureResolution ?? { width: 1024, height: 512 };
+  const width = Math.max(256, Math.min(2048, Math.round(Number(resolution.width ?? 1024))));
+  const height = Math.max(128, Math.min(1024, Math.round(Number(resolution.height ?? 512))));
   const canvas = globalThis.document?.createElement?.('canvas');
   if (!canvas) return { width: 1, height: 1 };
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext('2d');
-  const image = ctx.createImageData(size, size);
+  const image = ctx.createImageData(width, height);
   const data = image.data;
-  for (let py = 0; py < size; py += 1) {
-    for (let px = 0; px < size; px += 1) {
-      const x = tile.bounds.x + ((px + 0.5) / size) * tile.bounds.width;
-      const y = tile.bounds.y + ((py + 0.5) / size) * tile.bounds.height;
-      const color = worldLayerColor(scene.session.worldMap, layer, x, y);
-      const offset = (py * size + px) * 4;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const color = syntheticGlobeLayerColor(worldMap, layer, (x + 0.5) / width, (y + 0.5) / height);
+      const offset = (y * width + x) * 4;
       data[offset] = color[0];
       data[offset + 1] = color[1];
       data[offset + 2] = color[2];
@@ -1422,156 +1422,72 @@ function worldTileCanvas(scene, tile = {}, layer = 'bathymetryContext') {
     }
   }
   ctx.putImageData(image, 0, 0);
-  scene.worldTileCanvasCache?.set?.(cacheKey, canvas);
-  if ((scene.worldTileCanvasCache?.size ?? 0) > 160) scene.worldTileCanvasCache.clear();
   return canvas;
 }
 
-function tileCanvasRect(bounds = {}, worldBounds = {}, width = 1, height = 1) {
-  const x0 = (Number(bounds.x ?? 0) - Number(worldBounds.x ?? 0)) / Math.max(0.000001, Number(worldBounds.width ?? 1)) * width;
-  const y0 = (Number(bounds.y ?? 0) - Number(worldBounds.y ?? 0)) / Math.max(0.000001, Number(worldBounds.height ?? 1)) * height;
-  const x1 = (Number(bounds.x ?? 0) + Number(bounds.width ?? 0) - Number(worldBounds.x ?? 0)) / Math.max(0.000001, Number(worldBounds.width ?? 1)) * width;
-  const y1 = (Number(bounds.y ?? 0) + Number(bounds.height ?? 0) - Number(worldBounds.y ?? 0)) / Math.max(0.000001, Number(worldBounds.height ?? 1)) * height;
-  return {
-    x: Math.floor(Math.max(-width, x0)),
-    y: Math.floor(Math.max(-height, y0)),
-    width: Math.ceil(Math.min(width * 2, x1 - x0 + 1)),
-    height: Math.ceil(Math.min(height * 2, y1 - y0 + 1))
-  };
+function createGlobeRegionOverlay(bounds = null) {
+  if (!bounds) return null;
+  const width = Number(bounds.widthNormalized ?? bounds.width ?? 0);
+  const height = Number(bounds.heightNormalized ?? bounds.height ?? 0);
+  const centerLon = Number(bounds.centerLonNormalized ?? 0.5);
+  const centerLat = Number(bounds.centerLatNormalized ?? 0.5);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  const lon0 = centerLon - width / 2;
+  const lon1 = centerLon + width / 2;
+  const lat0 = centerLat - height / 2;
+  const lat1 = centerLat + height / 2;
+  const points = [
+    ...globeArcPoints(lon0, lat0, lon1, lat0),
+    ...globeArcPoints(lon1, lat0, lon1, lat1),
+    ...globeArcPoints(lon1, lat1, lon0, lat1),
+    ...globeArcPoints(lon0, lat1, lon0, lat0)
+  ];
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineBasicMaterial({ color: 0xffe66d, transparent: true, opacity: 0.98, depthTest: false });
+  const line = new THREE.Line(geometry, material);
+  line.renderOrder = 10;
+  return { line, geometry, material };
 }
 
-function drawWorldFlowOverlay(ctx, session = {}, worldBounds = {}, width = 1, height = 1) {
-  if (!['bathymetryContext', 'coarseFlowRegime', 'suitability'].includes(session.worldLayer)) return;
-  ctx.save();
-  ctx.strokeStyle = 'rgba(210, 244, 255, 0.5)';
-  ctx.fillStyle = 'rgba(210, 244, 255, 0.55)';
-  ctx.lineWidth = 1.4;
-  const columns = 9;
-  const rows = 5;
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const x = worldBounds.x + ((column + 0.5) / columns) * worldBounds.width;
-      const y = worldBounds.y + ((row + 0.5) / rows) * worldBounds.height;
-      const land = sampleWorldMapLayer(session.worldMap, 'landOceanMask', x, y);
-      if (land > 0.54) continue;
-      const shelf = sampleWorldMapLayer(session.worldMap, 'shelfZone', x, y);
-      const basin = sampleWorldMapLayer(session.worldMap, 'deepBasinPotential', x, y);
-      const strait = sampleWorldMapLayer(session.worldMap, 'straitSillInfluence', x, y);
-      const angle = strait > 0.2 ? 0 : shelf > basin ? -0.45 : 0.9;
-      const speed = 9 + sampleWorldMapLayer(session.worldMap, 'coarseFlowRegime', x, y) * 1.4;
-      const cx = (x - worldBounds.x) / worldBounds.width * width;
-      const cy = (y - worldBounds.y) / worldBounds.height * height;
-      const dx = Math.cos(angle) * speed;
-      const dy = Math.sin(angle) * speed;
-      ctx.beginPath();
-      ctx.moveTo(cx - dx * 0.5, cy - dy * 0.5);
-      ctx.lineTo(cx + dx * 0.5, cy + dy * 0.5);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx + dx * 0.5, cy + dy * 0.5);
-      ctx.lineTo(cx + dx * 0.5 - Math.cos(angle - 0.65) * 5, cy + dy * 0.5 - Math.sin(angle - 0.65) * 5);
-      ctx.lineTo(cx + dx * 0.5 - Math.cos(angle + 0.65) * 5, cy + dy * 0.5 - Math.sin(angle + 0.65) * 5);
-      ctx.closePath();
-      ctx.fill();
-    }
+function globeArcPoints(lon0, lat0, lon1, lat1) {
+  const points = [];
+  const steps = 20;
+  for (let index = 0; index <= steps; index += 1) {
+    const t = index / steps;
+    points.push(globePointToVector(lerpNumber(lon0, lon1, t), lerpNumber(lat0, lat1, t), 1.014));
   }
-  ctx.restore();
+  return points;
 }
 
-function drawWorldWindowOverlay(ctx, session = {}, width = 1, height = 1, worldBounds = null) {
-  const bounds = session.selectedOperationalWindow?.bounds;
-  if (!bounds) return;
-  const visibleBounds = worldBounds ?? visibleSyntheticWorldTileKeys(session.worldMap, { ...session.worldView, canvasWidth: width, canvasHeight: height }).worldBounds;
-  const toCanvas = (x, y) => ({
-    x: (x - visibleBounds.x) / Math.max(0.000001, visibleBounds.width) * width,
-    y: (y - visibleBounds.y) / Math.max(0.000001, visibleBounds.height) * height
-  });
-  const p0 = toCanvas(bounds.x, bounds.y);
-  const p1 = toCanvas(bounds.x + bounds.width, bounds.y + bounds.height);
-  const x = Math.min(p0.x, p1.x);
-  const y = Math.min(p0.y, p1.y);
-  const w = Math.abs(p1.x - p0.x);
-  const h = Math.abs(p1.y - p0.y);
-  ctx.save();
-  ctx.strokeStyle = '#f8e36c';
-  ctx.lineWidth = 4;
-  ctx.setLineDash([12, 7]);
-  ctx.strokeRect(x, y, w, h);
-  ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(248, 227, 108, 0.12)';
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = '#f8e36c';
-  ctx.font = '16px sans-serif';
-  ctx.fillText('Operational Boundary', x + 10, Math.max(22, y - 8));
-  ctx.restore();
+function globePointToVector(lonNormalized = 0.5, latNormalized = 0.5, radius = 1) {
+  const lon = (lonNormalized - 0.5) * Math.PI * 2;
+  const lat = (0.5 - latNormalized) * Math.PI;
+  const cosLat = Math.cos(lat);
+  return new THREE.Vector3(
+    Math.sin(lon) * cosLat * radius,
+    Math.sin(lat) * radius,
+    Math.cos(lon) * cosLat * radius
+  );
 }
 
-function worldPointFromCanvas(scene, canvas, event) {
-  const rect = canvas.getBoundingClientRect();
+function globePointFromPointer(scene, host, event) {
+  const rect = host.getBoundingClientRect();
   const sx = (event.clientX - rect.left) / Math.max(1, rect.width);
   const sy = (event.clientY - rect.top) / Math.max(1, rect.height);
-  return normalizedWorldPoint(scene, sx, sy);
-}
-
-function normalizedWorldPoint(scene, sx, sy) {
-  const view = scene.session.worldView ?? {};
-  const zoom = Math.max(0.1, Number(view.zoom ?? 1) || 1);
+  const yaw = Number(scene.session.worldView?.rotationYawDegrees ?? -22) / 360;
+  const pitch = Number(scene.session.worldView?.rotationPitchDegrees ?? 8) / 180;
   return {
-    x: Math.max(0, Math.min(1, (sx - 0.5) / zoom + 0.5 - Number(view.panX ?? 0))),
-    y: Math.max(0, Math.min(1, (sy - 0.5) / zoom + 0.5 - Number(view.panY ?? 0)))
+    x: clampMetric(sx + yaw * 0.35, 0, 1),
+    y: clampMetric(sy - pitch * 0.2, 0.04, 0.96)
   };
 }
 
-function worldLayerColor(worldMap = {}, layer = 'bathymetryContext', x = 0.5, y = 0.5) {
-  const land = sampleWorldMapLayer(worldMap, 'landOceanMask', x, y);
-  const distance = sampleWorldMapLayer(worldMap, 'distanceToCoast', x, y);
-  const shelf = sampleWorldMapLayer(worldMap, 'shelfZone', x, y);
-  const basin = sampleWorldMapLayer(worldMap, 'deepBasinPotential', x, y);
-  const canyon = sampleWorldMapLayer(worldMap, 'canyonPotential', x, y);
-  const island = sampleWorldMapLayer(worldMap, 'islandSeamountPotential', x, y);
-  const river = sampleWorldMapLayer(worldMap, 'riverMouthInfluence', x, y);
-  const strait = sampleWorldMapLayer(worldMap, 'straitSillInfluence', x, y);
-  if (land > 0.56) {
-    const inland = clampMetric(distance + land * 0.35, 0, 1);
-    const base = mixRgb([73, 111, 66], [168, 142, 88], inland);
-    const coastTint = Math.max(0, 1 - distance);
-    return rgba(mixRgb(base, [107, 134, 82], coastTint * 0.45));
-  }
-  if (layer === 'landOceanMask') {
-    const coast = clampMetric(1 - distance, 0, 1);
-    return rgba(mixRgb([8, 38, 86], [54, 164, 171], coast * 0.72 + shelf * 0.18));
-  }
-  if (layer === 'coarseFlowRegime') {
-    const regime = sampleWorldMapLayer(worldMap, 'coarseFlowRegime', x, y) / 8;
-    return rgba(mixRgb([10, 48, 98], [62, 208, 203], clampMetric(regime + strait * 0.18, 0, 1)));
-  }
-  if (layer === 'scalarRegime') {
-    const scalar = sampleWorldMapLayer(worldMap, 'scalarRegime', x, y) / 8;
-    return rgba(mixRgb([28, 50, 108], [190, 118, 174], clampMetric(scalar + river * 0.12, 0, 1)));
-  }
-  if (layer === 'suitability') {
-    const suitability = sampleWorldMapLayer(worldMap, 'suitability', x, y);
-    return rgba(mixRgb([16, 54, 108], [82, 210, 151], suitability));
-  }
-  if (river > 0.36) return [90, 156, 100, 255];
-  if (strait > 0.34) return [72, 177, 174, 255];
-  if (island > 0.38) return [178, 163, 96, 255];
-  if (canyon > 0.32) return [58, 76, 148, 255];
-  if (shelf > basin) return rgba(mixRgb([32, 96, 134], [58, 177, 178], shelf));
-  return rgba(mixRgb([6, 25, 72], [28, 76, 138], basin));
+function degreesToRadians(value) {
+  return Number(value ?? 0) * Math.PI / 180;
 }
 
-function mixRgb(a = [0, 0, 0], b = [0, 0, 0], t = 0) {
-  const amount = clampMetric(t, 0, 1);
-  return [
-    Math.round(Number(a[0] ?? 0) + (Number(b[0] ?? 0) - Number(a[0] ?? 0)) * amount),
-    Math.round(Number(a[1] ?? 0) + (Number(b[1] ?? 0) - Number(a[1] ?? 0)) * amount),
-    Math.round(Number(a[2] ?? 0) + (Number(b[2] ?? 0) - Number(a[2] ?? 0)) * amount)
-  ];
-}
-
-function rgba(rgb = [0, 0, 0], alpha = 255) {
-  return [rgb[0], rgb[1], rgb[2], alpha];
+function lerpNumber(a, b, t) {
+  return Number(a ?? 0) + (Number(b ?? 0) - Number(a ?? 0)) * Number(t ?? 0);
 }
 
 function clampMetric(value, min, max) {

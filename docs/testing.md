@@ -1363,11 +1363,14 @@ node tools/js/smoke_synthetic_world_map_generator.mjs
 node tools/js/smoke_synthetic_world_tile_generator.mjs
 node tools/js/smoke_operational_window_selection.mjs
 node tools/js/smoke_world_window_bathymetry_generation.mjs
+node tools/js/smoke_synthetic_globe_world_generator.mjs
+node tools/js/smoke_operational_globe_window_selection.mjs
+node tools/js/smoke_globe_window_bathymetry_generation.mjs
 node tools/js/smoke_atlas_conditioned_current_builder.mjs
 node tools/js/smoke_atlas_conditioned_scalar_builder.mjs
 node tools/js/audit_atlas_conditioned_field_regeneration.mjs
 node ./node_modules/@playwright/test/cli.js test tests/e2e/environment_studio_r1.spec.js --reporter=line --workers=1
-node tools/js/audit_env_world_r1a_visual_acceptance.mjs
+node tools/js/audit_env_globe_r1_visual_acceptance.mjs
 npm.cmd run test:packages
 ```
 
@@ -1379,17 +1382,17 @@ The R1.1 regional smoke asserts regional preset normalization, Environment Scale
 
 The ENV-ATLAS-R1/R1.1 smokes assert Synthetic Ocean Atlas creation, atlas digest stability, procedural field layers, operational window normalization and field sampling, context inference, Regional Mission Recipe generation, recipe-to-Studio conversion, window-conditioned bathymetry generation, generated regional detail, export/import round trip, builder metadata, FIELD-REGEN-R1 flow-generation input preservation, deferred current/scalar/hotspot dependency states before field generation, and hidden-truth rejection.
 
-The ENV-WORLD-R1 smokes assert deterministic `anchor.synthetic-world-map` generation, style/seed digest stability, broad generator-parameter preservation, bounded semantic layers, deterministic `anchor.synthetic-world-map-tile` generation, visible viewport tile bounds, sampled `anchor.operational-window` context, stable window digests, regional recipe creation, window-conditioned bathymetry generation, honest dependency states, project import/export round trip, and no real-Earth, operational-forecast, calibrated-product, or hidden-truth claims.
+The ENV-GLOBE-R1 smokes assert deterministic `anchor.synthetic-globe-world` generation, style/seed digest stability, canonical resolution at least 2048 x 1024, display-texture metadata, bounded semantic layers, sampled `anchor.operational-globe-window` context, stable window digests, small selected-window area, regional recipe creation, window-conditioned bathymetry generation, honest dependency states, project import/export round trip, and no real-Earth, operational-forecast, calibrated-product, certified-navigation, or hidden-truth claims. Older ENV-WORLD-R1 map smokes remain compatibility coverage for field-generation substrates.
 
-The ENV-WORLD-R1A visual acceptance audit reads `test-results/env-world-r1a-owner-review/` after the focused browser workflow. It requires screenshots for default world, panned world, zoomed-out world, bathymetry layer, flow layer, selected boundary, and generated regional bathymetry, plus a `qa-summary.json` with world/window digests, pan/zoom evidence, visible land/island/open-ocean/coastline metrics, selected-window area below 0.15 of the world, source grid shape, bathymetry digest, forbidden Stage 1 control count of zero, symbolic-atlas shape count of zero, no visible cell grid by default, no hidden-truth exposure, and no simulation/scoring changes. Regression message: `ENV_WORLD_R1A_VISUAL_ACCEPTANCE_FAIL`.
+The ENV-GLOBE-R1 visual acceptance audit reads `test-results/env-globe-r1-owner-review/` after the focused browser workflow. It requires screenshots for default globe, rotated globe, zoomed globe, bathymetry layer, flow layer, selected globe region, and generated regional bathymetry, plus a `qa-summary.json` with globe-rendering flags, canonical/display resolutions, world/window digests, rotation/zoom evidence, visible land/ocean/island metrics, selected-window area below 0.05 of the globe, source grid shape, bathymetry digest, forbidden Stage 1 control count of zero, no flat-map primary view, no pixel-grid primary view, no hidden-truth exposure, renderer cleanup, and no simulation/scoring changes. Regression message: `ENV_GLOBE_R1_VISUAL_ACCEPTANCE_FAIL`.
 
 The FIELD-REGEN-R1 smokes assert atlas-conditioned package-backed synthetic `CurrentField4D` generation, scalar field generation, hotspot candidates, stable digests, finite diagnostics, zero nonzero land/below-bottom current vectors, depth/time variation, compact project metadata, dependency-state transitions to `CURRENT` for current/scalar/hotspots, `NEEDS_VALIDATION` for starts/drop zones, and no hidden-truth, HYCOM, Marine Copernicus, calibrated-product, or operational-forecast claims.
 
 The usefulness audit generates coastal shelf, semi-enclosed gulf, island chain, shelf break/canyon, river mouth, strait/sill, and open-ocean eddy windows. It allows explicit `WARN` results for hard cases but rejects hard failures, missing connected wet water, missing feature diversity, missing mission-suitability metadata, hidden-truth leakage, calibrated ocean claims, and operational forecast claims.
 
-The focused Playwright workflows are `Synthetic World Map Viewport` and `Boundary Window Generates Bathymetry`. They generate the ENV-WORLD-R1A owner-review screenshots and summary package.
+The focused Playwright workflows are `Synthetic Globe Selector` and `Globe Region Generates Bathymetry`. They generate the ENV-GLOBE-R1 owner-review screenshots and summary package.
 
-Environment Studio tests must not change simulation, scoring, generated mission semantics, benchmark fairness, or Alpha Product Hub pillar count. The Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain. The synthetic world map is not Earth and not operational ocean data; it is a semantic field artifact used to select operational windows for benchmark environment generation. Currents, scalars, hotspots, launch-to-planning, starts/drop-zone validation, and benchmark bundles remain staged follow-ups unless an explicit later workflow generates them.
+Environment Studio tests must not change simulation, scoring, generated mission semantics, benchmark fairness, or Alpha Product Hub pillar count. The Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain. The synthetic globe is not Earth and not operational ocean data; it is an equirectangular synthetic field artifact used to select operational windows for benchmark environment generation. Currents, scalars, hotspots, launch-to-planning, starts/drop-zone validation, and benchmark bundles remain staged follow-ups unless an explicit later workflow generates them.
 
 ## Codec Package Gates
 

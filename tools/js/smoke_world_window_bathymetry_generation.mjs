@@ -19,18 +19,18 @@ let session = createEnvironmentStudioSession({
   }
 });
 assert.equal(session.studioStage, 'worldMap');
-assert.equal(session.worldMap.artifactType, 'anchor.synthetic-world-map');
+assert.equal(session.worldMap.artifactType, 'anchor.synthetic-globe-world');
 assert.equal(session.selectedOperationalWindow, null);
 
 session = selectEnvironmentStudioWorldWindow(session, {
-  x: 0.26,
-  y: 0.24,
-  width: 0.32,
-  height: 0.3,
+  x: 0.66,
+  y: 0.36,
+  width: 0.18,
+  height: 0.16,
   sourceResolutionMeters: 1800,
   previewResolutionMeters: 7200
 });
-assert.equal(session.selectedOperationalWindow.artifactType, 'anchor.operational-window');
+assert.equal(session.selectedOperationalWindow.artifactType, 'anchor.operational-globe-window');
 assert.ok(session.selectedOperationalWindow.windowDigest.startsWith('fnv1a32:'));
 assert.ok(session.selectedOperationalWindow.sampledFieldStats.fieldStatsDigest.startsWith('fnv1a32:'));
 assert.ok(session.regionalMissionRecipe.recipeDigest.startsWith('fnv1a32:'));
@@ -68,8 +68,8 @@ for (const tile of generated.tiles) {
 
 const project = buildEnvironmentStudioProject(generated);
 assert.equal(project.studioStage, 'regionalBathymetry');
-assert.equal(project.worldMap.artifactType, 'anchor.synthetic-world-map');
-assert.equal(project.selectedOperationalWindow.artifactType, 'anchor.operational-window');
+assert.equal(project.worldMap.artifactType, 'anchor.synthetic-globe-world');
+assert.equal(project.selectedOperationalWindow.artifactType, 'anchor.operational-globe-window');
 assert.equal(project.dependencyGraph.nodes.currentArtifact.state, 'REQUIRES_REGENERATION');
 assert.equal(project.flowGenerationInputs.generatedArtifacts.hotspots, false);
 
