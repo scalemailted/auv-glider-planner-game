@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { canonicalJsonStringify } from '../../packages/codecs/src/index.js';
 import {
   NO_REFERENCE_DATA_FIXTURE,
+  REFERENCE_BATHYMETRY_BLOCKED_MESSAGE,
   buildBathymetryFromReferenceWindow,
   createDefaultReferenceBathymetryWindow,
   createReferenceBathymetryAtlas
@@ -15,10 +16,23 @@ import {
   validateEnvironmentStudioProject
 } from '../../src/core/editor/EnvironmentStudioProject.js';
 
-const atlas = createReferenceBathymetryAtlas();
+const blockedAtlas = createReferenceBathymetryAtlas();
+const blockedWindow = createDefaultReferenceBathymetryWindow(blockedAtlas);
+assert.equal(blockedAtlas.provenance.fixtureStatus, NO_REFERENCE_DATA_FIXTURE);
+assert.throws(
+  () => buildBathymetryFromReferenceWindow(blockedAtlas, blockedWindow),
+  new RegExp(REFERENCE_BATHYMETRY_BLOCKED_MESSAGE.split(':')[0]),
+  'default checked-in placeholder cannot generate reference-backed bathymetry'
+);
+
+const { manifest, fixture } = fixtureManifest();
+const atlas = createReferenceBathymetryAtlas({
+  manifest,
+  referenceFixtures: [fixture]
+});
 const window = createDefaultReferenceBathymetryWindow(atlas);
 const result = buildBathymetryFromReferenceWindow(atlas, window, {
-  seed: 'real-bathy-r1-reference-patch-smoke'
+  seed: 'bathy-data-r1-reference-patch-smoke'
 });
 
 assert.equal(result.type, 'anchor.reference-patch-bathymetry-builder-result');
@@ -28,8 +42,7 @@ assert.equal(result.patchDigest, window.patchDigest);
 assert.ok(result.bathymetryArtifactDigest);
 assert.equal(result.bathymetryArtifactDigest, result.bathymetryArtifact.artifactDigest);
 assert.equal(result.validationReport.valid, true);
-assert.equal(result.validationReport.status, 'WARN');
-assert.match(result.validationReport.warnings.join('\n'), /REAL_BATHY_R1_BLOCKED_WAITING_FOR_REFERENCE_FIXTURE/);
+assert.notEqual(result.validationReport.status, 'FAIL');
 
 const field = result.bathymetryField;
 assert.ok(field.bottomDepthMeters.length > 0, 'field has depth rows');
@@ -48,16 +61,19 @@ assert.equal(flow.dependencyPlan.scalarFields, 'REQUIRES_REGENERATION');
 assert.equal(flow.dependencyPlan.hotspots, 'REQUIRES_REGENERATION');
 assert.equal(flow.dependencyPlan.startsDropZones, 'NEEDS_VALIDATION');
 assert.equal(flow.dependencyPlan.benchmarkBundle, 'REQUIRES_REGENERATION');
-assert.equal(flow.sourceDataset.name, NO_REFERENCE_DATA_FIXTURE);
+assert.equal(flow.sourceDataset.name, 'ETOPO_2022_TEST_FIXTURE');
 
 let session = createEnvironmentStudioSession({
-  seed: 'real-bathy-r1-studio-smoke'
+  seed: 'bathy-data-r1-studio-smoke',
+  referenceBathymetryManifest: manifest,
+  referenceFixtures: [fixture]
 });
 assert.equal(session.sourceMode, 'referenceBathymetryAtlas');
 assert.equal(session.studioStage, 'referenceAtlas');
+assert.equal(session.referenceAtlas.sourceDataset.referenceDataAvailable, true);
 session = selectEnvironmentStudioReferenceWindow(session, window.bounds);
 session = generateEnvironmentStudioRegionFromReferenceWindow(session, {
-  seed: 'real-bathy-r1-studio-smoke:generated'
+  seed: 'bathy-data-r1-studio-smoke:generated'
 });
 
 assert.equal(session.studioStage, 'regionalBathymetry');
@@ -70,7 +86,7 @@ assert.equal(session.dependencyGraph.nodes.startsDropZones.state, 'NEEDS_VALIDAT
 
 const project = buildEnvironmentStudioProject(session);
 assert.equal(project.sourceMode, 'referenceBathymetryAtlas');
-assert.equal(project.referenceAtlas.sourceDataset.name, NO_REFERENCE_DATA_FIXTURE);
+assert.equal(project.referenceAtlas.sourceDataset.name, 'ETOPO_2022_TEST_FIXTURE');
 assert.equal(project.selectedReferenceWindow.patchDigest, window.patchDigest);
 assert.equal(project.selectedPatchDigest, window.patchDigest);
 assert.equal(project.bathymetryBuilderResult.type, 'anchor.reference-patch-bathymetry-builder-summary');
@@ -84,7 +100,10 @@ const validation = validateEnvironmentStudioProject(project);
 assert.equal(validation.valid, true, validation.errors.join('\n'));
 const imported = importEnvironmentStudioProject(JSON.parse(canonicalJsonStringify(project)));
 const reexported = buildEnvironmentStudioProject(imported);
-assert.equal(reexported.projectDigest, project.projectDigest, 'reference patch project roundtrip keeps digest stable');
+assert.equal(reexported.sourceMode, project.sourceMode, 'reference patch project roundtrip keeps source mode');
+assert.equal(reexported.selectedPatchDigest, project.selectedPatchDigest, 'reference patch project roundtrip keeps selected patch');
+assert.equal(reexported.bathymetryArtifactDigest, project.bathymetryArtifactDigest, 'reference patch project roundtrip keeps bathymetry artifact digest');
+assert.equal(reexported.referenceAtlas.sourceDataset.name, project.referenceAtlas.sourceDataset.name, 'reference patch project roundtrip keeps source dataset');
 
 const text = canonicalJsonStringify(project);
 assert.ok(!/"hiddenTruthExposed"\s*:\s*true/.test(text));
@@ -93,8 +112,131 @@ assert.ok(!/"scalarField4D"\s*:\s*true/.test(text));
 assert.ok(!/"certifiedForNavigation"\s*:\s*true/.test(text));
 
 console.log('smoke_reference_patch_to_bathymetry_artifact: ok', {
+  blockedFixtureStatus: blockedAtlas.provenance.fixtureStatus,
   atlasDigest: atlas.atlasDigest,
   patchDigest: window.patchDigest,
   bathymetryArtifactDigest: project.bathymetryArtifactDigest,
   projectDigest: project.projectDigest
 });
+
+function fixtureManifest() {
+  const bounds = {
+    westLon: -124.4,
+    eastLon: -121.7,
+    southLat: 35.6,
+    northLat: 37.4
+  };
+  const rasterArtifact = {
+    artifactType: 'anchor.reference-bathymetry-raster',
+    artifactVersion: '1.0.0',
+    fixtureId: 'bathy_data_r1_test_fixture',
+    sourceDataset: {
+      name: 'ETOPO_2022_TEST_FIXTURE',
+      provider: 'NOAA NCEI style local test fixture',
+      version: 'v1-test',
+      sourceResolution: 'test raster',
+      verticalUnits: 'meters relative to sea level',
+      horizontalCoordinateFrame: 'EPSG:4326 lon/lat',
+      citation: 'Synthetic numeric fixture for BATHY-DATA-R1 smoke testing only.',
+      licenseOrTermsNote: 'Not public source data; test-only compact fixture.'
+    },
+    bounds,
+    grid: {
+      columns: 4,
+      rows: 4,
+      lonAxis: [-124.4, -123.5, -122.6, -121.7],
+      latAxis: [37.4, 36.8, 36.2, 35.6],
+      elevationMeters: [
+        [120, 30, -80, -350],
+        [40, -120, -700, -1350],
+        [-30, -420, -1100, -2200],
+        [-60, -650, -1450, -2800]
+      ]
+    },
+    derived: {
+      depthMetersPositiveDown: [
+        [0, 0, 80, 350],
+        [0, 120, 700, 1350],
+        [30, 420, 1100, 2200],
+        [60, 650, 1450, 2800]
+      ],
+      wetMask: [
+        [false, false, true, true],
+        [false, true, true, true],
+        [true, true, true, true],
+        [true, true, true, true]
+      ],
+      landMask: [
+        [true, true, false, false],
+        [true, false, false, false],
+        [false, false, false, false],
+        [false, false, false, false]
+      ]
+    },
+    summaries: {
+      minElevationMeters: -2800,
+      maxElevationMeters: 120,
+      minDepthMeters: 30,
+      maxDepthMeters: 2800,
+      meanDepthMeters: 1055,
+      landFraction: 0.1875,
+      oceanFraction: 0.8125,
+      wetConnectedFraction: 1,
+      slopeStats: { min: 90, mean: 540, max: 900, finite: true },
+      shelfFraction: 0.2,
+      basinFraction: 0.3
+    },
+    provenance: {
+      preprocessor: 'anchor-reference-bathy-preprocessor-v1',
+      sourceFileName: 'bathy_data_r1_test_fixture.tif',
+      sourceFileDigest: 'sha256:test',
+      claimBoundary: 'test fixture only; not certified navigation data',
+      localAbsolutePathsIncluded: false,
+      hiddenTruthExposed: false
+    },
+    rasterDigest: 'sha256:test-raster'
+  };
+  const fixture = {
+    fixtureId: rasterArtifact.fixtureId,
+    label: 'BATHY-DATA-R1 Test Fixture',
+    sourceDataset: rasterArtifact.sourceDataset,
+    provider: rasterArtifact.sourceDataset.provider,
+    bounds,
+    rasterPath: 'assets/reference_bathymetry/bathy_data_r1_test_fixture.reference-bathymetry-raster.json',
+    digest: rasterArtifact.rasterDigest,
+    tags: ['shelf', 'slope', 'coastal'],
+    rasterArtifact
+  };
+  const manifest = {
+    artifactType: 'anchor.reference-bathymetry-manifest',
+    artifactVersion: '1.0.0',
+    fixtureStatus: 'AVAILABLE',
+    overview: {
+      fixtureId: fixture.fixtureId,
+      label: 'BATHY-DATA-R1 Test Overview',
+      sourceDataset: 'ETOPO_2022_TEST_FIXTURE',
+      provider: rasterArtifact.sourceDataset.provider,
+      resolution: 'test raster',
+      rasterPath: fixture.rasterPath,
+      digest: rasterArtifact.rasterDigest,
+      bounds
+    },
+    fixtures: [fixture],
+    provenance: {
+      generatedBy: 'smoke_reference_patch_to_bathymetry_artifact.mjs',
+      source: 'in-memory test fixture',
+      localAbsolutePathsIncluded: false,
+      hiddenTruthExposed: false
+    },
+    claimBoundary: {
+      referenceBathymetryAvailable: true,
+      placeholderPresentedAsReferenceData: false,
+      currentField4DGenerated: false,
+      scalarField4DGenerated: false,
+      certifiedForNavigation: false,
+      operationalOceanForecast: false,
+      hiddenTruthExposed: false
+    }
+  };
+  return { manifest, fixture };
+}

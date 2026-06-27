@@ -1,0 +1,32 @@
+{
+  "artifactType": "anchor.reference-bathymetry-manifest",
+  "artifactVersion": "1.0.0",
+  "fixtureStatus": "NO_REFERENCE_DATA_FIXTURE",
+  "overview": null,
+  "fixtures": [],
+  "instructions": {
+    "summary": "No preprocessed public reference bathymetry fixture is available.",
+    "downloadCommand": "npm.cmd run download:reference-bathy",
+    "preprocessCommand": "npm.cmd run preprocess:reference-bathy",
+    "auditCommand": "npm.cmd run audit:reference-bathy",
+    "rawDataDirectory": "external_data/reference_bathymetry/",
+    "artifactDirectory": "assets/reference_bathymetry/",
+    "note": "The browser app does not download NOAA or GEBCO data at runtime."
+  },
+  "provenance": {
+    "generatedBy": "anchor-reference-bathy-preprocessor-v1",
+    "source": "assets/reference_bathymetry/manifest.json",
+    "localAbsolutePathsIncluded": false,
+    "hiddenTruthExposed": false
+  },
+  "claimBoundary": {
+    "referenceBathymetryAvailable": false,
+    "placeholderPresentedAsReferenceData": false,
+    "currentField4DGenerated": false,
+    "scalarField4DGenerated": false,
+    "certifiedForNavigation": false,
+    "operationalOceanForecast": false,
+    "hiddenTruthExposed": false
+  },
+  "manifestDigest": "sha256:4e57d167ceb5407da9752d3be7cd88f1968e8378344e4d4200103bb1893137b1"
+}

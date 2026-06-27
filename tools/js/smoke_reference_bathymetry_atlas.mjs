@@ -3,6 +3,7 @@ import { canonicalJsonStringify } from '../../packages/codecs/src/index.js';
 import {
   NO_REFERENCE_DATA_FIXTURE,
   REFERENCE_BATHYMETRY_ATLAS_TYPE,
+  REFERENCE_BATHYMETRY_MANIFEST_TYPE,
   createReferenceBathymetryAtlas,
   referenceBathymetryLayerColor,
   referenceBathymetryVisualMetrics,
@@ -16,8 +17,14 @@ assert.ok(atlas.atlasDigest.startsWith('fnv1a32:'));
 assert.ok(atlas.previewRasterDigest.startsWith('fnv1a32:'));
 assert.equal(atlas.sourceDataset.name, NO_REFERENCE_DATA_FIXTURE);
 assert.equal(atlas.sourceDataset.referenceDataAvailable, false);
+assert.equal(atlas.manifest.artifactType, REFERENCE_BATHYMETRY_MANIFEST_TYPE);
+assert.equal(atlas.manifest.fixtureStatus, NO_REFERENCE_DATA_FIXTURE);
+assert.equal(atlas.fixtureCount, 0);
+assert.equal(atlas.overviewDigest, null);
 assert.equal(atlas.provenance.fixtureStatus, NO_REFERENCE_DATA_FIXTURE);
+assert.equal(atlas.provenance.manifestDigest, atlas.manifest.manifestDigest);
 assert.equal(atlas.claimBoundary.publicBathymetryTopographyReferenceData, false);
+assert.equal(atlas.claimBoundary.placeholderPresentedAsReferenceData, false);
 assert.equal(atlas.claimBoundary.certifiedForNavigation, false);
 assert.equal(atlas.claimBoundary.operationalOceanForecast, false);
 assert.equal(atlas.claimBoundary.hiddenTruthExposed, false);
@@ -41,6 +48,10 @@ const metrics = referenceBathymetryVisualMetrics(atlas);
 assert.equal(metrics.defaultSourceMode, 'referenceBathymetryAtlas');
 assert.equal(metrics.proceduralSandboxDefault, false);
 assert.equal(metrics.referenceDatasetName, NO_REFERENCE_DATA_FIXTURE);
+assert.equal(metrics.fixtureStatus, NO_REFERENCE_DATA_FIXTURE);
+assert.equal(metrics.fixtureCount, 0);
+assert.equal(metrics.overviewDigest, null);
+assert.ok(metrics.manifestDigest);
 assert.equal(metrics.hiddenTruthExposed, false);
 assert.equal(metrics.simulationChanged, false);
 assert.equal(metrics.scoringChanged, false);

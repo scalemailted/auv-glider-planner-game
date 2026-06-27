@@ -13,6 +13,7 @@ import {
   ENVIRONMENT_STUDIO_PREVIEW_MODES,
   ENVIRONMENT_STUDIO_REGIONAL_TEMPLATES,
   NO_REFERENCE_DATA_FIXTURE,
+  REFERENCE_BATHYMETRY_BLOCKED_MESSAGE,
   REFERENCE_BATHYMETRY_LAYER_OPTIONS,
   REFERENCE_BATHYMETRY_SOURCE_MODES,
   SYNTHETIC_WORLD_LAYER_OPTIONS,
@@ -48,6 +49,7 @@ import {
   setEnvironmentStudioAtlasPreset,
   setEnvironmentStudioPreviewCameraState,
   setEnvironmentStudioPreviewMode,
+  setEnvironmentStudioReferenceBathymetryManifest,
   setEnvironmentStudioReferenceLayer,
   setEnvironmentStudioSourceMode,
   setEnvironmentStudioWorldLayer,
@@ -80,8 +82,9 @@ export class EnvironmentStudioScene extends PhaserScene {
     super('EnvironmentStudioScene');
     this.objects = [];
     this.session = createEnvironmentStudioSession();
-    this.statusMessage = 'Select a reference bathymetry bounding box, then generate regional 3D bathymetry. A real GEBCO/ETOPO fixture is not checked in yet.';
+    this.statusMessage = 'Loading reference bathymetry manifest. Generation is blocked until a preprocessed public fixture is available.';
     this.lastError = null;
+    this.referenceManifestLoaded = false;
     this.worldBoundaryDrawing = false;
     this.worldPointerState = null;
     this.worldTileCanvasCache = new Map();
@@ -102,7 +105,40 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.mountPreviewHost();
     this.session = refreshEnvironmentStudioSession(this.session);
     this.render();
+    this.loadReferenceBathymetryManifest();
     markAnchorRouteReady('environment-studio', { resolvedRuntimeShell: 'default', inputHandlersBound: true });
+  }
+
+  async loadReferenceBathymetryManifest() {
+    try {
+      const response = await fetch('assets/reference_bathymetry/manifest.json', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Reference bathymetry manifest returned HTTP ${response.status}.`);
+      const manifest = await response.json();
+      const fixtureArtifacts = [];
+      if (manifest.fixtureStatus === 'AVAILABLE' && Array.isArray(manifest.fixtures)) {
+        for (const fixture of manifest.fixtures) {
+          if (!fixture?.rasterPath) continue;
+          const artifact = await fetchJsonIfAvailable(fixture.rasterPath);
+          if (artifact) fixtureArtifacts.push({ ...fixture, rasterArtifact: artifact });
+        }
+      }
+      this.session = setEnvironmentStudioReferenceBathymetryManifest(this.session, manifest, {
+        referenceFixtures: fixtureArtifacts
+      });
+      this.referenceManifestLoaded = true;
+      if (this.session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true) {
+        this.statusMessage = 'Reference bathymetry fixture manifest loaded. Select a preprocessed patch to generate regional bathymetry.';
+        this.lastError = null;
+      } else {
+        this.statusMessage = 'Reference bathymetry data is not available yet. Run the downloader and preprocessor before generating reference-backed bathymetry.';
+        this.lastError = REFERENCE_BATHYMETRY_BLOCKED_MESSAGE;
+      }
+    } catch (error) {
+      this.referenceManifestLoaded = false;
+      this.statusMessage = 'Reference bathymetry manifest could not be loaded.';
+      this.lastError = `${REFERENCE_BATHYMETRY_BLOCKED_MESSAGE} Manifest load detail: ${error?.message ?? String(error)}`;
+    }
+    if (this.sys?.isActive?.()) this.render();
   }
 
   shutdown() {
@@ -451,13 +487,17 @@ export class EnvironmentStudioScene extends PhaserScene {
     if (sourceMode === 'proceduralSyntheticSandbox') {
       this.statusMessage = 'Procedural synthetic sandbox opened as an experimental compatibility path.';
     } else if (sourceMode === 'referenceBathymetryAtlas') {
-      this.statusMessage = 'Reference Bathymetry Atlas is the default source path. Select a bounding box to extract a patch.';
+      this.statusMessage = this.referenceDataAvailable()
+        ? 'Reference Bathymetry Atlas is the default source path. Select a bounding box to extract a patch.'
+        : 'Reference Bathymetry Atlas is the default source path, but generation is blocked until fixture data is preprocessed.';
     } else {
       this.statusMessage = `${labelize(sourceMode)} is staged; use Reference Bathymetry Atlas for the current browser path.`;
     }
-    this.lastError = sourceMode === 'referenceBathymetryAtlas' || sourceMode === 'proceduralSyntheticSandbox'
-      ? null
-      : 'This source mode is planned and does not generate artifacts in REAL-BATHY-R1.';
+    this.lastError = sourceMode === 'referenceBathymetryAtlas' && !this.referenceDataAvailable()
+      ? REFERENCE_BATHYMETRY_BLOCKED_MESSAGE
+      : sourceMode === 'referenceBathymetryAtlas' || sourceMode === 'proceduralSyntheticSandbox'
+        ? null
+        : 'This source mode is planned and does not generate artifacts in REAL-BATHY-R1.';
     this.render();
   }
 
@@ -493,6 +533,13 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   toggleReferenceBoundaryDrawing() {
+    if (!this.referenceDataAvailable()) {
+      this.referenceBoundaryDrawing = false;
+      this.statusMessage = 'Reference bathymetry boundary drawing is blocked until preprocessed fixture data is available.';
+      this.lastError = REFERENCE_BATHYMETRY_BLOCKED_MESSAGE;
+      this.render();
+      return;
+    }
     this.referenceBoundaryDrawing = !this.referenceBoundaryDrawing;
     this.statusMessage = this.referenceBoundaryDrawing
       ? 'Bounding-box selection enabled. Click the atlas map to place the reference patch.'
@@ -500,7 +547,22 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.render();
   }
 
+  referenceDataAvailable() {
+    return this.session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true;
+  }
+
+  blockReferenceBathymetryAction(actionLabel = 'Reference bathymetry action') {
+    this.referenceBoundaryDrawing = false;
+    this.statusMessage = `${actionLabel} is blocked until a preprocessed public bathymetry fixture is available.`;
+    this.lastError = REFERENCE_BATHYMETRY_BLOCKED_MESSAGE;
+    this.render();
+  }
+
   selectReferenceWindowAt(lon, lat) {
+    if (!this.referenceDataAvailable()) {
+      this.blockReferenceBathymetryAction('Reference patch selection');
+      return;
+    }
     const widthDegrees = this.numberValue('env-reference-window-width-deg', 2.7);
     const heightDegrees = this.numberValue('env-reference-window-height-deg', 1.8);
     const westLon = clampNumber(Number(lon) - widthDegrees / 2, -180, 180 - widthDegrees);
@@ -543,6 +605,10 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   adjustReferenceWindow(action) {
+    if (!this.referenceDataAvailable()) {
+      this.blockReferenceBathymetryAction('Reference patch adjustment');
+      return;
+    }
     const bounds = this.session.selectedReferenceWindow?.bounds ?? { westLon: -124.4, eastLon: -121.7, southLat: 35.6, northLat: 37.4 };
     const width = Math.max(0.1, Number(bounds.eastLon) - Number(bounds.westLon));
     const height = Math.max(0.1, Number(bounds.northLat) - Number(bounds.southLat));
@@ -593,6 +659,10 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   generateReferenceBathymetry() {
     try {
+      if (!this.referenceDataAvailable()) {
+        this.blockReferenceBathymetryAction('Reference patch bathymetry generation');
+        return;
+      }
       if (!this.session.selectedReferenceWindow?.patchDigest) this.selectReferenceWindowFromControls();
       this.session = generateEnvironmentStudioRegionFromReferenceWindow(this.session, { seed: this.readSeed() });
       this.statusMessage = 'Generated regional 3D bathymetry from the selected reference patch.';
@@ -1209,11 +1279,15 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
   const atlas = session.referenceAtlas ?? {};
   const selected = session.selectedReferenceWindow;
   const bounds = selected?.bounds ?? {};
+  const referenceAvailable = atlas.sourceDataset?.referenceDataAvailable === true;
+  const disabledAttr = referenceAvailable ? '' : 'disabled';
+  const manifest = session.referenceBathymetryManifest ?? atlas.manifest ?? {};
+  const fixtureCount = atlas.fixtureCount ?? manifest.fixtures?.length ?? 0;
   return `
     <section class="console-header">
       <div class="console-kicker">Simulation Lab / Environment Studio</div>
       <h1>Reference Bathymetry Atlas</h1>
-      <p>Select a lon/lat bounding box from the reference bathymetry atlas, then generate a regional 3D bathymetry patch. Procedural generation is available only as an experimental sandbox.</p>
+      <p>Use preprocessed public bathymetry/topography fixtures to generate regional 3D bathymetry. Procedural generation is available only as an experimental sandbox.</p>
     </section>
     <section class="console-status">
       <span>Stage</span>
@@ -1233,8 +1307,15 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
       <div class="cell-inspector-metrics">
         ${metricHtml('Dataset', atlas.sourceDataset?.name ?? NO_REFERENCE_DATA_FIXTURE)}
         ${metricHtml('Fixture', atlas.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE)}
+        ${metricHtml('Fixtures', fixtureCount)}
+        ${metricHtml('Overview', shortDigest(atlas.overviewDigest ?? manifest.overview?.digest))}
         ${metricHtml('Atlas Digest', shortDigest(atlas.atlasDigest))}
       </div>
+    </section>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
+      <h2>Fixture Selector</h2>
+      ${referenceFixtureSelectorHtml(manifest, atlas)}
+      ${!referenceAvailable ? blockedInstructionsHtml() : '<div class="hud-muted">Select an available fixture or draw a bounding box inside an available preprocessed patch.</div>'}
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Reference Dataset</h2>
@@ -1266,8 +1347,8 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Boundary Selection</h2>
       <div class="environment-studio-camera-row" aria-label="Reference boundary controls">
-        <button type="button" class="${scene.referenceBoundaryDrawing ? 'active' : ''}" data-action="env-reference-draw-boundary">Draw Bounding Box</button>
-        <button type="button" data-action="env-reference-select-boundary">Use Default Patch</button>
+        <button type="button" class="${scene.referenceBoundaryDrawing ? 'active' : ''}" data-action="env-reference-draw-boundary" ${disabledAttr}>Draw Bounding Box</button>
+        <button type="button" data-action="env-reference-select-boundary" ${disabledAttr}>Use Default Patch</button>
         <button type="button" data-action="env-reference-clear-boundary">Clear</button>
       </div>
       ${numberInput('Window width deg', 'env-reference-window-width-deg', Number(bounds.eastLon ?? -121.7) - Number(bounds.westLon ?? -124.4), 0.1, 12, 0.1)}
@@ -1275,14 +1356,14 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
       ${numberInput('Output resolution m', 'env-reference-output-resolution', selected?.selectedResolutionMeters ?? 1500, 250, 10000, 250)}
       ${numberInput('Preview resolution m', 'env-reference-preview-resolution', selected?.previewResolutionMeters ?? 6000, 1000, 20000, 500)}
       <div class="environment-studio-camera-row" aria-label="Move selected reference patch">
-        <button type="button" data-env-reference-window-action="left">Left</button>
-        <button type="button" data-env-reference-window-action="right">Right</button>
-        <button type="button" data-env-reference-window-action="up">Up</button>
-        <button type="button" data-env-reference-window-action="down">Down</button>
-        <button type="button" data-env-reference-window-action="narrower">Narrower</button>
-        <button type="button" data-env-reference-window-action="wider">Wider</button>
-        <button type="button" data-env-reference-window-action="shorter">Shorter</button>
-        <button type="button" data-env-reference-window-action="taller">Taller</button>
+        <button type="button" data-env-reference-window-action="left" ${disabledAttr}>Left</button>
+        <button type="button" data-env-reference-window-action="right" ${disabledAttr}>Right</button>
+        <button type="button" data-env-reference-window-action="up" ${disabledAttr}>Up</button>
+        <button type="button" data-env-reference-window-action="down" ${disabledAttr}>Down</button>
+        <button type="button" data-env-reference-window-action="narrower" ${disabledAttr}>Narrower</button>
+        <button type="button" data-env-reference-window-action="wider" ${disabledAttr}>Wider</button>
+        <button type="button" data-env-reference-window-action="shorter" ${disabledAttr}>Shorter</button>
+        <button type="button" data-env-reference-window-action="taller" ${disabledAttr}>Taller</button>
       </div>
       <div class="cell-inspector-metrics">
         ${metricHtml('Patch Digest', shortDigest(selected?.patchDigest))}
@@ -1292,12 +1373,47 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Actions</h2>
-      <button class="console-button primary" type="button" data-action="env-reference-generate-bathymetry">Generate 3D Bathymetry</button>
+      <button class="console-button primary" type="button" data-action="env-reference-generate-bathymetry" ${disabledAttr}>Generate 3D Bathymetry</button>
       <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
       <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
       <input id="env-studio-import-file" type="file" accept="application/json,.json" hidden data-env-studio-import />
       <button class="console-button secondary" type="button" data-action="menu">Main Menu</button>
     </section>
+  `;
+}
+
+function referenceFixtureSelectorHtml(manifest = {}, atlas = {}) {
+  const fixtures = Array.isArray(manifest?.fixtures) ? manifest.fixtures : [];
+  if (!fixtures.length) {
+    return `
+      <div class="environment-studio-empty-state" data-env-reference-fixture-selector>
+        <strong>No reference fixtures available</strong>
+        <span>Manifest status: ${escapeHtml(manifest?.fixtureStatus ?? atlas?.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE)}</span>
+      </div>
+    `;
+  }
+  return `
+    <select data-env-reference-fixture-selector aria-label="Reference bathymetry fixtures">
+      ${fixtures.map((fixture) => `<option value="${escapeAttr(fixture.fixtureId)}">${escapeHtml(fixture.label ?? fixture.fixtureId)} (${escapeHtml((fixture.tags ?? []).join(', ') || 'untagged')})</option>`).join('')}
+    </select>
+    <div class="cell-inspector-metrics">
+      ${metricHtml('Fixture Count', fixtures.length)}
+      ${metricHtml('Overview Digest', shortDigest(manifest?.overview?.digest))}
+      ${metricHtml('Manifest Digest', shortDigest(manifest?.manifestDigest))}
+    </div>
+  `;
+}
+
+function blockedInstructionsHtml() {
+  return `
+    <div class="environment-studio-blocked-state" data-env-reference-blocked-instructions>
+      <strong>BLOCKED_WAITING_FOR_REFERENCE_BATHYMETRY_DOWNLOAD</strong>
+      <p class="hud-muted">Run the local data pipeline, then reload Environment Studio.</p>
+      <code>npm.cmd run download:reference-bathy</code>
+      <code>npm.cmd run preprocess:reference-bathy</code>
+      <code>npm.cmd run audit:reference-bathy</code>
+      <p class="hud-muted">Raw NOAA/GEBCO files are ignored under external_data/reference_bathymetry/. Runtime fixtures belong under assets/reference_bathymetry/.</p>
+    </div>
   `;
 }
 
@@ -1321,15 +1437,23 @@ function bindEnvironmentStudioReferenceAtlasControls(scene, root) {
   root?.querySelector?.('[data-action="menu"]')?.addEventListener('click', () => scene.scene.start('MainMenuScene'));
 }
 
+async function fetchJsonIfAvailable(url) {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) return null;
+  return response.json();
+}
+
 function referenceAtlasRightPanelHtml(session = {}) {
   const atlas = session.referenceAtlas ?? {};
   const selected = session.selectedReferenceWindow;
+  const referenceAvailable = atlas.sourceDataset?.referenceDataAvailable === true;
+  const manifest = session.referenceBathymetryManifest ?? atlas.manifest ?? {};
   if (!selected) {
     return `
       <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
         <div class="console-kicker">Reference Atlas Summary</div>
         <h2>${escapeHtml(atlas.label ?? 'Reference Bathymetry Atlas')}</h2>
-        <p class="hud-muted">The workflow is reference atlas -> bounding box -> extracted patch -> regional 3D bathymetry. The checked-in fallback is a placeholder and is not GEBCO, ETOPO, certified navigation data, or an operational forecast.</p>
+        <p class="hud-muted">${referenceAvailable ? 'The workflow is reference atlas -> bounding box -> extracted patch -> regional 3D bathymetry.' : 'Reference bathymetry generation is blocked because no preprocessed public fixture is available. The app is not displaying a placeholder as reference data.'}</p>
         <div class="cell-inspector-metrics">
           ${metricHtml('Dataset', atlas.sourceDataset?.name ?? NO_REFERENCE_DATA_FIXTURE)}
           ${metricHtml('Provider', atlas.sourceDataset?.provider)}
@@ -1337,10 +1461,12 @@ function referenceAtlasRightPanelHtml(session = {}) {
           ${metricHtml('Source resolution', atlas.sourceDataset?.sourceResolution)}
           ${metricHtml('Vertical units', atlas.sourceDataset?.verticalUnits)}
           ${metricHtml('Frame', atlas.sourceDataset?.horizontalCoordinateFrame)}
+          ${metricHtml('Fixture Count', atlas.fixtureCount ?? manifest.fixtures?.length ?? 0)}
+          ${metricHtml('Manifest Digest', shortDigest(manifest.manifestDigest))}
           ${metricHtml('Atlas Digest', shortDigest(atlas.atlasDigest))}
           ${metricHtml('Fixture Status', atlas.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE)}
         </div>
-        <p class="hud-muted">Draw a bounding box to inspect selected patch depth statistics, wet/land mask, coastline summary, and deferred field-artifact states.</p>
+        ${!referenceAvailable ? blockedInstructionsHtml() : '<p class="hud-muted">Draw a bounding box to inspect selected patch depth statistics, wet/land mask, coastline summary, and deferred field-artifact states.</p>'}
       </section>
     `;
   }
@@ -1379,6 +1505,38 @@ function referenceAtlasRightPanelHtml(session = {}) {
 
 function referenceAtlasPreviewHtml(session = {}, project = {}) {
   const selected = session.selectedReferenceWindow;
+  const referenceAvailable = session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true;
+  if (!referenceAvailable) {
+    return `
+      <main id="environment-studio-route" class="environment-studio-route environment-studio-reference-route">
+        <header class="environment-studio-route-header">
+          <div>
+            <p class="console-kicker">Reference Bathymetry Atlas</p>
+            <h1>Reference Bathymetry Data Required</h1>
+            <p>ANCHOR uses preprocessed public bathymetry/topography references as the default Environment Studio source. No fixture is currently available, so placeholder bathymetry is not shown as reference data.</p>
+          </div>
+          <div class="environment-studio-digest">
+            <span>Project Digest</span>
+            <strong>${escapeHtml(shortDigest(project.projectDigest))}</strong>
+            <span>Manifest</span>
+            <strong>${escapeHtml(shortDigest(session.referenceBathymetryManifest?.manifestDigest ?? session.referenceAtlas?.manifest?.manifestDigest))}</strong>
+          </div>
+        </header>
+        <section class="environment-studio-preview-grid" aria-label="Reference bathymetry blocked state">
+          <section class="environment-studio-terrain-preview environment-studio-reference-preview" data-env-reference-blocked-panel>
+            <h2>NO_REFERENCE_DATA_FIXTURE</h2>
+            <p class="hud-muted">The browser app does not download NOAA or GEBCO data at runtime. Raw source files stay under external_data/reference_bathymetry/ and compact ANCHOR fixtures live under assets/reference_bathymetry/.</p>
+            ${blockedInstructionsHtml()}
+            ${referenceFixtureSelectorHtml(session.referenceBathymetryManifest ?? session.referenceAtlas?.manifest, session.referenceAtlas)}
+          </section>
+        </section>
+        <section class="environment-studio-boundary">
+          <strong>Boundary</strong>
+          <span>Blocked until a preprocessed ETOPO/GEBCO/public bathymetry fixture is created. Procedural synthetic worlds remain experimental and are not the default reference source.</span>
+        </section>
+      </main>
+    `;
+  }
   return `
     <main id="environment-studio-route" class="environment-studio-route environment-studio-reference-route">
       <header class="environment-studio-route-header">

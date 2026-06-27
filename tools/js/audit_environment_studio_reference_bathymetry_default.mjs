@@ -4,6 +4,7 @@ import path from 'node:path';
 import { canonicalJsonStringify } from '../../packages/codecs/src/index.js';
 import {
   NO_REFERENCE_DATA_FIXTURE,
+  REFERENCE_BATHYMETRY_BLOCKED_MESSAGE,
   REFERENCE_BATHYMETRY_SOURCE_MODES,
   buildEnvironmentStudioProject,
   createEnvironmentStudioSession,
@@ -49,23 +50,18 @@ const selected = selectEnvironmentStudioReferenceWindow(session, {
   southLat: 35.6,
   northLat: 37.4
 });
-const generated = generateEnvironmentStudioRegionFromReferenceWindow(selected, {
-  seed: 'real-bathy-r1-default-audit'
-});
-assert.equal(generated.sourceMode, 'referenceBathymetryAtlas');
-assert.equal(generated.studioStage, 'regionalBathymetry');
-assert.equal(generated.flowGenerationInputs.generatedArtifacts.currentField4D, false);
-assert.equal(generated.flowGenerationInputs.generatedArtifacts.scalarField4D, false);
-assert.equal(generated.flowGenerationInputs.generatedArtifacts.hotspots, false);
-assert.equal(generated.dependencyGraph.nodes.currentArtifact.state, 'REQUIRES_REGENERATION');
-assert.equal(generated.dependencyGraph.nodes.scalarArtifact.state, 'REQUIRES_REGENERATION');
-assert.equal(generated.dependencyGraph.nodes.startsDropZones.state, 'NEEDS_VALIDATION');
-assert.equal(generated.dependencyGraph.nodes.benchmarkBundle.state, 'REQUIRES_REGENERATION');
+assert.throws(
+  () => generateEnvironmentStudioRegionFromReferenceWindow(selected, {
+    seed: 'bathy-data-r1-default-audit'
+  }),
+  new RegExp(REFERENCE_BATHYMETRY_BLOCKED_MESSAGE.split(':')[0]),
+  'default reference bathymetry path blocks generation without a preprocessed fixture'
+);
 
-const generatedProject = buildEnvironmentStudioProject(generated);
-const validation = validateEnvironmentStudioProject(generatedProject);
+const selectedProject = buildEnvironmentStudioProject(selected);
+const validation = validateEnvironmentStudioProject(selectedProject);
 assert.equal(validation.valid, true, validation.errors.join('\n'));
-const generatedText = canonicalJsonStringify(generatedProject);
+const generatedText = canonicalJsonStringify(selectedProject);
 assert.ok(!/"hiddenTruthExposed"\s*:\s*true/.test(generatedText));
 assert.ok(!/"currentField4D"\s*:\s*true/.test(generatedText));
 assert.ok(!/"scalarField4D"\s*:\s*true/.test(generatedText));
@@ -73,14 +69,14 @@ assert.ok(!/"calibratedOceanProduct"\s*:\s*true/.test(generatedText));
 assert.ok(!/"operationalForecast"\s*:\s*true/.test(generatedText));
 assert.ok(!/"certifiedForNavigation"\s*:\s*true/.test(generatedText));
 
-const ownerReviewPath = path.resolve('test-results', 'real-bathy-r1-owner-review', 'qa-summary.json');
+const ownerReviewPath = path.resolve('test-results', 'bathy-data-r1-owner-review', 'qa-summary.json');
 try {
   const ownerReview = JSON.parse(await fs.readFile(ownerReviewPath, 'utf8'));
   assert.equal(ownerReview.defaultSourceMode, 'referenceBathymetryAtlas');
   assert.equal(ownerReview.proceduralSandboxDefault, false);
-  assert.equal(ownerReview.referenceDatasetName, NO_REFERENCE_DATA_FIXTURE);
-  assert.ok(ownerReview.referenceAtlasDigest, 'owner review records reference atlas digest');
-  assert.equal(ownerReview.forbiddenPrimaryControlCount, 0);
+  assert.equal(ownerReview.fixtureStatus, NO_REFERENCE_DATA_FIXTURE);
+  assert.equal(ownerReview.fixtureCount, 0);
+  assert.equal(ownerReview.bathymetryArtifactDigest, null);
   assert.equal(ownerReview.hiddenTruthExposed, false);
   assert.equal(ownerReview.simulationChanged, false);
   assert.equal(ownerReview.scoringChanged, false);
@@ -91,6 +87,6 @@ try {
 console.log('audit_environment_studio_reference_bathymetry_default: ok', {
   sourceMode: session.sourceMode,
   fixtureStatus: debug.referenceFixtureStatus,
-  generatedBathymetryArtifactDigest: generatedProject.bathymetryArtifactDigest,
+  generationBlocked: true,
   validationStatus: validation.status
 });

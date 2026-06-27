@@ -11,6 +11,9 @@ coverage/
 .tmp/
 tmp/
 temp/
+external_data/reference_bathymetry/
+*.part
+*.tmp
 *.log
 debug.log
 npm-debug.log*

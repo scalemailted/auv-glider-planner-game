@@ -1355,6 +1355,10 @@ Run these after changing Environment Studio contracts, feedback docs, Studio imp
 node tools/js/smoke_environment_studio_contracts.mjs
 node tools/js/smoke_environment_studio_project.mjs
 node tools/js/smoke_environment_studio_regional_preview.mjs
+node tools/js/audit_reference_bathymetry_fixture_availability.mjs
+node tools/js/smoke_reference_bathymetry_atlas.mjs
+node tools/js/smoke_reference_bathymetry_window.mjs
+node tools/js/smoke_reference_patch_to_bathymetry_artifact.mjs
 node tools/js/smoke_environment_atlas_r1.mjs
 node tools/js/smoke_synthetic_ocean_atlas_engine.mjs
 node tools/js/smoke_window_conditioned_bathymetry_builder.mjs
@@ -1384,15 +1388,15 @@ The ENV-ATLAS-R1/R1.1 smokes assert Synthetic Ocean Atlas creation, atlas digest
 
 The ENV-GLOBE-R1 smokes assert deterministic `anchor.synthetic-globe-world` generation, style/seed digest stability, canonical resolution at least 2048 x 1024, display-texture metadata, bounded semantic layers, sampled `anchor.operational-globe-window` context, stable window digests, small selected-window area, regional recipe creation, window-conditioned bathymetry generation, honest dependency states, project import/export round trip, and no real-Earth, operational-forecast, calibrated-product, certified-navigation, or hidden-truth claims. Older ENV-WORLD-R1 map smokes remain compatibility coverage for field-generation substrates.
 
-The REAL-BATHY-R1 owner-review package is written to `test-results/real-bathy-r1-owner-review/` after the focused browser workflow. It requires screenshots for default reference atlas, zoomed atlas, selected bounding box, selected patch summary, and generated regional bathymetry, plus a `qa-summary.json` with default source mode, procedural sandbox default status, reference dataset name, reference atlas digest, selected patch digest, bathymetry artifact digest, forbidden primary control count of zero, no hidden-truth exposure, renderer cleanup, validation status, and no simulation/scoring changes. If the checked-in source is still the placeholder fixture, scripts must report `NO_REFERENCE_DATA_FIXTURE` and must not claim GEBCO/ETOPO-derived completion.
+The BATHY-DATA-R1 owner-review package is written to `test-results/bathy-data-r1-owner-review/` after the focused browser workflow. It requires screenshots named `01-reference-bathy-overview-or-blocked.png`, `02-reference-bathy-fixture-selector.png`, `03-reference-patch-selected.png`, `04-reference-patch-generated-3d-bathymetry.png`, and `05-blocked-instructions-if-no-data.png`, plus a `qa-summary.json` with fixture status, overview digest, fixture count, selected fixture ID, selected patch digest, bathymetry artifact digest, default source mode, procedural sandbox default status, no hidden-truth exposure, and no simulation/scoring changes. If the checked-in manifest is `NO_REFERENCE_DATA_FIXTURE`, the browser must show blocked instructions, selection/generation controls must not create placeholder reference bathymetry, and scripts must not claim GEBCO/ETOPO-derived completion.
 
 The FIELD-REGEN-R1 smokes assert atlas-conditioned package-backed synthetic `CurrentField4D` generation, scalar field generation, hotspot candidates, stable digests, finite diagnostics, zero nonzero land/below-bottom current vectors, depth/time variation, compact project metadata, dependency-state transitions to `CURRENT` for current/scalar/hotspots, `NEEDS_VALIDATION` for starts/drop zones, and no hidden-truth, HYCOM, Marine Copernicus, calibrated-product, or operational-forecast claims.
 
 The usefulness audit generates coastal shelf, semi-enclosed gulf, island chain, shelf break/canyon, river mouth, strait/sill, and open-ocean eddy windows. It allows explicit `WARN` results for hard cases but rejects hard failures, missing connected wet water, missing feature diversity, missing mission-suitability metadata, hidden-truth leakage, calibrated ocean claims, and operational forecast claims.
 
-The focused Playwright workflows are `Reference Bathymetry Atlas Opens` and `Reference Patch Generates Bathymetry`. They generate the REAL-BATHY-R1 owner-review screenshots and summary package.
+The focused Playwright workflows are `Reference Bathymetry Atlas Opens` and `Reference Patch Generates Bathymetry`. They generate the BATHY-DATA-R1 owner-review screenshots and summary package.
 
-Environment Studio tests must not change simulation, scoring, generated mission semantics, benchmark fairness, or Alpha Product Hub pillar count. The Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain. The active source mode is Reference Bathymetry Atlas; the checked-in placeholder is not GEBCO, ETOPO, calibrated survey data, certified navigation data, or an operational forecast. The procedural synthetic globe/world path is an experimental sandbox / compatibility path. Currents, scalars, hotspots, launch-to-planning, starts/drop-zone validation, and benchmark bundles remain staged follow-ups unless an explicit later workflow generates them.
+Environment Studio tests must not change simulation, scoring, generated mission semantics, benchmark fairness, or Alpha Product Hub pillar count. The Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain. The active source mode is Reference Bathymetry Atlas backed by compact preprocessed artifacts under `assets/reference_bathymetry/`; raw NOAA/GEBCO data remains outside git under `external_data/reference_bathymetry/`, and the browser app does not download it at runtime. The checked-in blocked manifest is not GEBCO, ETOPO, calibrated survey data, certified navigation data, or an operational forecast. The procedural synthetic globe/world path is an experimental sandbox / compatibility path. Currents, scalars, hotspots, launch-to-planning, starts/drop-zone validation, and benchmark bundles remain staged follow-ups unless an explicit later workflow generates them.
 
 ## Codec Package Gates
 
