@@ -2,7 +2,7 @@
 
 Environment Studio is the planned unified authoring surface for deterministic synthetic ANCHOR environments. It should help instructors and researchers define a reproducible domain, choose or edit synthetic bathymetry, inspect generated field dependencies, validate artifacts, and export public-safe JSON.
 
-R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1/R1.1 added a structured atlas field engine and window-conditioned bathymetry builder. ENV-STUDIO-R2 introduced a world-map-first front door. ENV-WORLD-R1 hardens that front door into a deterministic, pan/zoomable, tiled `anchor.synthetic-world-map` artifact: users generate a synthetic world map, inspect layers, draw an operational boundary window, inspect sampled context, then generate regional 3D bathymetry from that selected window.
+R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1/R1.1 added a structured atlas field engine and window-conditioned bathymetry builder. ENV-STUDIO-R2 introduced a world-map-first front door. ENV-WORLD-R1/R1A hardens that front door into a deterministic, pan/zoomable, tiled `anchor.synthetic-world-map` artifact with a browser visual acceptance package: users generate a synthetic world map, inspect layers, draw an operational boundary window, inspect sampled context, then generate regional 3D bathymetry from that selected window.
 
 ## Product Placement
 
@@ -33,7 +33,7 @@ bottomDepthMeters = h(x,y)
 
 It is not a volumetric geology editor. It does not create caves, tunnels, overhangs, arbitrary freeform solid geology, or calibrated regional survey products.
 
-## ENV-WORLD-R1 World-Map Front Door
+## ENV-WORLD-R1/R1A World-Map Front Door
 
 The primary workflow is now:
 
@@ -48,7 +48,9 @@ Synthetic World Map
 
 The world map is not a real Earth map or operational ocean product. It is a deterministic synthetic semantic field artifact for selecting benchmark-oriented operational windows. Coordinates are normalized `x=0..1`, `y=0..1`. The `anchor.synthetic-world-map` artifact records virtual size, source resolution, tile size, LOD levels, broad generator parameters, land/ocean mask, distance to coast, shelf zone, shelf break, deep-basin potential, island/seamount potential, canyon potential, river-mouth influence, strait/sill influence, gulf/bay influence, open-ocean corridor, coarse flow-regime hints, scalar-regime hints, environment diversity, suitability, features, validation, provenance, and `worldDigest`.
 
-The browser view renders deterministic chunks rather than one DOM element per cell. Each `anchor.synthetic-world-map-tile` is keyed by world digest, style, seed, tile coordinate, LOD, layer, and generator parameters. The viewport requests only visible tiles, supports pointer pan and zoom, and overlays the selected boundary and coarse flow hints. The primary left panel is intentionally simple: world style/seed, broad world controls, map layers, boundary selection, bathymetry action, and import/export. Mission duration, glider count, route planning, current/scalar hint lists, and source-tile diagnostics stay out of the primary Environment Studio controls.
+The browser view renders deterministic chunks rather than one DOM element per cell. Each `anchor.synthetic-world-map-tile` is keyed by world digest, style, seed, tile coordinate, LOD, layer, and generator parameters. The viewport requests only visible tiles, supports pointer pan and zoom, and overlays the selected boundary and coarse flow hints. The primary left panel is intentionally simple: world style/seed, map layers, boundary selection, bathymetry action, and import/export; broad world tuning and boundary size controls are advanced disclosure controls. Mission duration, glider count, route planning, current/scalar hint lists, dependency tables, atlas preset examples, tile role controls, and source-tile diagnostics stay out of the Stage 1 primary Environment Studio controls.
+
+ENV-WORLD-R1A adds a hard visual acceptance gate for this front door. The focused Playwright workflows write `test-results/env-world-r1a-owner-review/` with screenshots for default world, panned world, zoomed-out world, bathymetry layer, flow layer, selected boundary, and generated regional bathymetry. `qa-summary.json` records world/window digests, pan and zoom evidence, visible landmass/island/open-ocean/coastline metrics, selected-window area, source grid shape, bathymetry digest, forbidden Stage 1 control count, symbolic-atlas shape count, visible cell-grid status, hidden-truth status, and unchanged simulation/scoring flags. `tools/js/audit_env_world_r1a_visual_acceptance.mjs` fails with `ENV_WORLD_R1A_VISUAL_ACCEPTANCE_FAIL` if the package does not satisfy those thresholds.
 
 The selected `anchor.operational-window` samples those fields to record detected context, sampled stats, recommended domain size, source/preview resolution, bathymetry/flow/scalar regimes, suitability warnings, dataset tags, and `windowDigest`. Glider count, deployment, route planning, dive profiles, execution, replanning, and scoring remain Mission Workspace responsibilities. Environment Studio may show suggested use tags, but those are not mission settings.
 

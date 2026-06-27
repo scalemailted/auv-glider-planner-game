@@ -293,6 +293,75 @@ export function visibleSyntheticWorldTileKeys(worldMapInput = {}, viewportInput 
   };
 }
 
+export function syntheticWorldViewportVisualMetrics(worldMapInput = {}, viewportInput = {}) {
+  const worldMap = normalizeSyntheticWorldMap(worldMapInput);
+  const visible = visibleSyntheticWorldTileKeys(worldMap, viewportInput);
+  const bounds = visible.worldBounds;
+  const columns = clampInteger(viewportInput.sampleColumns ?? 28, 8, 96);
+  const rows = clampInteger(viewportInput.sampleRows ?? 16, 8, 96);
+  const landFlags = [];
+  const islandFlags = [];
+  let landSum = 0;
+  let openOceanSum = 0;
+  let coastlineAffinitySum = 0;
+  let suitabilitySum = 0;
+  let sampleCount = 0;
+  for (let y = 0; y < rows; y += 1) {
+    const landRow = [];
+    const islandRow = [];
+    for (let x = 0; x < columns; x += 1) {
+      const sx = bounds.x + ((x + 0.5) / columns) * bounds.width;
+      const sy = bounds.y + ((y + 0.5) / rows) * bounds.height;
+      const land = sampleWorldMapLayer(worldMap, 'landOceanMask', sx, sy);
+      const island = sampleWorldMapLayer(worldMap, 'islandSeamountPotential', sx, sy);
+      const distance = sampleWorldMapLayer(worldMap, 'distanceToCoast', sx, sy);
+      const openOcean = sampleWorldMapLayer(worldMap, 'openOceanCorridor', sx, sy);
+      landRow.push(land > 0.55);
+      islandRow.push(land <= 0.56 && island > 0.18);
+      landSum += land;
+      openOceanSum += Math.max(openOcean, land <= 0.42 ? 0.55 : 0);
+      coastlineAffinitySum += clamp01(1 - distance) * (land > 0.15 && land < 0.85 ? 1 : 0.42);
+      suitabilitySum += sampleWorldMapLayer(worldMap, 'suitability', sx, sy);
+      sampleCount += 1;
+    }
+    landFlags.push(landRow);
+    islandFlags.push(islandRow);
+  }
+  const landmassCount = connectedComponentCount(landFlags);
+  const islandComponentCount = connectedComponentCount(islandFlags);
+  const featureIslandCount = (worldMap.features ?? []).filter((feature) => {
+    if (!/island|seamount/i.test(`${feature.type ?? ''} ${feature.featureId ?? ''} ${feature.label ?? ''}`)) return false;
+    return featureIntersectsBounds(feature, bounds);
+  }).length;
+  const edgeTransitions = normalizedLandOceanTransitions(landFlags);
+  const coastlineComplexity = round(
+    edgeTransitions * 0.54
+    + (sampleCount ? coastlineAffinitySum / sampleCount : 0) * 0.34
+    + (sampleCount ? suitabilitySum / sampleCount : 0) * 0.12
+  );
+  return {
+    type: 'anchor.synthetic-world-map.viewport-visual-metrics',
+    worldDigest: worldMap.worldDigest,
+    worldStyle: worldMap.style,
+    worldSeed: worldMap.seed,
+    viewportDigest: visible.visibleTileDigest,
+    viewportWorldFraction: round(bounds.width * bounds.height),
+    visibleTileCount: visible.keys.length,
+    visibleLandmassCount: landmassCount,
+    visibleIslandCount: Math.max(islandComponentCount, featureIslandCount),
+    visibleCoastlineComplexity: coastlineComplexity,
+    visibleOpenOceanFraction: round(sampleCount ? openOceanSum / sampleCount : 0),
+    visibleLandFraction: round(sampleCount ? landSum / sampleCount : 0),
+    visibleCellGridDefault: false,
+    symbolicAtlasShapeCount: 0,
+    hiddenTruthExposed: false,
+    realEarthMap: false,
+    operationalForecast: false,
+    calibratedOceanProduct: false,
+    rendererCreatesScience: false
+  };
+}
+
 export function createOperationalWindowFromWorldMap(input = {}, worldMapInput = createSyntheticWorldMap()) {
   const worldMap = normalizeSyntheticWorldMap(worldMapInput);
   const bounds = normalizeWindowBounds(input.bounds ?? input);
@@ -987,6 +1056,66 @@ function tileMean(worldMap = {}, bounds = {}, layer = 'landOceanMask', gridSize 
     }
   }
   return count ? sum / count : 0;
+}
+
+function connectedComponentCount(flags = []) {
+  const rows = flags.length;
+  const columns = flags[0]?.length ?? 0;
+  if (!rows || !columns) return 0;
+  const visited = Array.from({ length: rows }, () => Array.from({ length: columns }, () => false));
+  let count = 0;
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
+      if (!flags[y]?.[x] || visited[y][x]) continue;
+      count += 1;
+      const stack = [[x, y]];
+      visited[y][x] = true;
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= columns || ny >= rows) continue;
+          if (visited[ny][nx] || !flags[ny]?.[nx]) continue;
+          visited[ny][nx] = true;
+          stack.push([nx, ny]);
+        }
+      }
+    }
+  }
+  return count;
+}
+
+function normalizedLandOceanTransitions(flags = []) {
+  const rows = flags.length;
+  const columns = flags[0]?.length ?? 0;
+  if (!rows || !columns) return 0;
+  let transitions = 0;
+  let edges = 0;
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
+      if (x + 1 < columns) {
+        edges += 1;
+        if (Boolean(flags[y][x]) !== Boolean(flags[y][x + 1])) transitions += 1;
+      }
+      if (y + 1 < rows) {
+        edges += 1;
+        if (Boolean(flags[y][x]) !== Boolean(flags[y + 1][x])) transitions += 1;
+      }
+    }
+  }
+  return edges ? transitions / edges : 0;
+}
+
+function featureIntersectsBounds(feature = {}, bounds = {}) {
+  const shape = feature.shape ?? {};
+  const cx = Number(shape.center?.x ?? shape.x ?? feature.center?.x ?? feature.x ?? 0.5);
+  const cy = Number(shape.center?.y ?? shape.y ?? feature.center?.y ?? feature.y ?? 0.5);
+  const radius = Number(shape.radius ?? shape.rx ?? shape.ry ?? feature.radius ?? 0.04);
+  return cx + radius >= bounds.x
+    && cx - radius <= bounds.x + bounds.width
+    && cy + radius >= bounds.y
+    && cy - radius <= bounds.y + bounds.height;
 }
 
 function structuredVariation(x = 0, y = 0, seed = '', frequency = 2) {

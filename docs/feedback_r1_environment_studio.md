@@ -1,6 +1,6 @@
 # ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1/R1.1 responded to `ALPHA-FB-008` and `ALPHA-FB-009` with a structured atlas field engine and window-conditioned bathymetry builder. FIELD-REGEN-R1 responded to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from atlas-conditioned regional context. ENV-STUDIO-R2 responded to `ALPHA-FB-011` by making the browser workflow start from a deterministic synthetic world-map artifact and a user-selected operational boundary. ENV-WORLD-R1 responds to `ALPHA-FB-012` by hardening that front door into a pan/zoomable tiled procedural world map with broad world-generation controls and drag-based boundary selection. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1/R1.1 responded to `ALPHA-FB-008` and `ALPHA-FB-009` with a structured atlas field engine and window-conditioned bathymetry builder. FIELD-REGEN-R1 responded to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from atlas-conditioned regional context. ENV-STUDIO-R2 responded to `ALPHA-FB-011` by making the browser workflow start from a deterministic synthetic world-map artifact and a user-selected operational boundary. ENV-WORLD-R1 responds to `ALPHA-FB-012` by hardening that front door into a pan/zoomable tiled procedural world map with drag-based boundary selection. ENV-WORLD-R1A responds to `ALPHA-FB-013` by adding hard browser visual acceptance evidence for that world-map-first workflow. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
 
 ## Feedback Classification
 
@@ -175,6 +175,24 @@ Scope:
 6. Generate 3D Bathymetry still creates regional bathymetry from the selected window through the existing window-conditioned builder.
 
 ENV-WORLD-R1 keeps FIELD-REGEN-R1 separate. It does not claim new current, scalar, hotspot, benchmark bundle, start/drop-zone, planner, scoring, or simulation behavior unless a downstream explicit generation action validates those artifacts.
+
+## What ENV-WORLD-R1A Implements
+
+Implemented visual acceptance hardening:
+
+```text
+ENV-WORLD-R1A - Synthetic World-Map Visual Acceptance
+```
+
+Scope:
+
+1. Stage 1 remains **Synthetic World Map** by default.
+2. Stage 1 primary controls stay focused on world style/seed, map layers, boundary selection, bathymetry generation, and import/export; generator tuning and boundary sizing are advanced disclosure controls.
+3. The browser workflows generate `test-results/env-world-r1a-owner-review/` screenshots for default, pan, zoom-out, bathymetry layer, flow layer, selected boundary, and generated regional bathymetry states.
+4. `qa-summary.json` records world/window digests, pan/zoom evidence, visible land/island/open-ocean/coastline metrics, selected-window area, source grid shape, bathymetry digest, forbidden Stage 1 control count, symbolic-atlas shape count, visible cell-grid status, hidden-truth status, and unchanged simulation/scoring flags.
+5. `tools/js/audit_env_world_r1a_visual_acceptance.mjs` enforces those thresholds and reports `ENV_WORLD_R1A_VISUAL_ACCEPTANCE_FAIL` on regression.
+
+R1A is a visual/product workflow gate. It does not add new fields, change field equations, launch missions from Studio projects, alter scoring, or change planner behavior.
 
 ## Staged Follow-Ups
 

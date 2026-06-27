@@ -283,6 +283,33 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-013",
+      "title": "Environment Studio needs hard visual acceptance for a world-map-first workflow.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Synthetic World Map",
+      "summary": "Alpha review found that the Environment Studio world-map pass still risked reading like a symbolic local atlas or schematic tile board. The workflow needs a hard browser visual acceptance package proving that Stage 1 opens on a large procedural synthetic world map with pan/zoom, layers, a selected operational boundary, and regional bathymetry generated from that boundary.",
+      "decision": "Accepted for ENV-WORLD-R1A as a visual acceptance and workflow hardening pass. It does not change mission simulation, scoring, planner behavior, current/scalar generation equations, benchmark fairness, or existing Alpha workflows.",
+      "proposedPhase": "ENV-WORLD-R1A",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Environment Studio Stage 1 default is a Synthetic World Map viewport, not a symbolic atlas diagram or DOM cell grid.",
+        "Owner-review screenshots capture default, panned, zoomed, bathymetry-layer, flow-layer, selected-boundary, and generated-regional-bathymetry states.",
+        "The QA summary records world/window digests, pan/zoom evidence, visible land/island/open-ocean metrics, selected-window area, forbidden Stage 1 control count, hidden-truth status, and unchanged simulation/scoring flags.",
+        "The selected operational window remains a small regional subset of the synthetic world and drives regional 3D bathymetry generation."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

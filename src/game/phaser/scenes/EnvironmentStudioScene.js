@@ -54,6 +54,7 @@ import {
 } from '../../../core/editor/SyntheticOceanAtlas.js';
 import {
   createSyntheticWorldTile,
+  syntheticWorldViewportVisualMetrics,
   visibleSyntheticWorldTileKeys,
   sampleWorldMapLayer
 } from '../../../core/editor/SyntheticWorldMap.js';
@@ -930,6 +931,7 @@ export class EnvironmentStudioScene extends PhaserScene {
       ...debug,
       version: ENVIRONMENT_STUDIO_SCENE_VERSION,
       routeActive: Boolean(active),
+      visualAcceptance: environmentStudioVisualAcceptanceMetrics(this.session),
       terrainPreviewRendererCount: 0,
       terrainPreviewRafCount: 0,
       stalePreviewObjects: 0,
@@ -940,6 +942,29 @@ export class EnvironmentStudioScene extends PhaserScene {
       scoringChanged: false
     };
   }
+}
+
+function environmentStudioVisualAcceptanceMetrics(session = {}) {
+  const viewport = syntheticWorldViewportVisualMetrics(session.worldMap, {
+    ...(session.worldView ?? {}),
+    layer: session.worldLayer ?? 'bathymetryContext',
+    canvasWidth: 960,
+    canvasHeight: 520
+  });
+  const selected = session.selectedOperationalWindow;
+  const bounds = selected?.bounds;
+  const domain = selected?.recommendedDomain;
+  return {
+    ...viewport,
+    selectedWindowAreaFractionOfWorld: bounds ? roundMetric(Number(bounds.width) * Number(bounds.height)) : 0,
+    selectedWindowDigest: selected?.windowDigest ?? null,
+    selectedWindowBounds: bounds ?? null,
+    sourceGridShape: domain ? { columns: domain.columns, rows: domain.rows } : null,
+    bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
+    primaryLeftPanelForbiddenControlCount: null,
+    simulationChanged: false,
+    scoringChanged: false
+  };
 }
 
 function worldMapConsoleHtml(scene, summary = {}) {
@@ -975,15 +1000,18 @@ function worldMapConsoleHtml(scene, summary = {}) {
       <button class="console-button secondary" type="button" data-action="env-studio-randomize-world-seed">Randomize Seed</button>
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
-      <h2>World Controls</h2>
-      ${rangeInput('Water Level', 'env-world-water-level', parameters.waterLevel ?? 0.5, 0.05, 0.95, 0.01)}
-      ${rangeInput('Landmass Scale', 'env-world-landmass-scale', parameters.landmassScale ?? 0.55, 0.05, 1, 0.01)}
-      ${rangeInput('Island Density', 'env-world-island-density', parameters.islandDensity ?? 0.5, 0, 1, 0.01)}
-      ${rangeInput('Coastline Complexity', 'env-world-coastline-complexity', parameters.coastlineComplexity ?? 0.45, 0, 1, 0.01)}
-      ${rangeInput('Basin Scale', 'env-world-basin-scale', parameters.basinScale ?? 0.55, 0, 1, 0.01)}
-      ${rangeInput('Shelf Width', 'env-world-shelf-width', parameters.shelfWidth ?? 0.5, 0, 1, 0.01)}
-      ${rangeInput('Flow Intensity', 'env-world-flow-intensity', parameters.flowIntensity ?? 0.55, 0, 1, 0.01)}
-      ${rangeInput('Roughness', 'env-world-roughness', parameters.roughness ?? 0.35, 0, 1, 0.01)}
+      <h2>Advanced</h2>
+      <details data-env-studio-advanced-world-controls>
+        <summary>Advanced World Controls</summary>
+        ${rangeInput('Water Level', 'env-world-water-level', parameters.waterLevel ?? 0.5, 0.05, 0.95, 0.01)}
+        ${rangeInput('Landmass Scale', 'env-world-landmass-scale', parameters.landmassScale ?? 0.55, 0.05, 1, 0.01)}
+        ${rangeInput('Island Density', 'env-world-island-density', parameters.islandDensity ?? 0.5, 0, 1, 0.01)}
+        ${rangeInput('Coastline Complexity', 'env-world-coastline-complexity', parameters.coastlineComplexity ?? 0.45, 0, 1, 0.01)}
+        ${rangeInput('Basin Scale', 'env-world-basin-scale', parameters.basinScale ?? 0.55, 0, 1, 0.01)}
+        ${rangeInput('Shelf Width', 'env-world-shelf-width', parameters.shelfWidth ?? 0.5, 0, 1, 0.01)}
+        ${rangeInput('Flow Intensity', 'env-world-flow-intensity', parameters.flowIntensity ?? 0.55, 0, 1, 0.01)}
+        ${rangeInput('Roughness', 'env-world-roughness', parameters.roughness ?? 0.35, 0, 1, 0.01)}
+      </details>
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Map Layers</h2>
@@ -998,20 +1026,23 @@ function worldMapConsoleHtml(scene, summary = {}) {
         <button type="button" data-action="env-studio-select-boundary">Select Boundary</button>
         <button type="button" data-action="env-studio-clear-boundary">Clear Boundary</button>
       </div>
-      ${numberInput('Window Width', 'env-studio-window-width', bounds.width, 0.08, 0.78, 0.01)}
-      ${numberInput('Window Height', 'env-studio-window-height', bounds.height, 0.08, 0.78, 0.01)}
-      ${numberInput('Source Resolution', 'env-studio-source-resolution', selected?.recommendedDomain?.sourceResolutionMeters ?? 1500, 500, 6000, 100)}
-      ${numberInput('Preview Resolution', 'env-studio-preview-resolution', selected?.recommendedDomain?.previewResolutionMeters ?? 6000, 1000, 12000, 500)}
-      <div class="environment-studio-camera-row" aria-label="Move or resize selected boundary">
-        <button type="button" data-env-studio-world-window-action="left">Left</button>
-        <button type="button" data-env-studio-world-window-action="right">Right</button>
-        <button type="button" data-env-studio-world-window-action="up">Up</button>
-        <button type="button" data-env-studio-world-window-action="down">Down</button>
-        <button type="button" data-env-studio-world-window-action="narrower">Narrower</button>
-        <button type="button" data-env-studio-world-window-action="wider">Wider</button>
-        <button type="button" data-env-studio-world-window-action="shorter">Shorter</button>
-        <button type="button" data-env-studio-world-window-action="taller">Taller</button>
-      </div>
+      <details data-env-studio-boundary-details>
+        <summary>Boundary Details</summary>
+        ${numberInput('Window Width', 'env-studio-window-width', bounds.width, 0.08, 0.78, 0.01)}
+        ${numberInput('Window Height', 'env-studio-window-height', bounds.height, 0.08, 0.78, 0.01)}
+        ${numberInput('Source Resolution', 'env-studio-source-resolution', selected?.recommendedDomain?.sourceResolutionMeters ?? 1500, 500, 6000, 100)}
+        ${numberInput('Preview Resolution', 'env-studio-preview-resolution', selected?.recommendedDomain?.previewResolutionMeters ?? 6000, 1000, 12000, 500)}
+        <div class="environment-studio-camera-row" aria-label="Move or resize selected boundary">
+          <button type="button" data-env-studio-world-window-action="left">Left</button>
+          <button type="button" data-env-studio-world-window-action="right">Right</button>
+          <button type="button" data-env-studio-world-window-action="up">Up</button>
+          <button type="button" data-env-studio-world-window-action="down">Down</button>
+          <button type="button" data-env-studio-world-window-action="narrower">Narrower</button>
+          <button type="button" data-env-studio-world-window-action="wider">Wider</button>
+          <button type="button" data-env-studio-world-window-action="shorter">Shorter</button>
+          <button type="button" data-env-studio-world-window-action="taller">Taller</button>
+        </div>
+      </details>
       <div class="cell-inspector-metrics">
         ${metricHtml('World Digest', shortDigest(session.worldMap?.worldDigest))}
         ${metricHtml('Window Digest', shortDigest(selected?.windowDigest))}
@@ -1493,32 +1524,60 @@ function normalizedWorldPoint(scene, sx, sy) {
 
 function worldLayerColor(worldMap = {}, layer = 'bathymetryContext', x = 0.5, y = 0.5) {
   const land = sampleWorldMapLayer(worldMap, 'landOceanMask', x, y);
-  if (land > 0.56) return [110, 119, 73, 255];
-  if (layer === 'landOceanMask') return [22, 85, 118, 255];
-  if (layer === 'coarseFlowRegime') {
-    const regime = sampleWorldMapLayer(worldMap, 'coarseFlowRegime', x, y) / 8;
-    return [32, Math.round(96 + regime * 125), Math.round(130 + regime * 90), 255];
-  }
-  if (layer === 'scalarRegime') {
-    const scalar = sampleWorldMapLayer(worldMap, 'scalarRegime', x, y) / 8;
-    return [Math.round(70 + scalar * 130), Math.round(78 + scalar * 88), Math.round(120 + scalar * 70), 255];
-  }
-  if (layer === 'suitability') {
-    const suitability = sampleWorldMapLayer(worldMap, 'suitability', x, y);
-    return [Math.round(18 + suitability * 80), Math.round(74 + suitability * 145), Math.round(116 + suitability * 72), 255];
-  }
+  const distance = sampleWorldMapLayer(worldMap, 'distanceToCoast', x, y);
   const shelf = sampleWorldMapLayer(worldMap, 'shelfZone', x, y);
   const basin = sampleWorldMapLayer(worldMap, 'deepBasinPotential', x, y);
   const canyon = sampleWorldMapLayer(worldMap, 'canyonPotential', x, y);
   const island = sampleWorldMapLayer(worldMap, 'islandSeamountPotential', x, y);
   const river = sampleWorldMapLayer(worldMap, 'riverMouthInfluence', x, y);
   const strait = sampleWorldMapLayer(worldMap, 'straitSillInfluence', x, y);
+  if (land > 0.56) {
+    const inland = clampMetric(distance + land * 0.35, 0, 1);
+    const base = mixRgb([73, 111, 66], [168, 142, 88], inland);
+    const coastTint = Math.max(0, 1 - distance);
+    return rgba(mixRgb(base, [107, 134, 82], coastTint * 0.45));
+  }
+  if (layer === 'landOceanMask') {
+    const coast = clampMetric(1 - distance, 0, 1);
+    return rgba(mixRgb([8, 38, 86], [54, 164, 171], coast * 0.72 + shelf * 0.18));
+  }
+  if (layer === 'coarseFlowRegime') {
+    const regime = sampleWorldMapLayer(worldMap, 'coarseFlowRegime', x, y) / 8;
+    return rgba(mixRgb([10, 48, 98], [62, 208, 203], clampMetric(regime + strait * 0.18, 0, 1)));
+  }
+  if (layer === 'scalarRegime') {
+    const scalar = sampleWorldMapLayer(worldMap, 'scalarRegime', x, y) / 8;
+    return rgba(mixRgb([28, 50, 108], [190, 118, 174], clampMetric(scalar + river * 0.12, 0, 1)));
+  }
+  if (layer === 'suitability') {
+    const suitability = sampleWorldMapLayer(worldMap, 'suitability', x, y);
+    return rgba(mixRgb([16, 54, 108], [82, 210, 151], suitability));
+  }
   if (river > 0.36) return [90, 156, 100, 255];
   if (strait > 0.34) return [72, 177, 174, 255];
   if (island > 0.38) return [178, 163, 96, 255];
   if (canyon > 0.32) return [58, 76, 148, 255];
-  if (shelf > basin) return [45, Math.round(120 + shelf * 55), Math.round(145 + shelf * 45), 255];
-  return [Math.round(22 + basin * 38), Math.round(58 + basin * 36), Math.round(110 + basin * 58), 255];
+  if (shelf > basin) return rgba(mixRgb([32, 96, 134], [58, 177, 178], shelf));
+  return rgba(mixRgb([6, 25, 72], [28, 76, 138], basin));
+}
+
+function mixRgb(a = [0, 0, 0], b = [0, 0, 0], t = 0) {
+  const amount = clampMetric(t, 0, 1);
+  return [
+    Math.round(Number(a[0] ?? 0) + (Number(b[0] ?? 0) - Number(a[0] ?? 0)) * amount),
+    Math.round(Number(a[1] ?? 0) + (Number(b[1] ?? 0) - Number(a[1] ?? 0)) * amount),
+    Math.round(Number(a[2] ?? 0) + (Number(b[2] ?? 0) - Number(a[2] ?? 0)) * amount)
+  ];
+}
+
+function rgba(rgb = [0, 0, 0], alpha = 255) {
+  return [rgb[0], rgb[1], rgb[2], alpha];
+}
+
+function clampMetric(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return min;
+  return Math.min(max, Math.max(min, number));
 }
 
 function simplifiedConsoleHtml(scene, summary = {}, panelSections = new Map(), advancedOpen = '', diagnosticsOpen = '') {
@@ -2550,6 +2609,11 @@ function formatInputNumber(value) {
 function formatNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? String(Math.round(number * 10) / 10) : 'n/a';
+}
+
+function roundMetric(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.round(number * 1000000) / 1000000 : 0;
 }
 
 function shortDigest(value) {
