@@ -70,6 +70,16 @@
     "alpha-forecast-replanning-mission",
     "alpha-research-benchmark"
   ],
+  "referenceEnvironmentWorkflow": {
+    "status": "READY_FOR_ALPHA_RETEST",
+    "fixture": "monterey_canyon_15s",
+    "bathymetry": "ETOPO_2022_15_arc_second_surface_non_ice_fallback",
+    "generatedFields": "synthetic_bathymetry_conditioned",
+    "launchValidation": "PASS_WITH_NON_BLOCKING_WARNINGS",
+    "hiddenTruthExposed": false,
+    "rawExternalDataPathExposed": false,
+    "ownerReviewPackage": "artifacts/owner-review/env-compose-launch-r1-1/"
+  },
   "supportedBrowsers": [
     {
       "browser": "Chromium / Chrome / Edge current",
@@ -224,5 +234,5 @@
     "exportFormats": "docs/export_formats.md",
     "testing": "docs/testing.md"
   },
-  "releaseDigest": "fnv1a32:ba01ca3c"
+  "releaseDigest": "fnv1a32:98528bc1"
 }

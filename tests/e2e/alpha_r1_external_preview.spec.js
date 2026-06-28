@@ -197,7 +197,7 @@ test('Alpha Pages and Compact Layout', async ({ page }) => {
     expect(result.status, result.path).toBe(200);
     expect(result.bytes, result.path).toBeGreaterThan(100);
   }
-  expect(subpathFetch.find((item) => item.path.endsWith('release-manifest.json')).text).toContain('fnv1a32:ba01ca3c');
+  expect(subpathFetch.find((item) => item.path.endsWith('release-manifest.json')).text).toContain('fnv1a32:98528bc1');
 
   await page.locator('#main-menu-hub [data-action="methods-validation"]').first().click();
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene?.getScene?.('MethodsValidationScene')?.sys?.isActive?.() ?? false), { timeout: 15000 }).toBe(true);

@@ -68,6 +68,8 @@ public reference bathymetry patch
 
 The generated currents, scalars, hotspots, and hazard candidates are deterministic synthetic benchmark fields conditioned by the selected reference bathymetry, wet/land mask, coastline/open-boundary metadata, depth axis, and time axis. They are not operational forecast products, HYCOM, Marine Copernicus, calibrated ecological products, or hidden truth. Launch validation checks candidate starts/drop zones, public hazards, package-backed artifact digests, and public-safety boundaries before a generated shell opens in Planning. Launch messages are classified; non-blocking warnings can allow launch, but blocking warnings and failures prevent launch. The public benchmark bundle exports only planner-visible forecast/public fields.
 
+The reference-derived Monterey Canyon path is ready for human alpha retest. Retest evidence lives in ignored local owner-review artifacts, while tester instructions and the feedback template are tracked in `docs/alpha_reference_environment_retest_protocol.md` and `alpha/reference-environment-retest-feedback-template.json`.
+
 ## Boundaries
 
 Reference bathymetry is a public source surface for `bottomDepthMeters = h(x, y)`.

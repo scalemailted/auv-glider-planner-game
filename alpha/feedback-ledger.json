@@ -27,7 +27,8 @@
       "blocked",
       "resolved",
       "deferred",
-      "ignored"
+      "ignored",
+      "READY_FOR_ALPHA_RETEST"
     ]
   },
   "items": [
@@ -448,6 +449,37 @@
         "Owner-review screenshots and QA summary prove Environment Studio composition, launch validation, Planning, execution, Debrief, project roundtrip, and benchmark export.",
         "Public artifacts remain free of hidden truth and raw external_data paths.",
         "Mission simulation, scoring, planners, glider dynamics, and field equations remain unchanged."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-020",
+      "title": "Run alpha retest on reference-derived Monterey Canyon workflow.",
+      "source": "alpha tester",
+      "status": "READY_FOR_ALPHA_RETEST",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Environment Alpha Retest",
+      "summary": "The reference-derived Monterey Canyon workflow now composes, validates, launches to Planning, executes missions, reaches Debrief, and exports public benchmark bundles. Human alpha retest is required before adding variants, dataset factories, or additional environment authoring features.",
+      "decision": "Accepted for ALPHA-ENV-RETEST-R1.",
+      "proposedPhase": "ALPHA-ENV-RETEST-R1",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/env-compose-launch-r1-1/package-manifest.json",
+        "docs/alpha_reference_environment_retest_protocol.md",
+        "alpha/reference-environment-retest-feedback-template.json"
+      ],
+      "acceptanceCriteria": [
+        "Stable owner-review evidence is available from an ignored local artifact path.",
+        "Human testers have a concise task script for Environment Studio through Planning, execution, Debrief, and benchmark export.",
+        "Feedback intake captures provenance clarity, claim-boundary clarity, warning clarity, usability, scientific concerns, education concerns, and benchmark concerns.",
+        "The retest handoff preserves the deterministic benchmark claim boundary and does not change simulation, scoring, planners, glider dynamics, or field equations."
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""

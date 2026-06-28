@@ -1,0 +1,29 @@
+{
+  "testerId": "",
+  "date": "",
+  "appVersionOrCommit": "",
+  "browser": "",
+  "platform": "",
+  "workflowCompleted": false,
+  "blockedAtStep": "",
+  "clarity": {
+    "sourceProvenanceClear": null,
+    "claimBoundaryClear": null,
+    "warningsClear": null,
+    "planningLaunchClear": null,
+    "benchmarkExportClear": null
+  },
+  "usability": {
+    "environmentStudioEase": null,
+    "planningEase": null,
+    "layerVisibility": null,
+    "rightPanelUsefulness": null,
+    "overallConfidence": null
+  },
+  "issues": [],
+  "featureRequests": [],
+  "scientificConcerns": [],
+  "educationConcerns": [],
+  "benchmarkConcerns": [],
+  "freeformNotes": ""
+}

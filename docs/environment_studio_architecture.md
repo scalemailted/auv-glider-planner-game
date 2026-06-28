@@ -124,6 +124,8 @@ The Planning launch adapter produces a default generated `anchor.level` and `anc
 
 Benchmark export writes a public `anchor.classical-planner-benchmark-bundle` with `visibilityClass=PUBLIC`, `fairnessClass=FORECAST_ONLY`, `containsHiddenTruth=false`, package-backed bathymetry/current/scalar identities, candidate nodes, parity probes, and validation results. Public bundles contain deterministic synthetic benchmark fields conditioned by reference bathymetry; they are not operational forecast products or calibrated real-ocean validation artifacts.
 
+ALPHA-ENV-RETEST-R1 does not add environment features. It packages the R1.1 evidence, tester protocol, and feedback template so humans can retest the reference-derived Monterey Canyon workflow before additional environment-authoring work starts.
+
 ## Domain Spec
 
 The domain spec defines physical extent and resolution before any fields are generated:
