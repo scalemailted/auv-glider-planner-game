@@ -32,7 +32,7 @@ When a public GitHub notebook URL is configured, the launchpad can open Google C
 6. Export the returned plan/package.
 7. Return to ANCHOR for authoritative validation, simulation, scoring, and final acceptance.
 
-The default public bundle is `tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json`. It is `PUBLIC / FORECAST_ONLY`, records `containsHiddenTruth=false`, and includes validation-baseline plus ScoreProfile identity. Hosted Google Colab smoke remains `PENDING` until the owner completes the real hosted run.
+The default public bundle is `tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json`. It is `PUBLIC / FORECAST_ONLY`, records `containsHiddenTruth=false`, and includes validation-baseline plus ScoreProfile identity. Environment Studio can also export reference-derived public benchmark bundles after the public reference bathymetry patch -> bathymetry artifact -> deterministic synthetic bathymetry-conditioned fields -> package-backed environment artifact -> validated Planning launch path validates. Hosted Google Colab smoke remains `PENDING` until the owner completes the real hosted run.
 
 ## Public Planning-Data Audit
 
@@ -46,7 +46,7 @@ The default public bundle is `tests/fixtures/colab_benchmark/bundles/static_addi
 8. Integrated summaries remain metadata or solver-packet compatibility projections. They are not described as depth-specific fields unless the source declares depth-specific data.
 9. Digests are separate: `environmentDigest` identifies the parent environment, `publicProjectionDigest` identifies the exact planner-visible public projection, `solverPacketDigest` identifies the compact solver packet, `benchmarkBundleDigest`/`payloadDigest` identify the complete notebook bundle, and field digests identify individual exported fields.
 
-Do not claim parity against hidden internal truth when the planner receives only public forecast data.
+Do not claim parity against hidden internal truth when the planner receives only public forecast data. Reference-derived Environment Studio bundles are deterministic synthetic benchmark artifacts conditioned by public reference bathymetry; they are not operational forecast products or calibrated ocean validation datasets.
 
 ## Bundle Contract
 

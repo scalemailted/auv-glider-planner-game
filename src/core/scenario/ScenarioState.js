@@ -121,6 +121,7 @@ function isModernGeneratedScenarioSource(source) {
     'greedyPlannerRace',
     'plannerBenchmarkSetup',
     'adaptiveBenchmarkSetup',
+    'referenceEnvironmentStudioLaunch',
     'tutorial',
     'generatedModernMission',
     'leaderboardRegenerated'

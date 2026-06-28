@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import net from 'node:net';
+import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import {
   grepForGroup,
@@ -11,6 +12,7 @@ import { printCoverageAudit, runCoverageAudit } from './audit_playwright_group_c
 
 const PORT = 9321;
 const RECENT_LINE_LIMIT = 40;
+const OUTPUT_ROOT = process.env.ANCHOR_PLAYWRIGHT_OUTPUT_ROOT ?? 'test-results';
 const passthroughArgs = process.argv.slice(2);
 const profileArg = passthroughArgs.find((arg) => arg.startsWith('--profile='));
 const profile = normalizePlaywrightProfile(profileArg?.split('=')[1] ?? 'full');
@@ -88,7 +90,7 @@ console.log(failed ? `FAIL grouped Playwright ${profile} suite` : `PASS grouped 
 process.exit(failed ? 1 : 0);
 
 function groupPlaywrightArgs(group, profile) {
-  const args = ['--reporter=line', '--workers=1', '--output', 'test-results/.playwright-' + profile + '-' + group.id, '--grep', grepForGroup(group.id, profile)];
+  const args = ['--reporter=line', '--workers=1', '--output', path.join(OUTPUT_ROOT, `.playwright-${profile}-${group.id}`), '--grep', grepForGroup(group.id, profile)];
   if (group.id === 'visualAcceptance') args.push('--headed', '--project=chromium');
   return args;
 }

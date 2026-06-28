@@ -31,7 +31,7 @@ assert.equal(result.dependencyGraph.nodes.hotspots.state, 'CURRENT');
 assert.equal(result.dependencyGraph.nodes.hazards.state, 'CURRENT');
 assert.equal(result.dependencyGraph.nodes.startsDropZones.state, 'NEEDS_VALIDATION');
 assert.equal(result.dependencyGraph.nodes.benchmarkBundle.state, 'REQUIRES_REGENERATION');
-assert.ok(['CURRENT', 'REQUIRES_COMPOSITION'].includes(result.dependencyGraph.nodes.environmentArtifact.state));
+assert.equal(result.dependencyGraph.nodes.environmentArtifact.state, 'CURRENT');
 
 const metadata = publicMetadataText({
   provenance: result.provenance,

@@ -2,7 +2,7 @@
 
 Environment Studio is the planned unified authoring surface for ANCHOR environment projects. It should help instructors and researchers select or import bathymetry context, generate reproducible regional bathymetry, inspect generated field dependencies, validate artifacts, and export public-safe JSON.
 
-R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1/R1.1 added a structured atlas field engine and window-conditioned bathymetry builder. ENV-STUDIO-R2, ENV-WORLD-R1/R1A, and ENV-GLOBE-R1 explored procedural synthetic world/globe selectors. REAL-BATHY-R1 made the active browser front door a **Reference Bathymetry Atlas** workflow. BATHY-DATA-R1 adds the reference-data bootstrap: offline downloader/preprocessor scripts, a compact runtime manifest, blocked browser handling when fixtures are absent, and Monterey Canyon reference fixtures. BATHY-DATA-R1.2 adds a true 15 arc-second mission-ready patch while preserving the original 60 arc-second low-resolution fallback. FIELD-REGEN-R1 adds the explicit public reference bathymetry patch -> bathymetry artifact -> synthetic bathymetry-conditioned fields -> environment artifact path. The procedural world/globe workflow remains available only as an experimental sandbox / compatibility path.
+R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1/R1.1 added a structured atlas field engine and window-conditioned bathymetry builder. ENV-STUDIO-R2, ENV-WORLD-R1/R1A, and ENV-GLOBE-R1 explored procedural synthetic world/globe selectors. REAL-BATHY-R1 made the active browser front door a **Reference Bathymetry Atlas** workflow. BATHY-DATA-R1 adds the reference-data bootstrap: offline downloader/preprocessor scripts, a compact runtime manifest, blocked browser handling when fixtures are absent, and Monterey Canyon reference fixtures. BATHY-DATA-R1.2 adds a true 15 arc-second mission-ready patch while preserving the original 60 arc-second low-resolution fallback. FIELD-REGEN-R1 and ENV-COMPOSE-LAUNCH-R1 implement the public reference bathymetry patch -> bathymetry artifact -> deterministic synthetic bathymetry-conditioned fields -> package-backed environment artifact -> validated Planning launch -> public benchmark bundle path. The procedural world/globe workflow remains available only as an experimental sandbox / compatibility path.
 
 ## Product Placement
 
@@ -102,6 +102,27 @@ After FIELD-REGEN-R1:
 - launch-to-planning, simulation, official scoring, planner behavior, and benchmark fairness are unchanged.
 
 Generated fields are deterministic synthetic benchmark fixtures. They are not HYCOM, Marine Copernicus, calibrated ocean products, operational forecasts, ecological forecasts, real bathymetry, or navigation data.
+
+## ENV-COMPOSE-LAUNCH-R1 Composition And Launch
+
+ENV-COMPOSE-LAUNCH-R1 turns regenerated reference-derived projects into explicit public artifacts and launch shells without moving mission ownership out of Mission Workspace.
+
+The implemented path is:
+
+```text
+public reference bathymetry patch
+-> bathymetry artifact
+-> deterministic synthetic bathymetry-conditioned fields
+-> package-backed environment artifact
+-> validated Planning launch
+-> public benchmark bundle
+```
+
+Composition creates a package-backed `EnvironmentArtifact`, field registry, component digests, provenance, and environment digest from the selected reference fixture, bathymetry artifact, wet/land mask, coastline metadata, generated current/scalar artifacts, hotspots, hazards, and start/drop-zone candidates. Launch validation checks artifact status, current/scalar digest presence, public hazard safety, wet start/drop candidates, zero current vectors on land and below bottom, finite scalar diagnostics, and hidden-truth claim boundaries. ENV-COMPOSE-LAUNCH-R1.1 classifies launch messages as `INFO`, `ADVISORY`, `NON_BLOCKING_WARN`, `BLOCKING_WARN`, or `FAIL`; Planning launch is allowed only when no blocking warnings or failures are present.
+
+The Planning launch adapter produces a default generated `anchor.level` and `anchor.mission` shell for Mission Workspace. The shell preserves full source field timing metadata while using a browser-friendly launch window for interactive Planning. Environment Studio does not create routes, execute missions, choose dive profiles, score plans, or change planner behavior. Mission Workspace still owns glider count, waypoint editing, route ordering, dive profiles, execution, replanning, and scoring.
+
+Benchmark export writes a public `anchor.classical-planner-benchmark-bundle` with `visibilityClass=PUBLIC`, `fairnessClass=FORECAST_ONLY`, `containsHiddenTruth=false`, package-backed bathymetry/current/scalar identities, candidate nodes, parity probes, and validation results. Public bundles contain deterministic synthetic benchmark fields conditioned by reference bathymetry; they are not operational forecast products or calibrated real-ocean validation artifacts.
 
 ## Domain Spec
 
@@ -220,7 +241,7 @@ Supported states:
 - `REQUIRES_REGENERATION`
 - `REQUIRES_COMPOSITION`
 
-For example, a bathymetry tile edit makes the tile current, the mosaic stale, and downstream bathymetry/current/scalar/environment artifacts require regeneration. After bathymetry generation but before FIELD-REGEN-R1, `currentArtifact`, `scalarArtifact`, `hotspots`, `hazards`, and `benchmarkBundle` remain `REQUIRES_REGENERATION`; `startsDropZones` remains `NEEDS_VALIDATION`. After the explicit field-regeneration action, `currentArtifact`, `scalarArtifact`, `hotspots`, and generated hazard candidates become `CURRENT`, `startsDropZones` still need validation, `environmentArtifact` is `CURRENT` or `REQUIRES_COMPOSITION`, and benchmark export remains deferred. This keeps UI honest about what is previewed versus what is validated.
+For example, a bathymetry tile edit makes the tile current, the mosaic stale, and downstream bathymetry/current/scalar/environment artifacts require regeneration. After bathymetry generation but before FIELD-REGEN-R1, `currentArtifact`, `scalarArtifact`, `hotspots`, `hazards`, and `benchmarkBundle` remain `REQUIRES_REGENERATION`; `startsDropZones` remains `NEEDS_VALIDATION`. After the explicit field-regeneration action, `currentArtifact`, `scalarArtifact`, `hotspots`, and generated hazard candidates become `CURRENT`, `startsDropZones` still need validation, and `environmentArtifact` is `CURRENT` or `REQUIRES_COMPOSITION`. After ENV-COMPOSE-LAUNCH-R1 validation and export, `startsDropZones` may become `CURRENT` or `NEEDS_REVIEW`, `benchmarkBundle` becomes `CURRENT` when public export validates, and Planning launch is enabled only from the validated shell. This keeps UI honest about what is previewed versus what is validated.
 
 ## Validation Report
 
@@ -260,7 +281,7 @@ R1 import/export uses the contract JSON directly:
 - keep hidden truth out of public exports;
 - remain static-host compatible.
 
-Later phases may connect a validated Environment Studio environment artifact to mission launch and benchmark bundle export. That connection must be explicit and tested, not inferred from UI state.
+ENV-COMPOSE-LAUNCH-R1 connects a validated Environment Studio environment artifact to Mission Workspace launch and public benchmark-bundle export. That connection is explicit: compose, validate, launch, and export are separate controls with preserved digests and debug summaries. It is not inferred from preview state.
 
 ## Regional Preview Metadata
 
@@ -312,7 +333,7 @@ Implemented R1.1 browser workflow:
 4. Generate mixed regional bathymetry with at least three feature families by default.
 5. Preserve regional recipe, feature mix, tile provenance, source-grid shape, preview-grid shape, decimation, feature summary, suitability checks, validation report, and dependency state in project export/import.
 
-Sculpting, launch-to-planning, start/drop-zone validation, and benchmark-bundle export remain staged follow-ups. FIELD-REGEN-R1 now regenerates compact current/scalar/hotspot/hazard metadata through package-backed synthetic builders from the reference bathymetry path. Reference bathymetry plus regenerated fields are benchmark-oriented and validation-aware, but the generated currents/scalars/hotspots are deterministic synthetic benchmark fields, not calibrated real-ocean products.
+Sculpting remains a staged follow-up. FIELD-REGEN-R1 regenerates compact current/scalar/hotspot/hazard metadata through package-backed synthetic builders from the reference bathymetry path, and ENV-COMPOSE-LAUNCH-R1 composes the package-backed environment artifact, validates starts/drop zones for launch readiness, launches a generated shell into Planning, and exports a public benchmark bundle. Reference bathymetry plus regenerated fields are benchmark-oriented and validation-aware, but the generated currents/scalars/hotspots are deterministic synthetic benchmark fields, not calibrated real-ocean products.
 
 ## ENV-ATLAS-R1/R1.1 Atlas Workflow
 
@@ -325,4 +346,4 @@ Implemented atlas pivot and field-engine upgrade:
 5. Generate 3D Region creates a Regional Mission Recipe and runs the window-conditioned bathymetry builder. Regional Detail shows builder digest, bathymetry artifact digest, validation, feature summary, dependency graph, and source/preview grid metadata.
 6. Feature-mix controls, source-tile provenance, validation, and dependency diagnostics remain available as secondary regional-detail mechanisms rather than the first visible model.
 
-ENV-ATLAS-R1.1 does not change mission simulation, official scoring, glider dynamics, planner behavior, benchmark fairness, or existing Alpha workflows. FIELD-REGEN-R1 adds explicit package-backed synthetic current/scalar/hotspot/hazard generation for Environment Studio projects without connecting those projects to mission launch or scoring.
+ENV-ATLAS-R1.1 does not change mission simulation, official scoring, glider dynamics, planner behavior, benchmark fairness, or existing Alpha workflows. FIELD-REGEN-R1 adds explicit package-backed synthetic current/scalar/hotspot/hazard generation for Environment Studio projects. ENV-COMPOSE-LAUNCH-R1 connects only validated reference-derived project shells to Mission Workspace and public benchmark export; it still does not change mission simulation, scoring, glider dynamics, planner behavior, or benchmark fairness.

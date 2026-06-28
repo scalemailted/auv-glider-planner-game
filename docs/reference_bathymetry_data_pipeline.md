@@ -55,13 +55,18 @@ Synthetic benchmark variety should come later from provenance-preserving variant
 
 ## Field Regeneration
 
-FIELD-REGEN-R1 adds the explicit browser/package path:
+The current browser/package path is:
 
 ```text
-public reference bathymetry patch -> bathymetry artifact -> synthetic bathymetry-conditioned fields -> environment artifact
+public reference bathymetry patch
+-> bathymetry artifact
+-> deterministic synthetic bathymetry-conditioned fields
+-> package-backed environment artifact
+-> validated Planning launch
+-> public benchmark bundle
 ```
 
-The generated currents, scalars, hotspots, and hazard candidates are deterministic synthetic benchmark fields conditioned by the selected reference bathymetry, wet/land mask, coastline/open-boundary metadata, depth axis, and time axis. They are not operational forecast products, HYCOM, Marine Copernicus, calibrated ecological products, or hidden truth. Start/drop zones are candidates that still require mission validation, and benchmark bundle export / launch into Planning remain separate follow-ups.
+The generated currents, scalars, hotspots, and hazard candidates are deterministic synthetic benchmark fields conditioned by the selected reference bathymetry, wet/land mask, coastline/open-boundary metadata, depth axis, and time axis. They are not operational forecast products, HYCOM, Marine Copernicus, calibrated ecological products, or hidden truth. Launch validation checks candidate starts/drop zones, public hazards, package-backed artifact digests, and public-safety boundaries before a generated shell opens in Planning. Launch messages are classified; non-blocking warnings can allow launch, but blocking warnings and failures prevent launch. The public benchmark bundle exports only planner-visible forecast/public fields.
 
 ## Boundaries
 

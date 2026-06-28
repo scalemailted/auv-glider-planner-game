@@ -1,34 +1,57 @@
 import { expect, test } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { startStaticServer } from './static-server.mjs';
 import { attachBrowserErrorCollector } from './helpers/BrowserErrorCollector.js';
 import { waitForAnchorAppReady, waitForAnchorRoute } from './helpers/AnchorRuntimeReadyHarness.js';
 import { launchFromMainMenuHub } from './helpers/SmokeSpecShared.js';
+import { validateClassicalPlannerBenchmarkBundle } from '../../src/core/io/ClassicalPlannerBenchmarkBundleExporter.js';
+import { canonicalJsonDigest, canonicalizeJsonValue } from '../../packages/codecs/src/index.js';
 
 let server;
 const BASE = 'http://127.0.0.1:9391';
-const OWNER_REVIEW_DIR = path.resolve('test-results', 'bathy-data-r1-owner-review');
+let OWNER_REVIEW_DIR = path.resolve(process.env.ANCHOR_E2E_OWNER_REVIEW_DIR ?? 'test-results/env-compose-launch-r1-1-owner-review');
 const REQUIRED_SCREENSHOTS = [
-  '01-reference-bathy-overview-or-blocked.png',
-  '02-reference-bathy-fixture-selector.png',
-  '03-reference-patch-selected.png',
-  '04-reference-patch-generated-3d-bathymetry.png',
-  '05-blocked-instructions-if-no-data.png'
+  '01-environment-studio-reference-source.png',
+  '02-reference-bathymetry-generated.png',
+  '03-currents-and-science-fields-generated.png',
+  '04-environment-artifact-composed.png',
+  '05-launch-validation-report.png',
+  '06-planning-launch-ready.png',
+  '07-mission-workspace-reference-environment.png',
+  '08-planning-current-layer-visible.png',
+  '09-planning-scalar-hotspot-layer-visible.png',
+  '10-waypoint-placement-on-reference-environment.png',
+  '11-execute-mission-from-reference-environment.png',
+  '12-debrief-reference-environment-result.png',
+  '13-public-benchmark-bundle-export.png',
+  '14-project-export-import-roundtrip.png',
+  '15-main-menu-cleanup.png'
 ];
 const FNV_DIGEST_PATTERN = /(?:^|-)fnv1a32:/;
+let GIT_BRANCH = 'unknown';
+let GIT_HEAD = 'unknown';
+let REFERENCE_FIXTURE_DIGEST = 'unknown';
 
 export const EXACT_TITLES = [
   'Reference Bathymetry Atlas Opens',
   'Reference Patch Generates Bathymetry',
   'Reference Patch Generates Environment Fields',
-  'Export / Import Generated Reference Environment'
+  'Export / Import Generated Reference Environment',
+  'Reference Environment Owner Walkthrough',
+  'Reference Environment Export/Benchmark Roundtrip'
 ];
 
-test.setTimeout(180000);
+test.setTimeout(900000);
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test.beforeAll(async () => {
+  GIT_BRANCH = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim();
+  GIT_HEAD = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const manifest = JSON.parse(await fs.readFile(path.resolve('assets/reference_bathymetry/manifest.json'), 'utf8'));
+  REFERENCE_FIXTURE_DIGEST = manifest.fixtures?.find((entry) => entry.fixtureId === 'monterey_canyon_15s')?.digest ?? manifest.overview?.digest ?? 'unknown';
   await resetOwnerReviewPackage();
   server = await startStaticServer({ port: 9391 });
 });
@@ -143,7 +166,7 @@ test(EXACT_TITLES[2], async ({ page }) => {
   expect(debug.hotspotArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
   expect(debug.hazardCandidateDigest).toMatch(FNV_DIGEST_PATTERN);
   expect(debug.environmentArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
-  expect(['CURRENT', 'REQUIRES_COMPOSITION']).toContain(debug.environmentArtifactStatus);
+  expect(debug.environmentArtifactStatus).toBe('CURRENT');
   expect(debug.currentDiagnostics.landVectorCount).toBe(0);
   expect(debug.currentDiagnostics.belowBottomVectorCount).toBe(0);
   expect(debug.currentDiagnostics.temporalChangeRms).toBeGreaterThan(0);
@@ -157,7 +180,7 @@ test(EXACT_TITLES[2], async ({ page }) => {
   expect(debug.dependencyGraph.nodes.hazards.state).toBe('CURRENT');
   expect(debug.dependencyGraph.nodes.startsDropZones.state).toBe('NEEDS_VALIDATION');
   expect(debug.dependencyGraph.nodes.benchmarkBundle.state).toBe('REQUIRES_REGENERATION');
-  expect(['CURRENT', 'REQUIRES_COMPOSITION']).toContain(debug.dependencyGraph.nodes.environmentArtifact.state);
+  expect(debug.dependencyGraph.nodes.environmentArtifact.state).toBe('CURRENT');
   expect(debug.hiddenTruthExposed).toBe(false);
   expect(debug.simulationChanged).toBe(false);
   expect(debug.scoringChanged).toBe(false);
@@ -201,6 +224,188 @@ test(EXACT_TITLES[3], async ({ page }) => {
   browserErrors.assertClean();
 });
 
+test(EXACT_TITLES[4], async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
+  await openEnvironmentStudio(page);
+  await waitForReferenceManifest(page);
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[0]);
+
+  const debug = await composeAndValidateReferenceEnvironment(page, {
+    captureScreenshots: true,
+    skipOpen: true
+  });
+  if (!hasReferenceFixture(debug)) {
+    browserErrors.assertClean();
+    return;
+  }
+
+  await expect(page.locator('#mission-console')).toContainText('Environment Artifact');
+  await expect(page.locator('#mission-console')).toContainText('Launch Validation');
+  await expect(page.locator('#mission-console')).toContainText('Planning ready');
+  await expect(page.locator('#mission-console')).toContainText('Launch ready with non-blocking warnings');
+  await expect(page.locator('[data-reference-launch-warnings]')).toBeVisible();
+  await expect(page.locator('[data-action="env-studio-launch-planning"]').first()).toBeEnabled();
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[5]);
+
+  await page.locator('[data-action="env-studio-launch-planning"]').first().click();
+  await expect.poll(
+    () => page.evaluate(() => window.ANCHOR_REFERENCE_ENVIRONMENT_LAUNCH_DEBUG?.activeScene ?? null),
+    { timeout: 20000 }
+  ).toBe('MissionWorkspaceScene');
+  await expect(page.locator('#mission-console')).toContainText('Reference-Derived Environment');
+  await expect(page.locator('#mission-console')).toContainText('Reference-derived Monterey Canyon');
+  await expect(page.locator('#mission-console')).toContainText('ETOPO 2022 15 arc-second Monterey Canyon');
+  await expect(page.locator('#mission-console')).toContainText('Launch: WARN');
+  await expect(page.locator('#mission-console')).toContainText('not an operational forecast');
+  await expect(page.locator('#mission-console')).toContainText('Planning Tools');
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[6]);
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[7]);
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[8]);
+
+  const route = await addReferenceEnvironmentWaypoints(page);
+  expect(route.waypointCount).toBeGreaterThanOrEqual(2);
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[9]);
+
+  const launchDebug = await page.evaluate(() => window.ANCHOR_REFERENCE_ENVIRONMENT_LAUNCH_DEBUG);
+  expect(launchDebug.launchedFromEnvironmentStudio).toBe(true);
+  expect(launchDebug.referenceFixtureId).toBe('monterey_canyon_15s');
+  expect(launchDebug.environmentArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(launchDebug.currentArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(launchDebug.scalarArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(launchDebug.launchValidationStatus).toBe('WARN');
+  expect(launchDebug.warningSummary.blockingWarningCount).toBe(0);
+  expect(launchDebug.warningSummary.failureCount).toBe(0);
+  expect(launchDebug.hiddenTruthExposed).toBe(false);
+  expect(launchDebug.simulationChanged).toBe(false);
+  expect(launchDebug.scoringChanged).toBe(false);
+
+  const executeButton = page.locator('#mission-console [data-action="execute"]');
+  await expect(executeButton).toBeVisible();
+  await expect(executeButton).toBeEnabled();
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[10]);
+  await executeButton.click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 20000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.engineInitialized === true), { timeout: 20000 }).toBe(true);
+  const finishDebug = await page.evaluate(async () => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    if (scene.engine?.runUntilComplete) {
+      const previousIgnoreSurfacePauses = scene.engine.ignoreSurfacePauses;
+      scene.engine.ignoreSurfacePauses = true;
+      scene.engine.runUntilComplete(2000);
+      scene.engine.ignoreSurfacePauses = previousIgnoreSurfacePauses;
+    } else {
+      scene.finishSimulation?.();
+      const started = performance.now();
+      while (scene.finishingAsync && performance.now() - started < 15000) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    }
+    if (scene.engine?.routeFailureDecision?.active) scene.finishFromRouteFailure?.();
+    if (scene.engine?.awaitingSurfaceDecision) scene.finishFromSurface?.();
+    scene.syncResult?.();
+    scene.publishExecutionDebug?.({ ownerReviewFinishInvoked: true });
+    return window.ANCHOR_EXECUTION_DEBUG;
+  });
+  expect(finishDebug.resultAvailable).toBe(true);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.goDebrief?.());
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('DebriefScene')?.sys.isActive?.() ?? false), { timeout: 20000 }).toBe(true);
+  await expect(page.locator('#debrief-root')).toBeVisible();
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[11]);
+
+  await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('DebriefScene');
+    scene.leaveDebrief?.(() => scene.scene.start('MainMenuScene'));
+  });
+  await waitForAnchorRoute(page, 'main-menu');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_THREE_PERFORMANCE_DEBUG?.activeRendererCount ?? 0), { timeout: 20000 }).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_THREE_PERFORMANCE_DEBUG?.activeRafCount ?? 0), { timeout: 20000 }).toBe(0);
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[14]);
+
+  const cleanup = await page.evaluate(() => ({
+    activeRendererCountAfterCleanup: Number(window.ANCHOR_THREE_PERFORMANCE_DEBUG?.activeRendererCount ?? 0),
+    activeRafCountAfterCleanup: Number(window.ANCHOR_THREE_PERFORMANCE_DEBUG?.activeRafCount ?? 0),
+    activeCanvasCountAfterCleanup: document.querySelectorAll('.three-mission-world-canvas, .three-bathymetry-canvas').length
+  }));
+  await writeQaSummary(ownerReviewSummaryFromDebug({
+    ...debug,
+    ...launchDebug,
+    launchValidationStatus: launchDebug.launchValidationStatus,
+    launchValidationDigest: launchDebug.launchValidationDigest,
+    launchWarningSummary: launchDebug.warningSummary,
+    warningSummary: launchDebug.warningSummary,
+    missionExecuted: true,
+    debriefReached: true,
+    launchedPlanningEnvironmentDigest: launchDebug.environmentArtifactDigest,
+    ...cleanup
+  }));
+
+  browserErrors.assertClean();
+});
+
+test(EXACT_TITLES[5], async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
+  const debug = await composeAndValidateReferenceEnvironment(page);
+  if (!hasReferenceFixture(debug)) {
+    browserErrors.assertClean();
+    return;
+  }
+
+  const benchmark = await downloadBenchmarkBundle(page);
+  expect(benchmark.filename).toBe('anchor_reference_environment_benchmark_bundle.json');
+  expect(benchmark.data.type).toBe('anchor.classical-planner-benchmark-bundle');
+  expect(benchmark.data.visibilityClass).toBe('PUBLIC');
+  expect(benchmark.data.fairnessClass).toBe('FORECAST_ONLY');
+  expect(benchmark.data.containsHiddenTruth).toBe(false);
+  expect(benchmark.data.environmentDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(benchmark.data.benchmarkBundleDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(benchmark.data.currents.depthStructure).toBe('packageBackedDepthSpecificCurrentField4D');
+  expect(benchmark.data.scalarFields[0].depthClassification).toBe('packageBackedDepthSpecificScalarField4D');
+  expect(benchmark.data.referenceEnvironmentDigests.hotspotArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(benchmark.data.visibilitySafety.containsHiddenTruth).toBe(false);
+  expect(benchmark.data.fairnessMetadata.hiddenTruthAvailableToPlanner).toBe(false);
+  expect(benchmark.data.parityProbes.length).toBeGreaterThanOrEqual(8);
+  expect(JSON.stringify(benchmark.data)).not.toMatch(/T_hiddenTruth|"hiddenTruth"\s*:|rawOracleTensor|oracleState|external_data[\\/]|[A-Z]:\\/);
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[12]);
+
+  const validation = validateClassicalPlannerBenchmarkBundle(benchmark.data);
+  expect(validation.status).toBe('PASS');
+
+  await expect.poll(
+    () => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.benchmarkBundleStatus ?? null),
+    { timeout: 15000 }
+  ).toBe('CURRENT');
+  const exported = await downloadStudioProject(page);
+  expect(exported.data.benchmarkBundleResult.status).toBe('CURRENT');
+  expect(exported.data.benchmarkBundleResult.benchmarkBundleDigest).toBe(benchmark.data.benchmarkBundleDigest);
+  expect(exported.data.launchValidationResult.planningLaunchReady).toBe(true);
+  expect(exported.data.launchValidationResult.warningSummary.blockingWarningCount).toBe(0);
+  expect(exported.data.launchValidationResult.validationReport.artifactType).toBe('anchor.reference-environment-launch-validation-report');
+
+  await page.locator('input[data-env-studio-import]').setInputFiles(exported.path);
+  await expect.poll(
+    () => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.benchmarkBundleDigest ?? null),
+    { timeout: 15000 }
+  ).toBe(benchmark.data.benchmarkBundleDigest);
+  const importedDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+  expect(importedDebug.environmentArtifactDigest).toBe(debug.environmentArtifactDigest);
+  expect(importedDebug.launchValidationStatus).toBe(debug.launchValidationStatus);
+  expect(importedDebug.benchmarkBundleStatus).toBe('CURRENT');
+  expect(importedDebug.hiddenTruthExposed).toBe(false);
+  await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[13]);
+
+  await writeQaSummary(ownerReviewSummaryFromDebug({
+    ...importedDebug,
+    benchmarkBundleStatus: 'CURRENT',
+    benchmarkBundleDigest: benchmark.data.benchmarkBundleDigest,
+    exportedProjectDigest: exported.data.projectDigest ?? canonicalJsonDigest(canonicalizeJsonValue(exported.data)),
+    warningSummary: exported.data.launchValidationResult.warningSummary,
+    launchWarningSummary: exported.data.launchValidationResult.warningSummary,
+    blockingWarningCount: exported.data.launchValidationResult.warningSummary.blockingWarningCount,
+    failureCount: exported.data.launchValidationResult.warningSummary.failureCount
+  }));
+  browserErrors.assertClean();
+});
+
 async function openEnvironmentStudio(page) {
   await page.goto(BASE + '/');
   await waitForAnchorAppReady(page, { routeId: 'main-menu' });
@@ -216,9 +421,11 @@ async function waitForReferenceManifest(page) {
   ).toBe(true);
 }
 
-async function generateReferenceEnvironmentFields(page) {
-  await openEnvironmentStudio(page);
-  await waitForReferenceManifest(page);
+async function generateReferenceEnvironmentFields(page, options = {}) {
+  if (!options.skipOpen) {
+    await openEnvironmentStudio(page);
+    await waitForReferenceManifest(page);
+  }
   const initialDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
   if (!hasReferenceFixture(initialDebug)) {
     await expect(page.locator('[data-action="env-reference-generate-bathymetry"]')).toBeDisabled();
@@ -229,22 +436,121 @@ async function generateReferenceEnvironmentFields(page) {
   await page.locator('#mission-console [data-action="env-reference-generate-bathymetry"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 20000 }).toBe('regionalBathymetry');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 20000 }).toMatch(FNV_DIGEST_PATTERN);
+  if (options.captureScreenshots) await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[1]);
   await page.locator('[data-action="env-studio-generate-fields"]').first().click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.fieldGenerationStatus ?? null), { timeout: 30000 }).toBe('CURRENT');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.currentArtifactDigest ?? null), { timeout: 30000 }).toMatch(FNV_DIGEST_PATTERN);
+  if (options.captureScreenshots) await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[2]);
   return page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
 }
 
+async function composeAndValidateReferenceEnvironment(page, options = {}) {
+  const generated = await generateReferenceEnvironmentFields(page, options);
+  if (!hasReferenceFixture(generated)) return generated;
+  await page.locator('[data-action="env-studio-compose-environment"]').first().click();
+  await expect.poll(
+    () => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.environmentCompositionStatus ?? null),
+    { timeout: 30000 }
+  ).toBe('CURRENT');
+  await expect.poll(
+    () => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.environmentArtifactStatus ?? null),
+    { timeout: 30000 }
+  ).toBe('CURRENT');
+  if (options.captureScreenshots) await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[3]);
+  await page.locator('[data-action="env-studio-validate-launch"]').first().click();
+  await expect.poll(
+    () => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.planningLaunchReady ?? null),
+    { timeout: 30000 }
+  ).toBe(true);
+  await expect.poll(
+    () => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.startDropZoneValidation?.status ?? null),
+    { timeout: 30000 }
+  ).toBe('CURRENT');
+  if (options.captureScreenshots) await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[4]);
+  return page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+}
+
+async function addReferenceEnvironmentWaypoints(page) {
+  const result = await page.evaluate(async () => {
+    const { addWaypoint } = await import('./src/core/planning/WaypointPlan.js');
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const state = window.anchorGame.state;
+    const agentId = state.selectedAgentId ?? state.mission?.agents?.[0]?.id;
+    const agent = state.mission?.agents?.find((candidate) => candidate.id === agentId) ?? state.mission?.agents?.[0];
+    const agentPlan = state.plan?.agentPlans?.find((candidate) => candidate.agentId === agentId);
+    const start = agentPlan?.selectedStart ?? agent?.deployment?.selectedStart ?? agent?.start ?? { x: 0, y: 0 };
+    scene.trySelectDeploymentStart?.(start);
+    const selected = [];
+    const existing = new Set([`${Math.round(Number(start?.x ?? 0))}:${Math.round(Number(start?.y ?? 0))}`]);
+    const grid = state.level?.world?.grid ?? {};
+    const width = Number(grid.width ?? 0);
+    const sx = Math.round(Number(start?.x ?? 0));
+    const sy = Math.round(Number(start?.y ?? 0));
+    const deterministicTargets = [
+      { x: Math.min(width - 1, sx + 2), y: sy, action: 'sample' },
+      { x: Math.min(width - 1, sx + 4), y: sy, action: 'sample' }
+    ];
+    for (const target of deterministicTargets) {
+      const key = `${target.x}:${target.y}`;
+      if (existing.has(key)) continue;
+      const index = selected.length;
+      addWaypoint(state.plan, agentId, {
+        ...target,
+        window: 0,
+        t: (index + 1) * 2,
+        estimatedArrivalTime: (index + 1) * 2,
+        segmentTravelTime: 2,
+        estimatedTravelTime: 2,
+        segmentEnergy: 2,
+        remainingFuelEstimate: Math.max(0, Number(agent?.battery ?? 140) - (index + 1) * 2),
+        validity: { valid: true, reasons: [] },
+        warnings: [],
+        warningCodes: [],
+        kind: 'navigation',
+        coordinateProfileId: state.plan?.coordinateProfileId,
+        fieldSamplingProfileId: state.plan?.fieldSamplingProfileId
+      });
+      existing.add(key);
+      selected.push(target);
+    }
+    scene.refreshPanels?.();
+    scene.refreshMap?.();
+    const finalPlan = state.plan?.agentPlans?.find((candidate) => candidate.agentId === agentId);
+    return {
+      agentId,
+      selected,
+      waypointCount: finalPlan?.waypoints?.length ?? 0,
+      executionReady: (finalPlan?.waypoints?.length ?? 0) >= 2,
+      errors: []
+    };
+  });
+  expect(result.executionReady, result.errors?.[0] ?? 'Route must be executable').toBe(true);
+  return result;
+}
+
 async function resetOwnerReviewPackage() {
-  await fs.rm(OWNER_REVIEW_DIR, { recursive: true, force: true });
-  await fs.mkdir(OWNER_REVIEW_DIR, { recursive: true });
+  try {
+    await fs.rm(OWNER_REVIEW_DIR, { recursive: true, force: true });
+  } catch (error) {
+    if (error?.code !== 'EPERM') throw error;
+    OWNER_REVIEW_DIR = path.join(os.tmpdir(), 'anchor-env-compose-launch-r1-1-owner-review');
+    await fs.rm(OWNER_REVIEW_DIR, { recursive: true, force: true });
+  }
+  try {
+    await fs.mkdir(OWNER_REVIEW_DIR, { recursive: true });
+  } catch (error) {
+    if (error?.code !== 'EPERM') throw error;
+    OWNER_REVIEW_DIR = path.join(os.tmpdir(), 'anchor-env-compose-launch-r1-1-owner-review');
+    await fs.rm(OWNER_REVIEW_DIR, { recursive: true, force: true });
+    await fs.mkdir(OWNER_REVIEW_DIR, { recursive: true });
+  }
 }
 
 async function captureOwnerScreenshot(page, filename) {
   await fs.mkdir(OWNER_REVIEW_DIR, { recursive: true });
   await page.screenshot({
     path: path.join(OWNER_REVIEW_DIR, filename),
-    fullPage: true
+    fullPage: false
   });
 }
 
@@ -260,20 +566,30 @@ async function readQaSummary() {
 async function writeQaSummary(patch) {
   await fs.mkdir(OWNER_REVIEW_DIR, { recursive: true });
   const current = await readQaSummary();
+  const cleanPatch = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
   const screenshots = (await fs.readdir(OWNER_REVIEW_DIR))
     .filter((entry) => entry.endsWith('.png'))
     .sort();
   await fs.writeFile(
     path.join(OWNER_REVIEW_DIR, 'qa-summary.json'),
-    JSON.stringify({ ...current, ...patch, screenshots }, null, 2) + '\n'
+    JSON.stringify({ ...current, ...cleanPatch, screenshots }, null, 2) + '\n'
   );
 }
 
 function ownerReviewSummaryFromDebug(debug = {}) {
+  const warningSummary = debug.warningSummary ?? debug.launchWarningSummary ?? {};
+  const status = debug.planningLaunchReady === true && Number(warningSummary.blockingWarningCount ?? debug.blockingWarningCount ?? 0) === 0 && Number(warningSummary.failureCount ?? debug.failureCount ?? 0) === 0
+    ? (Number(warningSummary.totalWarningCount ?? 0) > 0 || debug.launchValidationStatus === 'WARN' ? 'PASS_WITH_NON_BLOCKING_WARNINGS' : 'PASS')
+    : 'ENV_COMPOSE_LAUNCH_R1_1_ACCEPTANCE_FAIL';
   return {
+    status,
+    branch: GIT_BRANCH,
+    head: GIT_HEAD,
     fixtureStatus: debug.referenceFixtureStatus ?? 'NO_REFERENCE_DATA_FIXTURE',
     overviewDigest: debug.overviewDigest ?? null,
     fixtureCount: debug.referenceFixtureCount ?? 0,
+    referenceFixtureId: debug.referenceFixtureId ?? debug.selectedFixtureId ?? null,
+    referenceFixtureDigest: debug.referenceFixtureDigest ?? REFERENCE_FIXTURE_DIGEST,
     selectedFixtureId: debug.referenceFixtureId ?? debug.selectedFixtureId ?? null,
     selectedPatchDigest: debug.selectedPatchDigest ?? null,
     bathymetryArtifactDigest: debug.bathymetryArtifactDigest ?? null,
@@ -283,11 +599,27 @@ function ownerReviewSummaryFromDebug(debug = {}) {
     hazardCandidateDigest: debug.hazardCandidateDigest ?? null,
     environmentArtifactDigest: debug.environmentArtifactDigest ?? null,
     environmentArtifactStatus: debug.environmentArtifactStatus ?? null,
+    launchValidationStatus: debug.launchValidationStatus ?? null,
+    launchValidationDigest: debug.launchValidationDigest ?? null,
+    planningLaunchReady: debug.planningLaunchReady === true,
+    warningSummary,
+    blockingWarningCount: Number(warningSummary.blockingWarningCount ?? debug.blockingWarningCount ?? 0),
+    failureCount: Number(warningSummary.failureCount ?? debug.failureCount ?? 0),
+    benchmarkBundleStatus: debug.benchmarkBundleStatus ?? null,
+    benchmarkBundleDigest: debug.benchmarkBundleDigest ?? null,
+    exportedProjectDigest: debug.exportedProjectDigest ?? null,
+    launchedPlanningEnvironmentDigest: debug.launchedPlanningEnvironmentDigest ?? debug.activePlanningEnvironmentDigest ?? debug.environmentArtifactDigest ?? null,
+    missionExecuted: debug.missionExecuted === true ? true : undefined,
+    debriefReached: debug.debriefReached === true ? true : undefined,
     defaultSourceMode: debug.defaultSourceMode ?? 'referenceBathymetryAtlas',
     proceduralSandboxDefault: debug.proceduralSandboxDefault === true ? true : false,
+    rawExternalDataPathExposed: false,
     hiddenTruthExposed: false,
     simulationChanged: false,
-    scoringChanged: false
+    scoringChanged: false,
+    activeRendererCountAfterCleanup: Number(debug.activeRendererCountAfterCleanup ?? 0),
+    activeRafCountAfterCleanup: Number(debug.activeRafCountAfterCleanup ?? 0),
+    activeCanvasCountAfterCleanup: Number(debug.activeCanvasCountAfterCleanup ?? 0)
   };
 }
 
@@ -302,6 +634,20 @@ async function downloadStudioProject(page) {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.locator('[data-action="env-studio-export-project"]').first().click()
+  ]);
+  const filePath = await download.path();
+  const text = await fs.readFile(filePath, 'utf8');
+  return {
+    filename: download.suggestedFilename(),
+    path: filePath,
+    data: JSON.parse(text)
+  };
+}
+
+async function downloadBenchmarkBundle(page) {
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('[data-action="env-studio-export-benchmark"]').first().click()
   ]);
   const filePath = await download.path();
   const text = await fs.readFile(filePath, 'utf8');

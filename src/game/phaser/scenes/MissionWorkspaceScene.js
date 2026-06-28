@@ -305,6 +305,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     }
     normalizeDeploymentState(this.app.state.level, this.app.state.mission, this.app.state.plan);
     this.app.state.selectedAgentId ??= this.app.state.mission.agents?.[0]?.id ?? null;
+    this.publishReferenceEnvironmentLaunchDebug();
     this.ensureMissionPlanningToolState();
     this.app.state.planningTime = clampMissionTime(this.app.state.level, this.app.state.planningTime ?? 0);
     this.app.state.selectedWindow = getWindowForTime(this.app.state.level, this.app.state.planningTime);
@@ -363,6 +364,27 @@ export class MissionWorkspaceScene extends PhaserScene {
     } else {
       globalThis.setTimeout?.(run, 0);
     }
+  }
+
+  publishReferenceEnvironmentLaunchDebug() {
+    const launch = this.app?.state?.referenceEnvironmentLaunch ?? null;
+    if (!launch) return;
+    globalThis.ANCHOR_REFERENCE_ENVIRONMENT_LAUNCH_DEBUG = {
+      ...launch,
+      activeScene: 'MissionWorkspaceScene',
+      activeLevelId: this.app.state.level?.levelId ?? null,
+      activeMissionId: this.app.state.mission?.missionId ?? this.app.state.mission?.id ?? null,
+      activeScenarioSource: this.app.state.currentScenario?.source ?? null,
+      activeChallengeMode: this.app.state.challengeMode ?? null,
+      activeExperienceMode: this.app.state.experienceMode ?? null,
+      environmentArtifactDigest: launch.environmentArtifactDigest ?? this.app.state.level?.environmentArtifactDigest ?? this.app.state.level?.meta?.environmentArtifactDigest ?? null,
+      currentArtifactDigest: launch.currentArtifactDigest ?? this.app.state.level?.meta?.currentArtifactDigest ?? null,
+      scalarArtifactDigest: launch.scalarArtifactDigest ?? this.app.state.level?.meta?.scalarArtifactDigest ?? null,
+      launchedFromEnvironmentStudio: true,
+      hiddenTruthExposed: false,
+      simulationChanged: false,
+      scoringChanged: false
+    };
   }
 
   bindThreeSceneLifecycleEvents() {

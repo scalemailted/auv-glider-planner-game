@@ -16,6 +16,8 @@ export function getDeploymentCells(level, mission = null, agentId = null) {
     for (const agent of mission.agents ?? []) {
       if (agentId && agent.id !== agentId) continue;
       if (agent.deployment?.zoneId) allowedZoneIds.add(agent.deployment.zoneId);
+      if (agent.deployment?.selectedZoneId) allowedZoneIds.add(agent.deployment.selectedZoneId);
+      for (const zoneId of agent.deployment?.zoneIds ?? []) allowedZoneIds.add(zoneId);
     }
   }
   const filtered = allowedZoneIds.size

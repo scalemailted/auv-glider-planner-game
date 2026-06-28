@@ -23,6 +23,23 @@ import {
   buildReferenceBathymetryEnvironment
 } from '../generation/ReferenceBathymetryEnvironmentBuilder.js';
 import {
+  REFERENCE_ENVIRONMENT_BENCHMARK_BUNDLE_VERSION,
+  buildReferenceEnvironmentBenchmarkBundle
+} from '../generation/ReferenceEnvironmentBenchmarkBundle.js';
+import {
+  REFERENCE_ENVIRONMENT_LAUNCH_VALIDATOR_VERSION,
+  validateReferenceEnvironmentLaunch
+} from '../generation/ReferenceEnvironmentLaunchValidator.js';
+import {
+  REFERENCE_ENVIRONMENT_LAUNCH_WARNING_TAXONOMY_VERSION,
+  classifyReferenceEnvironmentWarning,
+  summarizeReferenceEnvironmentWarnings
+} from '../generation/ReferenceEnvironmentLaunchWarningTaxonomy.js';
+import {
+  REFERENCE_ENVIRONMENT_PLANNING_LAUNCH_ADAPTER_VERSION,
+  buildReferenceEnvironmentPlanningLaunch
+} from '../generation/ReferenceEnvironmentPlanningLaunchAdapter.js';
+import {
   WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
   buildWindowConditionedBathymetry,
   compactWindowConditionedBathymetryResult
@@ -539,6 +556,11 @@ export function createEnvironmentStudioSession(options = {}) {
     selectedOperationalWindow,
     regionalMissionRecipe,
     flowGenerationInputs: options.flowGenerationInputs ?? options.bathymetryBuilderResult?.flowGenerationInputs ?? regionalMissionRecipe?.flowGenerationInputs ?? null,
+    fieldRegenerationResult: normalizeFieldRegenerationResult(options.fieldRegenerationResult),
+    environmentCompositionResult: normalizeEnvironmentCompositionResult(options.environmentCompositionResult),
+    launchValidationResult: normalizeLaunchValidationResult(options.launchValidationResult),
+    planningLaunchResult: normalizePlanningLaunchResult(options.planningLaunchResult),
+    benchmarkBundleResult: normalizeBenchmarkBundleResult(options.benchmarkBundleResult),
     bathymetryBuilderVersion: options.bathymetryBuilderVersion ?? options.bathymetryBuilderResult?.builderVersion ?? null,
     bathymetryBuilderResult: options.bathymetryBuilderResult ?? null,
     bathymetryArtifactDigest: options.bathymetryArtifactDigest ?? options.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
@@ -1070,8 +1092,7 @@ export function generateEnvironmentStudioRegionFromAtlasWindow(sessionInput = {}
   });
 }
 
-export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {}) {
-  const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
+function fieldRegenerationOptionsForSession(session = {}, options = {}) {
   if (!session.tiles.length || !session.mosaic?.manifest) {
     throw new Error('Generate regional bathymetry before regenerating current and science fields.');
   }
@@ -1094,30 +1115,48 @@ export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {
     missionDurationSeconds: missionDurationSecondsFromSession(session, session.flowGenerationInputs ?? {}),
     seed
   };
+  return { bathymetryArtifact, seed, fieldOptions };
+}
+
+function isReferenceBathymetrySession(session = {}) {
+  return session.sourceMode === 'referenceBathymetryAtlas'
+    || session.flowGenerationInputs?.type === 'anchor.reference-patch.flow-generation-inputs'
+    || session.bathymetryBuilderResult?.type === 'anchor.reference-patch-bathymetry-builder-summary';
+}
+
+function buildReferenceEnvironmentResultForSession(session = {}, options = {}) {
+  const refreshed = refreshEnvironmentStudioSession(normalizeSession(session));
+  const { fieldOptions } = fieldRegenerationOptionsForSession(refreshed, options);
+  return buildReferenceBathymetryEnvironment({
+    ...fieldOptions,
+    referenceFixtureId: referenceFixtureIdForSession(refreshed),
+    coastlineSummary: refreshed.flowGenerationInputs?.coastlineSummary ?? refreshed.bathymetryBuilderResult?.coastlineSummary,
+    slopeStats: refreshed.flowGenerationInputs?.slopeStats ?? refreshed.selectedReferenceWindow?.sampledStats?.slopeStats,
+    shelfFraction: refreshed.flowGenerationInputs?.shelfFraction ?? refreshed.selectedReferenceWindow?.sampledStats?.shelfFraction,
+    basinFraction: refreshed.flowGenerationInputs?.basinFraction ?? refreshed.selectedReferenceWindow?.sampledStats?.basinFraction,
+    sourceMetadata: referenceSourceMetadataForSession(refreshed),
+    fieldPolicy: {
+      label: 'Reference bathymetry + synthetic bathymetry-conditioned fields.',
+      bathymetryArtifact: 'REFERENCE_PATCH',
+      currentArtifact: 'GENERATE_SYNTHETIC',
+      scalarArtifact: 'GENERATE_SYNTHETIC',
+      hotspots: 'GENERATE_SYNTHETIC',
+      startsDropZones: 'GENERATE_CANDIDATES_NEEDS_VALIDATION',
+      hazards: 'GENERATE_CANDIDATES',
+      environmentArtifact: 'COMPOSE_PACKAGE_ARTIFACT',
+      benchmarkBundle: 'EXPORT_PUBLIC_PACKAGE_BACKED_BUNDLE'
+    }
+  });
+}
+
+export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {}) {
+  const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
+  const { bathymetryArtifact, seed, fieldOptions } = fieldRegenerationOptionsForSession(session, options);
   const isReferenceBathymetryProject = session.sourceMode === 'referenceBathymetryAtlas'
     || session.flowGenerationInputs?.type === 'anchor.reference-patch.flow-generation-inputs'
     || session.bathymetryBuilderResult?.type === 'anchor.reference-patch-bathymetry-builder-summary';
   const referenceEnvironmentResult = isReferenceBathymetryProject
-    ? buildReferenceBathymetryEnvironment({
-        ...fieldOptions,
-        referenceFixtureId: referenceFixtureIdForSession(session),
-        coastlineSummary: session.flowGenerationInputs?.coastlineSummary ?? session.bathymetryBuilderResult?.coastlineSummary,
-        slopeStats: session.flowGenerationInputs?.slopeStats ?? session.selectedReferenceWindow?.sampledStats?.slopeStats,
-        shelfFraction: session.flowGenerationInputs?.shelfFraction ?? session.selectedReferenceWindow?.sampledStats?.shelfFraction,
-        basinFraction: session.flowGenerationInputs?.basinFraction ?? session.selectedReferenceWindow?.sampledStats?.basinFraction,
-        sourceMetadata: referenceSourceMetadataForSession(session),
-        fieldPolicy: {
-          label: 'Reference bathymetry + synthetic bathymetry-conditioned fields.',
-          bathymetryArtifact: 'REFERENCE_PATCH',
-          currentArtifact: 'GENERATE_SYNTHETIC',
-          scalarArtifact: 'GENERATE_SYNTHETIC',
-          hotspots: 'GENERATE_SYNTHETIC',
-          startsDropZones: 'GENERATE_CANDIDATES_NEEDS_VALIDATION',
-          hazards: 'GENERATE_CANDIDATES',
-          environmentArtifact: 'COMPOSE_IF_PACKAGE_VALID',
-          benchmarkBundle: 'REQUIRES_REGENERATION'
-        }
-      })
+    ? buildReferenceEnvironmentResultForSession(session, { seed })
     : null;
   const currentResult = referenceEnvironmentResult?.currentResult ?? buildAtlasConditionedCurrentArtifact(fieldOptions);
   const scalarResult = referenceEnvironmentResult?.scalarResult ?? buildAtlasConditionedScalarArtifact({
@@ -1136,8 +1175,99 @@ export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {
   return refreshEnvironmentStudioSession({
     ...session,
     fieldRegenerationResult,
+    environmentCompositionResult: null,
+    launchValidationResult: null,
+    planningLaunchResult: null,
+    benchmarkBundleResult: null,
     lastAction: 'field-regeneration-generated'
   });
+}
+
+export function composeEnvironmentStudioReferenceEnvironment(sessionInput = {}, options = {}) {
+  const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
+  if (!isReferenceBathymetrySession(session)) {
+    throw new Error('EnvironmentArtifact composition in this pass is only wired for reference-bathymetry Environment Studio projects.');
+  }
+  const referenceEnvironmentResult = buildReferenceEnvironmentResultForSession(session, { seed: options.seed ?? session.seed });
+  const fieldRegenerationResult = buildFieldRegenerationResult({
+    session,
+    bathymetryArtifact: referenceEnvironmentResult.bathymetryArtifact,
+    currentResult: referenceEnvironmentResult.currentResult,
+    scalarResult: referenceEnvironmentResult.scalarResult,
+    referenceEnvironmentResult,
+    seed: referenceEnvironmentResult.provenance?.deterministicSeed ?? options.seed ?? session.seed
+  });
+  return refreshEnvironmentStudioSession({
+    ...session,
+    fieldRegenerationResult,
+    environmentCompositionResult: compactEnvironmentCompositionResult(referenceEnvironmentResult),
+    launchValidationResult: null,
+    planningLaunchResult: null,
+    benchmarkBundleResult: null,
+    lastAction: 'reference-environment-artifact-composed'
+  });
+}
+
+export function validateEnvironmentStudioReferenceLaunch(sessionInput = {}, options = {}) {
+  const composedSession = composeEnvironmentStudioReferenceEnvironment(sessionInput, options);
+  const referenceEnvironmentResult = buildReferenceEnvironmentResultForSession(composedSession, { seed: options.seed ?? composedSession.seed });
+  const launchValidation = validateReferenceEnvironmentLaunch({
+    ...referenceEnvironmentResult,
+    intendedGliders: composedSession.intendedGliders
+  });
+  return refreshEnvironmentStudioSession({
+    ...composedSession,
+    launchValidationResult: compactLaunchValidationResult(launchValidation),
+    lastAction: launchValidation.planningLaunchReady ? 'reference-environment-launch-validated' : 'reference-environment-launch-validation-failed'
+  });
+}
+
+export function buildEnvironmentStudioReferencePlanningLaunch(sessionInput = {}, options = {}) {
+  const validatedSession = validateEnvironmentStudioReferenceLaunch(sessionInput, options);
+  const referenceEnvironmentResult = buildReferenceEnvironmentResultForSession(validatedSession, { seed: options.seed ?? validatedSession.seed });
+  const launchValidation = validateReferenceEnvironmentLaunch({
+    ...referenceEnvironmentResult,
+    intendedGliders: validatedSession.intendedGliders
+  });
+  const planningLaunch = buildReferenceEnvironmentPlanningLaunch({
+    ...referenceEnvironmentResult,
+    launchValidation,
+    seed: options.seed ?? validatedSession.seed
+  });
+  const updatedSession = refreshEnvironmentStudioSession({
+    ...validatedSession,
+    planningLaunchResult: compactPlanningLaunchResult(planningLaunch),
+    launchValidationResult: compactLaunchValidationResult(launchValidation),
+    lastAction: 'reference-environment-launched-to-planning'
+  });
+  return {
+    ...planningLaunch,
+    session: updatedSession
+  };
+}
+
+export function buildEnvironmentStudioReferenceBenchmarkBundle(sessionInput = {}, options = {}) {
+  const validatedSession = validateEnvironmentStudioReferenceLaunch(sessionInput, options);
+  const referenceEnvironmentResult = buildReferenceEnvironmentResultForSession(validatedSession, { seed: options.seed ?? validatedSession.seed });
+  const launchValidation = validateReferenceEnvironmentLaunch({
+    ...referenceEnvironmentResult,
+    intendedGliders: validatedSession.intendedGliders
+  });
+  const bundleResult = buildReferenceEnvironmentBenchmarkBundle({
+    ...referenceEnvironmentResult,
+    launchValidation,
+    seed: options.seed ?? validatedSession.seed
+  });
+  const updatedSession = refreshEnvironmentStudioSession({
+    ...validatedSession,
+    benchmarkBundleResult: compactBenchmarkBundleResult(bundleResult),
+    launchValidationResult: compactLaunchValidationResult(launchValidation),
+    lastAction: 'reference-environment-benchmark-bundle-exported'
+  });
+  return {
+    ...bundleResult,
+    session: updatedSession
+  };
 }
 
 export function environmentStudioPanelViewModel(sessionInput = {}) {
@@ -1526,6 +1656,10 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     regionalMissionRecipe: session.regionalMissionRecipe,
     flowGenerationInputs: session.flowGenerationInputs ?? session.bathymetryBuilderResult?.flowGenerationInputs ?? session.regionalMissionRecipe?.flowGenerationInputs ?? null,
     fieldRegenerationResult: session.fieldRegenerationResult ?? null,
+    environmentCompositionResult: session.environmentCompositionResult ?? null,
+    launchValidationResult: session.launchValidationResult ?? null,
+    planningLaunchResult: session.planningLaunchResult ?? null,
+    benchmarkBundleResult: session.benchmarkBundleResult ?? null,
     bathymetryBuilderVersion: session.bathymetryBuilderVersion ?? session.bathymetryBuilderResult?.builderVersion ?? null,
     bathymetryBuilderResult: session.bathymetryBuilderResult ?? null,
     bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(session.tiles),
@@ -1608,6 +1742,10 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     regionalMissionRecipe: source.regionalMissionRecipe,
     flowGenerationInputs: source.flowGenerationInputs,
     fieldRegenerationResult: source.fieldRegenerationResult,
+    environmentCompositionResult: source.environmentCompositionResult,
+    launchValidationResult: source.launchValidationResult,
+    planningLaunchResult: source.planningLaunchResult,
+    benchmarkBundleResult: source.benchmarkBundleResult,
     bathymetryBuilderVersion: source.bathymetryBuilderVersion,
     bathymetryBuilderResult: source.bathymetryBuilderResult,
     bathymetryArtifactDigest: source.bathymetryArtifactDigest,
@@ -1638,6 +1776,10 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     }),
     archetypeSpec: source.archetypeSpec ?? session.archetypeSpec,
     fieldRegenerationResult: normalizeFieldRegenerationResult(source.fieldRegenerationResult ?? session.fieldRegenerationResult),
+    environmentCompositionResult: normalizeEnvironmentCompositionResult(source.environmentCompositionResult ?? session.environmentCompositionResult),
+    launchValidationResult: normalizeLaunchValidationResult(source.launchValidationResult ?? session.launchValidationResult),
+    planningLaunchResult: normalizePlanningLaunchResult(source.planningLaunchResult ?? session.planningLaunchResult),
+    benchmarkBundleResult: normalizeBenchmarkBundleResult(source.benchmarkBundleResult ?? session.benchmarkBundleResult),
     dependencyGraph: source.dependencyGraph ?? session.dependencyGraph,
     validationReport: source.validationReport ?? null,
     lastAction: source.dependencyGraph?.transitionLog?.[0] ?? 'project-normalized'
@@ -1732,6 +1874,10 @@ function flowGenerationInputsForSession(session = {}, context = {}) {
   const dependencyStates = flowDependencyStates(context.dependencyGraph);
   const hazardsGenerated = Boolean(fieldResult?.hazardCandidateDigest);
   const environmentArtifactCurrent = fieldResult?.environmentArtifactStatus === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT;
+  const launchValidationResult = normalizeLaunchValidationResult(session.launchValidationResult);
+  const benchmarkBundleResult = normalizeBenchmarkBundleResult(session.benchmarkBundleResult);
+  const startsDropZonesValidated = launchValidationResult?.startDropZoneValidation?.status === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT;
+  const benchmarkBundleCurrent = benchmarkBundleResult?.status === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT;
   const enhanced = {
     ...base,
     referenceFixtureId: base.referenceFixtureId ?? (session.sourceMode === 'referenceBathymetryAtlas' ? referenceFixtureIdForSession(session) : null),
@@ -1749,8 +1895,8 @@ function flowGenerationInputsForSession(session = {}, context = {}) {
       scalarFields: hasRegeneratedFields ? 'CURRENT' : 'REQUIRES_REGENERATION',
       hotspots: hasRegeneratedFields ? 'CURRENT' : 'REQUIRES_REGENERATION',
       hazards: hazardsGenerated ? 'CURRENT' : 'REQUIRES_REGENERATION',
-      startsDropZones: 'NEEDS_VALIDATION',
-      benchmarkBundle: 'REQUIRES_REGENERATION',
+      startsDropZones: startsDropZonesValidated ? 'CURRENT' : launchValidationResult ? 'NEEDS_REVIEW' : 'NEEDS_VALIDATION',
+      benchmarkBundle: benchmarkBundleCurrent ? 'CURRENT' : 'REQUIRES_REGENERATION',
       environmentArtifact: hasRegeneratedFields
         ? (fieldResult?.environmentArtifactStatus ?? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_COMPOSITION)
         : (base.dependencyPlan?.environmentArtifact ?? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION)
@@ -1771,8 +1917,8 @@ function flowGenerationInputsForSession(session = {}, context = {}) {
       scalarField4D: hasRegeneratedFields,
       hotspots: hasRegeneratedFields,
       hazards: hazardsGenerated,
-      startsDropZonesValidated: false,
-      benchmarkBundle: false,
+      startsDropZonesValidated,
+      benchmarkBundle: benchmarkBundleCurrent,
       environmentArtifact: environmentArtifactCurrent
     },
     claimBoundary: {
@@ -2047,6 +2193,23 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     hazardCandidateDigest: session.fieldRegenerationResult?.hazardCandidateDigest ?? null,
     environmentArtifactDigest: session.fieldRegenerationResult?.environmentArtifactDigest ?? null,
     environmentArtifactStatus: session.fieldRegenerationResult?.environmentArtifactStatus ?? null,
+    environmentCompositionStatus: session.environmentCompositionResult?.status ?? session.environmentCompositionResult?.environmentArtifactStatus ?? null,
+    environmentCompositionDigest: session.environmentCompositionResult?.compositionDigest ?? null,
+    launchValidationStatus: session.launchValidationResult?.status ?? null,
+    launchValidationDigest: session.launchValidationResult?.launchValidationDigest ?? session.launchValidationResult?.launchValidationSummaryDigest ?? null,
+    launchValidationReport: session.launchValidationResult?.validationReport ?? null,
+    launchWarningSummary: session.launchValidationResult?.warningSummary ?? null,
+    launchWarnings: session.launchValidationResult?.warnings ?? [],
+    launchFailures: session.launchValidationResult?.failures ?? [],
+    launchBlockingWarningCount: session.launchValidationResult?.warningSummary?.blockingWarningCount ?? 0,
+    launchFailureCount: session.launchValidationResult?.warningSummary?.failureCount ?? 0,
+    planningLaunchReady: session.launchValidationResult?.planningLaunchReady === true,
+    planningLaunchDigest: session.planningLaunchResult?.planningLaunchSummaryDigest ?? null,
+    activePlanningEnvironmentDigest: session.planningLaunchResult?.environmentArtifactDigest ?? session.environmentCompositionResult?.environmentArtifactDigest ?? session.fieldRegenerationResult?.environmentArtifactDigest ?? null,
+    benchmarkBundleStatus: session.benchmarkBundleResult?.status ?? null,
+    benchmarkBundleDigest: session.benchmarkBundleResult?.benchmarkBundleDigest ?? null,
+    startDropZoneValidation: session.launchValidationResult?.startDropZoneValidation ?? null,
+    hazardValidation: session.launchValidationResult?.hazardValidation ?? null,
     currentRegimeComponents: session.fieldRegenerationResult?.currentRegimeComponents ?? [],
     scalarRegimeComponents: session.fieldRegenerationResult?.scalarRegimeComponents ?? [],
     currentDiagnostics: session.fieldRegenerationResult?.currentDiagnostics ?? null,
@@ -2160,6 +2323,10 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     hazardCandidateDigest: session.fieldRegenerationResult?.hazardCandidateDigest ?? null,
     environmentArtifactDigest: session.fieldRegenerationResult?.environmentArtifactDigest ?? null,
     environmentArtifactStatus: session.fieldRegenerationResult?.environmentArtifactStatus ?? null,
+    launchValidationStatus: session.launchValidationResult?.status ?? null,
+    planningLaunchReady: session.launchValidationResult?.planningLaunchReady === true,
+    benchmarkBundleStatus: session.benchmarkBundleResult?.status ?? null,
+    benchmarkBundleDigest: session.benchmarkBundleResult?.benchmarkBundleDigest ?? null,
     regionalTemplate: session.regionalTemplate,
     previewMode: session.previewMode,
     sourceGridShape: session.sourceGridShape,
@@ -2188,6 +2355,9 @@ export function environmentStudioPackageVersions() {
     bathymetryPackage: BATHYMETRY_PACKAGE_VERSION,
     fieldRegeneration: ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION,
     referenceBathymetryEnvironmentBuilder: REFERENCE_BATHYMETRY_ENVIRONMENT_BUILDER_VERSION,
+    referenceEnvironmentLaunchValidator: REFERENCE_ENVIRONMENT_LAUNCH_VALIDATOR_VERSION,
+    referenceEnvironmentPlanningLaunchAdapter: REFERENCE_ENVIRONMENT_PLANNING_LAUNCH_ADAPTER_VERSION,
+    referenceEnvironmentBenchmarkBundle: REFERENCE_ENVIRONMENT_BENCHMARK_BUNDLE_VERSION,
     atlasConditionedCurrentBuilder: ATLAS_CONDITIONED_CURRENT_BUILDER_VERSION,
     atlasConditionedScalarBuilder: ATLAS_CONDITIONED_SCALAR_BUILDER_VERSION
   };
@@ -2556,6 +2726,208 @@ function normalizeFieldRegenerationResult(input = null) {
   return base.fieldRegenerationDigest ? base : withProjectDigest(base, 'fieldRegenerationDigest');
 }
 
+function compactEnvironmentCompositionResult(result = null) {
+  if (!result) return null;
+  const base = {
+    type: 'anchor.environment-studio.reference-environment-composition-summary',
+    version: REFERENCE_ENVIRONMENT_PLANNING_LAUNCH_ADAPTER_VERSION,
+    status: result.environmentArtifactStatus ?? 'REQUIRES_COMPOSITION',
+    environmentArtifactStatus: result.environmentArtifactStatus ?? 'REQUIRES_COMPOSITION',
+    environmentArtifactDigest: result.environmentArtifactDigest ?? result.environmentArtifact?.artifactDigest ?? null,
+    environmentManifestDigest: result.environmentArtifact?.manifestDigest ?? result.environmentArtifactSummary?.manifestDigest ?? null,
+    fieldRegistryDigest: result.environmentArtifact?.fieldRegistry?.registryDigest ?? result.environmentArtifactSummary?.fieldRegistry?.registryDigest ?? null,
+    componentDigests: result.environmentArtifact?.componentDigests ?? result.environmentArtifactSummary?.componentDigests ?? null,
+    validationStatus: result.environmentArtifact?.validationReport?.status ?? result.validationReport?.status ?? null,
+    referenceFixtureId: result.referenceFixtureId ?? null,
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return withProjectDigest(base, 'compositionDigest');
+}
+
+function normalizeEnvironmentCompositionResult(input = null) {
+  if (!input || typeof input !== 'object') return null;
+  const base = {
+    ...input,
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return base.compositionDigest ? base : withProjectDigest(base, 'compositionDigest');
+}
+
+function compactLaunchValidationResult(validation = null) {
+  if (!validation) return null;
+  const warnings = (validation.warnings ?? []).slice(0, 16).map(normalizeLaunchWarning);
+  const failures = (validation.failures ?? []).slice(0, 16).map(normalizeLaunchWarning);
+  const warningSummary = validation.warningSummary ?? summarizeReferenceEnvironmentWarnings(warnings, failures);
+  const validationReport = {
+    artifactType: validation.artifactType ?? 'anchor.reference-environment-launch-validation-report',
+    artifactVersion: validation.artifactVersion ?? REFERENCE_ENVIRONMENT_LAUNCH_VALIDATOR_VERSION,
+    launchValidationStatus: validation.launchValidationStatus ?? validation.status ?? 'FAIL',
+    planningLaunchReady: validation.planningLaunchReady === true,
+    warningSummary,
+    warnings,
+    failures,
+    componentDigests: validation.componentDigests ?? null,
+    sourceProvenance: validation.sourceProvenance ?? null,
+    visibilitySafety: validation.visibilitySafety ?? null,
+    generatedAt: validation.generatedAt ?? '2026-06-28T00:00:00.000Z',
+    validationDigest: validation.validationDigest ?? validation.launchValidationDigest ?? null
+  };
+  const base = {
+    type: 'anchor.environment-studio.reference-launch-validation-summary',
+    version: REFERENCE_ENVIRONMENT_LAUNCH_VALIDATOR_VERSION,
+    taxonomyVersion: validation.taxonomyVersion ?? REFERENCE_ENVIRONMENT_LAUNCH_WARNING_TAXONOMY_VERSION,
+    artifactType: validation.artifactType ?? 'anchor.reference-environment-launch-validation-report',
+    artifactVersion: validation.artifactVersion ?? REFERENCE_ENVIRONMENT_LAUNCH_VALIDATOR_VERSION,
+    status: validation.status ?? 'FAIL',
+    launchValidationStatus: validation.launchValidationStatus ?? validation.status ?? 'FAIL',
+    planningLaunchReady: validation.planningLaunchReady === true,
+    warningSummary,
+    launchValidationDigest: validation.launchValidationDigest ?? null,
+    validationDigest: validation.validationDigest ?? validation.launchValidationDigest ?? null,
+    environmentArtifactDigest: validation.environmentArtifactDigest ?? null,
+    currentArtifactDigest: validation.currentArtifactDigest ?? null,
+    scalarArtifactDigest: validation.scalarArtifactDigest ?? null,
+    componentDigests: validation.componentDigests ?? null,
+    sourceProvenance: validation.sourceProvenance ?? null,
+    visibilitySafety: validation.visibilitySafety ?? null,
+    generatedAt: validation.generatedAt ?? '2026-06-28T00:00:00.000Z',
+    validationReport,
+    startDropZoneValidation: validation.startDropZoneValidation ?? null,
+    hazardValidation: validation.hazardValidation ?? null,
+    errors: (validation.errors ?? []).slice(0, 12).map(String),
+    failures,
+    warnings,
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return withProjectDigest(base, 'launchValidationSummaryDigest');
+}
+
+function normalizeLaunchValidationResult(input = null) {
+  if (!input || typeof input !== 'object') return null;
+  const warnings = Array.isArray(input.warnings) ? input.warnings.map(normalizeLaunchWarning) : [];
+  const failures = Array.isArray(input.failures) ? input.failures.map(normalizeLaunchWarning) : [];
+  const warningSummary = input.warningSummary ?? summarizeReferenceEnvironmentWarnings(warnings, failures);
+  const validationDigest = input.validationDigest ?? input.launchValidationDigest ?? input.validationReport?.validationDigest ?? null;
+  const base = {
+    ...input,
+    taxonomyVersion: input.taxonomyVersion ?? REFERENCE_ENVIRONMENT_LAUNCH_WARNING_TAXONOMY_VERSION,
+    artifactType: input.artifactType ?? input.validationReport?.artifactType ?? 'anchor.reference-environment-launch-validation-report',
+    artifactVersion: input.artifactVersion ?? input.validationReport?.artifactVersion ?? REFERENCE_ENVIRONMENT_LAUNCH_VALIDATOR_VERSION,
+    launchValidationStatus: input.launchValidationStatus ?? input.status ?? 'FAIL',
+    planningLaunchReady: input.planningLaunchReady === true,
+    errors: Array.isArray(input.errors) ? input.errors.map(String) : [],
+    warnings,
+    failures,
+    warningSummary,
+    validationDigest,
+    validationReport: input.validationReport ?? {
+      artifactType: input.artifactType ?? 'anchor.reference-environment-launch-validation-report',
+      artifactVersion: input.artifactVersion ?? REFERENCE_ENVIRONMENT_LAUNCH_VALIDATOR_VERSION,
+      launchValidationStatus: input.launchValidationStatus ?? input.status ?? 'FAIL',
+      planningLaunchReady: input.planningLaunchReady === true,
+      warningSummary,
+      warnings,
+      failures,
+      componentDigests: input.componentDigests ?? null,
+      sourceProvenance: input.sourceProvenance ?? null,
+      visibilitySafety: input.visibilitySafety ?? null,
+      generatedAt: input.generatedAt ?? '2026-06-28T00:00:00.000Z',
+      validationDigest
+    },
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return base.launchValidationSummaryDigest ? base : withProjectDigest(base, 'launchValidationSummaryDigest');
+}
+
+function normalizeLaunchWarning(input = {}) {
+  if (input && typeof input === 'object' && input.warningId && input.severity && input.title) {
+    return classifyReferenceEnvironmentWarning(input);
+  }
+  return classifyReferenceEnvironmentWarning(input);
+}
+
+function compactPlanningLaunchResult(launch = null) {
+  if (!launch) return null;
+  const metadata = launch.launchMetadata ?? {};
+  const base = {
+    type: 'anchor.environment-studio.reference-planning-launch-summary',
+    version: REFERENCE_ENVIRONMENT_PLANNING_LAUNCH_ADAPTER_VERSION,
+    status: metadata.planningLaunchReady ? 'CURRENT' : 'FAIL',
+    label: metadata.label ?? launch.level?.meta?.name ?? null,
+    source: launch.source ?? 'referenceEnvironmentStudioLaunch',
+    referenceFixtureId: metadata.referenceFixtureId ?? null,
+    environmentArtifactDigest: metadata.environmentArtifactDigest ?? null,
+    currentArtifactDigest: metadata.currentArtifactDigest ?? null,
+    scalarArtifactDigest: metadata.scalarArtifactDigest ?? null,
+    levelDigest: metadata.levelDigest ?? null,
+    missionDigest: metadata.missionDigest ?? null,
+    launchValidationStatus: metadata.launchValidationStatus ?? launch.launchValidation?.status ?? null,
+    launchValidationDigest: metadata.launchValidationDigest ?? launch.launchValidation?.launchValidationDigest ?? launch.launchValidation?.validationDigest ?? null,
+    warningSummary: metadata.warningSummary ?? launch.warningSummary ?? launch.launchValidation?.warningSummary ?? null,
+    warningCount: metadata.warningCount ?? launch.launchValidation?.warningSummary?.totalWarningCount ?? launch.warnings?.length ?? 0,
+    blockingWarningCount: metadata.blockingWarningCount ?? launch.launchValidation?.warningSummary?.blockingWarningCount ?? 0,
+    failureCount: metadata.failureCount ?? launch.launchValidation?.warningSummary?.failureCount ?? 0,
+    planningLaunchReady: metadata.planningLaunchReady === true,
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return withProjectDigest(base, 'planningLaunchSummaryDigest');
+}
+
+function normalizePlanningLaunchResult(input = null) {
+  if (!input || typeof input !== 'object') return null;
+  const base = {
+    ...input,
+    planningLaunchReady: input.planningLaunchReady === true,
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return base.planningLaunchSummaryDigest ? base : withProjectDigest(base, 'planningLaunchSummaryDigest');
+}
+
+function compactBenchmarkBundleResult(result = null) {
+  if (!result) return null;
+  const validation = result.validation ?? {};
+  const base = {
+    type: 'anchor.environment-studio.reference-benchmark-bundle-summary',
+    version: REFERENCE_ENVIRONMENT_BENCHMARK_BUNDLE_VERSION,
+    status: validation.status === 'FAIL' ? 'FAIL' : 'CURRENT',
+    benchmarkBundleDigest: result.benchmarkBundleDigest ?? result.bundle?.benchmarkBundleDigest ?? null,
+    payloadDigest: result.bundle?.payloadDigest ?? null,
+    validationStatus: validation.status ?? null,
+    validationFailures: (validation.failures ?? []).slice(0, 12).map(String),
+    validationWarnings: (validation.warnings ?? []).slice(0, 12).map(String),
+    publicProjectionDigest: result.bundle?.publicProjectionDigest ?? null,
+    containsHiddenTruth: false,
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return withProjectDigest(base, 'benchmarkBundleSummaryDigest');
+}
+
+function normalizeBenchmarkBundleResult(input = null) {
+  if (!input || typeof input !== 'object') return null;
+  const base = {
+    ...input,
+    containsHiddenTruth: false,
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return base.benchmarkBundleSummaryDigest ? base : withProjectDigest(base, 'benchmarkBundleSummaryDigest');
+}
+
 function finiteDiagnostics(diagnostics = {}, keys = []) {
   return keys.every((key) => Number.isFinite(Number(diagnostics?.[key])));
 }
@@ -2707,10 +3079,25 @@ function dependencyGraphForState(state = {}) {
   const validationReport = state.validationReport ?? null;
   const bathymetryDigest = state.bathymetryArtifactDigest ?? state.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(tiles);
   const fieldResult = normalizeFieldRegenerationResult(state.fieldRegenerationResult);
+  const compositionResult = normalizeEnvironmentCompositionResult(state.environmentCompositionResult);
+  const launchValidationResult = normalizeLaunchValidationResult(state.launchValidationResult);
+  const benchmarkBundleResult = normalizeBenchmarkBundleResult(state.benchmarkBundleResult);
   const hasRegeneratedFields = Boolean(fieldResult?.currentArtifactDigest && fieldResult?.scalarArtifactDigest);
   const hasHazards = Boolean(fieldResult?.hazardCandidateDigest);
-  const environmentArtifactState = fieldResult?.environmentArtifactStatus
+  const environmentArtifactState = compositionResult?.environmentArtifactStatus ?? fieldResult?.environmentArtifactStatus
     ?? (hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_COMPOSITION : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED);
+  const startsDropZonesState = launchValidationResult?.startDropZoneValidation?.status === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT
+    ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT
+    : launchValidationResult
+      ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_REVIEW
+      : hasMosaic
+        ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION
+        : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED;
+  const benchmarkBundleState = benchmarkBundleResult?.status === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT
+    ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT
+    : hasMosaic
+      ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION
+      : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED;
   const fieldSourceLabel = fieldResult?.sourceLabel?.includes('Reference bathymetry')
     ? 'Reference bathymetry + synthetic bathymetry-conditioned'
     : 'Package-backed atlas-conditioned';
@@ -2728,9 +3115,9 @@ function dependencyGraphForState(state = {}) {
       scalarArtifact: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.scalarArtifactDigest ?? null, hasRegeneratedFields ? `${fieldSourceLabel} ScalarField4D was regenerated and compact metadata was preserved.` : hasMosaic ? 'Scalar fields require FIELD-REGEN-R1 regeneration.' : null),
       hotspots: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.hotspotArtifactDigest ?? null, hasRegeneratedFields ? 'Synthetic hotspot candidates were regenerated from the scalar artifact and still need mission-level review.' : hasMosaic ? 'Hotspot generation requires FIELD-REGEN-R1 regeneration.' : null),
       hazards: node(hasHazards ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.hazardCandidateDigest ?? null, hasHazards ? 'Synthetic hazard candidates were derived from reference bathymetry, slope, coast proximity, and current diagnostics.' : hasMosaic ? 'Hazard candidates require FIELD-REGEN-R1 generation.' : null),
-      startsDropZones: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.startDropZoneCandidateDigest ?? null, hasRegeneratedFields ? 'Start/drop-zone candidates were derived but remain NEEDS_VALIDATION.' : hasMosaic ? 'Start/drop-zone candidates need validation against regenerated flow/scalar products.' : null),
-      benchmarkBundle: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Benchmark bundles are deferred until currents, scalars, hotspots, and starts are regenerated.' : null),
-      environmentArtifact: node(environmentArtifactState, fieldResult?.environmentArtifactDigest ?? null, fieldResult?.environmentArtifactReason ?? (hasRegeneratedFields ? 'EnvironmentArtifact composition is package-validated when possible; otherwise compact components remain generated.' : hasMosaic ? 'EnvironmentArtifact composition requires field regeneration.' : null)),
+      startsDropZones: node(startsDropZonesState, fieldResult?.startDropZoneCandidateDigest ?? null, startsDropZonesState === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT ? 'Start/drop-zone candidates passed Planning-launch validation.' : hasRegeneratedFields ? 'Start/drop-zone candidates were derived but remain NEEDS_VALIDATION.' : hasMosaic ? 'Start/drop-zone candidates need validation against regenerated flow/scalar products.' : null),
+      benchmarkBundle: node(benchmarkBundleState, benchmarkBundleResult?.benchmarkBundleDigest ?? null, benchmarkBundleState === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT ? 'Public benchmark bundle has been exported from package-backed reference environment artifacts.' : hasMosaic ? 'Benchmark bundles are deferred until currents, scalars, hotspots, and starts are regenerated.' : null),
+      environmentArtifact: node(environmentArtifactState, compositionResult?.environmentArtifactDigest ?? fieldResult?.environmentArtifactDigest ?? null, fieldResult?.environmentArtifactReason ?? (hasRegeneratedFields ? 'EnvironmentArtifact composition is package-validated when possible; otherwise compact components remain generated.' : hasMosaic ? 'EnvironmentArtifact composition requires field regeneration.' : null)),
       validationReport: node(validationReport ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, validationReport ? 'Validation report digest is stored on the report to avoid a circular dependency graph digest.' : null),
       preview: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, tileDigestListDigest(tiles))
     },
@@ -2853,7 +3240,7 @@ function validationExtras(state = {}) {
         generatedArtifacts: inputs.generatedArtifacts,
         regeneratedArtifactDigests: inputs.regeneratedArtifactDigests
       }));
-      checks.push(check('field-regeneration-current-dependency-states', inputs.dependencyPlan?.currents === 'CURRENT' && inputs.dependencyPlan?.scalarFields === 'CURRENT' && inputs.dependencyPlan?.hotspots === 'CURRENT' && inputs.dependencyPlan?.startsDropZones === 'NEEDS_VALIDATION' && inputs.dependencyPlan?.benchmarkBundle === 'REQUIRES_REGENERATION' && ['CURRENT', 'REQUIRES_COMPOSITION'].includes(inputs.dependencyPlan?.environmentArtifact), {
+      checks.push(check('field-regeneration-current-dependency-states', inputs.dependencyPlan?.currents === 'CURRENT' && inputs.dependencyPlan?.scalarFields === 'CURRENT' && inputs.dependencyPlan?.hotspots === 'CURRENT' && ['NEEDS_VALIDATION', 'NEEDS_REVIEW', 'CURRENT'].includes(inputs.dependencyPlan?.startsDropZones) && ['REQUIRES_REGENERATION', 'CURRENT'].includes(inputs.dependencyPlan?.benchmarkBundle) && ['CURRENT', 'REQUIRES_COMPOSITION'].includes(inputs.dependencyPlan?.environmentArtifact), {
         dependencyPlan: inputs.dependencyPlan
       }));
     } else {
@@ -2898,6 +3285,35 @@ function validationExtras(state = {}) {
     if (currentDiagnostics.landVectorCount !== 0) errors.push('Generated current artifact has nonzero land vectors.');
     if (currentDiagnostics.belowBottomVectorCount !== 0) errors.push('Generated current artifact has nonzero below-bottom vectors.');
     if (result.hiddenTruthExposed !== false) errors.push('Field regeneration result must not expose hidden truth.');
+  }
+  if (state.launchValidationResult) {
+    const launch = normalizeLaunchValidationResult(state.launchValidationResult);
+    checks.push(check('reference-launch-validation-status', ['PASS', 'WARN', 'FAIL'].includes(launch.status), {
+      status: launch.status,
+      planningLaunchReady: launch.planningLaunchReady
+    }));
+    checks.push(check('reference-launch-warning-taxonomy', (launch.warnings ?? []).every((warning) => warning.warningId && warning.severity && warning.title && warning.explanation && warning.userImpact), {
+      warningCount: launch.warnings?.length ?? 0,
+      taxonomyVersion: launch.taxonomyVersion ?? null
+    }));
+    checks.push(check('reference-launch-ready-has-no-blocking-warnings', launch.planningLaunchReady !== true || ((launch.warningSummary?.blockingWarningCount ?? 0) === 0 && (launch.warningSummary?.failureCount ?? 0) === 0), {
+      planningLaunchReady: launch.planningLaunchReady,
+      warningSummary: launch.warningSummary ?? null
+    }));
+    checks.push(check('reference-launch-validation-public-boundary', launch.hiddenTruthExposed === false && launch.simulationChanged === false && launch.scoringChanged === false, launch));
+    if (launch.planningLaunchReady === true && ((launch.warningSummary?.blockingWarningCount ?? 0) > 0 || (launch.warningSummary?.failureCount ?? 0) > 0)) {
+      errors.push('Planning launch cannot be ready while blocking warnings or failures are present.');
+    }
+    if (launch.status === 'FAIL' || launch.planningLaunchReady !== true) warnings.push(`Planning launch is not ready: ${(launch.errors ?? [])[0] ?? 'review launch validation details.'}`);
+  }
+  if (state.benchmarkBundleResult) {
+    const bundle = normalizeBenchmarkBundleResult(state.benchmarkBundleResult);
+    checks.push(check('reference-benchmark-bundle-status', ['CURRENT', 'FAIL'].includes(bundle.status), {
+      status: bundle.status,
+      benchmarkBundleDigest: bundle.benchmarkBundleDigest
+    }));
+    checks.push(check('reference-benchmark-bundle-public-boundary', bundle.containsHiddenTruth === false && bundle.hiddenTruthExposed === false && bundle.simulationChanged === false && bundle.scoringChanged === false, bundle));
+    if (bundle.status === 'FAIL') errors.push(`Public benchmark bundle validation failed: ${(bundle.validationFailures ?? [])[0] ?? 'unknown failure.'}`);
   }
   if (state.previewBudget) {
     checks.push(check('preview-budget-measured', state.previewBudget.measured === true || tiles.length === 0, state.previewBudget));
@@ -2968,6 +3384,10 @@ function projectStateFromProject(project = {}) {
     regionalMissionRecipe: project.regionalMissionRecipe,
     flowGenerationInputs: project.flowGenerationInputs,
     fieldRegenerationResult: project.fieldRegenerationResult,
+    environmentCompositionResult: normalizeEnvironmentCompositionResult(project.environmentCompositionResult),
+    launchValidationResult: normalizeLaunchValidationResult(project.launchValidationResult),
+    planningLaunchResult: normalizePlanningLaunchResult(project.planningLaunchResult),
+    benchmarkBundleResult: normalizeBenchmarkBundleResult(project.benchmarkBundleResult),
     bathymetryBuilderVersion: project.bathymetryBuilderVersion,
     bathymetryBuilderResult: project.bathymetryBuilderResult,
     bathymetryArtifactDigest: project.bathymetryArtifactDigest,
@@ -3047,6 +3467,7 @@ function normalizeSession(input = {}) {
         archetypeFamily: archetype.family,
         domainSpecDigest: domainSpec.domainSpecDigest
       });
+  const fieldRegenerationResult = normalizeFieldRegenerationResult(input.fieldRegenerationResult);
   return {
     type: 'anchor.environment-studio-session',
     version: ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION,
@@ -3082,7 +3503,11 @@ function normalizeSession(input = {}) {
     selectedOperationalWindow,
     regionalMissionRecipe,
     flowGenerationInputs: input.flowGenerationInputs ?? input.bathymetryBuilderResult?.flowGenerationInputs ?? regionalMissionRecipe?.flowGenerationInputs ?? null,
-    fieldRegenerationResult: normalizeFieldRegenerationResult(input.fieldRegenerationResult),
+    fieldRegenerationResult,
+    environmentCompositionResult: fieldRegenerationResult ? normalizeEnvironmentCompositionResult(input.environmentCompositionResult) : null,
+    launchValidationResult: fieldRegenerationResult ? normalizeLaunchValidationResult(input.launchValidationResult) : null,
+    planningLaunchResult: fieldRegenerationResult ? normalizePlanningLaunchResult(input.planningLaunchResult) : null,
+    benchmarkBundleResult: fieldRegenerationResult ? normalizeBenchmarkBundleResult(input.benchmarkBundleResult) : null,
     bathymetryBuilderVersion: input.bathymetryBuilderVersion ?? input.bathymetryBuilderResult?.builderVersion ?? null,
     bathymetryBuilderResult: input.bathymetryBuilderResult ?? null,
     bathymetryArtifactDigest: input.bathymetryArtifactDigest ?? input.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,

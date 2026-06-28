@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { markAnchorRouteReady } from '../../../app/production/AnchorAppBootReadiness.js';
+import { beginScenario, markBriefingSeen } from '../../../core/scenario/ScenarioState.js';
 import { downloadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
 import {
   ENVIRONMENT_STUDIO_BATHYMETRY_SOURCES,
@@ -19,8 +20,11 @@ import {
   SYNTHETIC_WORLD_LAYER_OPTIONS,
   SYNTHETIC_WORLD_STYLES,
   buildEnvironmentStudioProject,
+  buildEnvironmentStudioReferenceBenchmarkBundle,
+  buildEnvironmentStudioReferencePlanningLaunch,
   clearEnvironmentStudioReferenceWindow,
   clearEnvironmentStudioWorldWindow,
+  composeEnvironmentStudioReferenceEnvironment,
   createEnvironmentStudioMosaic,
   createEnvironmentStudioSession,
   domainProfileById,
@@ -58,6 +62,7 @@ import {
   setEnvironmentStudioWorldGeneratorParameters,
   setEnvironmentStudioWorldView,
   updateEnvironmentStudioRegionalRecipe,
+  validateEnvironmentStudioReferenceLaunch,
   validateEnvironmentStudioProject
 } from '../../../core/editor/EnvironmentStudioProject.js';
 import {
@@ -960,6 +965,95 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.render();
   }
 
+  composeReferenceEnvironmentArtifact() {
+    try {
+      this.session = composeEnvironmentStudioReferenceEnvironment(this.session, { seed: this.readSeed() });
+      this.statusMessage = 'Composed a package-backed EnvironmentArtifact from reference bathymetry and generated synthetic fields.';
+      this.lastError = null;
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'EnvironmentArtifact composition failed.';
+    }
+    this.render();
+  }
+
+  validateReferenceLaunch() {
+    try {
+      this.session = validateEnvironmentStudioReferenceLaunch(this.session, { seed: this.readSeed() });
+      const launch = this.session.launchValidationResult;
+      this.statusMessage = launch?.planningLaunchReady && launch?.status === 'WARN'
+        ? 'Launch ready with non-blocking warnings.'
+        : launch?.planningLaunchReady
+          ? 'Reference environment launch validation passed. Planning launch is ready.'
+          : 'Reference environment launch validation needs review.';
+      this.lastError = launch?.planningLaunchReady
+        ? null
+        : (launch?.errors?.[0] ?? 'Planning launch validation did not pass.');
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Reference environment launch validation failed.';
+    }
+    this.render();
+  }
+
+  launchReferenceEnvironmentToPlanning() {
+    try {
+      const result = buildEnvironmentStudioReferencePlanningLaunch(this.session, { seed: this.readSeed() });
+      this.session = result.session;
+      const launchDebug = {
+        ...(result.launchMetadata ?? {}),
+        source: 'referenceEnvironmentStudioLaunch',
+        launchedFromEnvironmentStudio: true,
+        launchValidationStatus: result.launchMetadata?.launchValidationStatus ?? result.launchValidation?.status ?? null,
+        launchValidationDigest: result.launchMetadata?.launchValidationDigest ?? result.launchValidation?.launchValidationDigest ?? null,
+        warningSummary: result.launchMetadata?.warningSummary ?? result.launchValidation?.warningSummary ?? null,
+        warningCount: result.launchMetadata?.warningCount ?? result.launchValidation?.warningSummary?.totalWarningCount ?? result.warnings?.length ?? 0,
+        blockingWarningCount: result.launchMetadata?.blockingWarningCount ?? result.launchValidation?.warningSummary?.blockingWarningCount ?? 0,
+        failureCount: result.launchMetadata?.failureCount ?? result.launchValidation?.warningSummary?.failureCount ?? 0,
+        warnings: result.warnings ?? result.launchValidation?.warnings ?? [],
+        benchmarkBundleStatus: this.session.benchmarkBundleResult?.status ?? 'REQUIRES_EXPORT',
+        benchmarkBundleDigest: this.session.benchmarkBundleResult?.benchmarkBundleDigest ?? null,
+        hiddenTruthExposed: false,
+        simulationChanged: false,
+        scoringChanged: false
+      };
+      this.app.state.referenceEnvironmentLaunch = launchDebug;
+      globalThis.ANCHOR_REFERENCE_ENVIRONMENT_LAUNCH_DEBUG = launchDebug;
+      beginScenario(this.app.state, {
+        level: result.level,
+        mission: result.mission,
+        challengeMode: result.challengeMode ?? 'forecast',
+        source: result.source ?? 'referenceEnvironmentStudioLaunch',
+        experienceMode: result.experienceMode ?? 'simulationLab'
+      });
+      this.app.state.referenceEnvironmentLaunch = launchDebug;
+      markBriefingSeen(this.app.state);
+      this.statusMessage = 'Launched reference-derived environment to Planning.';
+      this.lastError = null;
+      this.scene.start('MissionWorkspaceScene');
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Reference environment Planning launch failed.';
+      this.render();
+    }
+  }
+
+  exportReferenceBenchmarkBundle() {
+    try {
+      const result = buildEnvironmentStudioReferenceBenchmarkBundle(this.session, { seed: this.readSeed() });
+      this.session = result.session;
+      downloadJSON('anchor_reference_environment_benchmark_bundle.json', result.bundle);
+      this.statusMessage = 'Exported public package-backed reference environment benchmark bundle.';
+      this.lastError = result.validation?.status === 'FAIL'
+        ? (result.validation.failures?.[0] ?? 'Benchmark bundle validation failed.')
+        : null;
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Public benchmark bundle export failed.';
+    }
+    this.render();
+  }
+
   exportProject() {
     const project = buildEnvironmentStudioProject(this.session);
     downloadJSON('anchor_environment_studio_project.json', project);
@@ -1807,6 +1901,8 @@ function worldMapConsoleHtml(scene, summary = {}) {
 function regionalBathymetryConsoleHtml(scene, summary = {}) {
   const session = scene.session;
   const camera = session.previewCameraState ?? {};
+  const canCompose = Boolean(session.fieldRegenerationResult?.currentArtifactDigest && session.fieldRegenerationResult?.scalarArtifactDigest);
+  const canLaunch = session.launchValidationResult?.planningLaunchReady === true;
   return `
     <section class="console-header">
       <div class="console-kicker">Simulation Lab / Environment Studio</div>
@@ -1843,10 +1939,14 @@ function regionalBathymetryConsoleHtml(scene, summary = {}) {
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Artifacts</h2>
       ${fieldRegenerationSummaryHtml(session.fieldRegenerationResult)}
+      ${referenceEnvironmentLaunchSummaryHtml(session)}
       <button class="console-button primary" type="button" data-action="env-studio-generate-fields">Generate Currents &amp; Science Fields</button>
+      <button class="console-button secondary" type="button" data-action="env-studio-compose-environment" ${canCompose ? '' : 'disabled'}>Compose Environment Artifact</button>
+      <button class="console-button secondary" type="button" data-action="env-studio-validate-launch" ${canCompose ? '' : 'disabled'}>Validate Launch</button>
+      <button class="console-button primary" type="button" data-action="env-studio-launch-planning" ${canLaunch ? '' : 'disabled'}>Launch to Planning</button>
+      <button class="console-button secondary" type="button" data-action="env-studio-export-benchmark" ${canCompose ? '' : 'disabled'}>Export Public Benchmark Bundle</button>
       <button class="console-button secondary" type="button" data-action="env-studio-export-bathymetry">Export Bathymetry</button>
       <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
-      <button class="console-button secondary" type="button" disabled>Launch to Planning - planned</button>
       <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
       <input id="env-studio-import-file" type="file" accept="application/json,.json" hidden data-env-studio-import />
       <button class="console-button secondary" type="button" data-action="menu">Main Menu</button>
@@ -1897,6 +1997,10 @@ function bindEnvironmentStudioRegionalControls(scene, root) {
   });
   root?.querySelector?.('[data-action="env-studio-regenerate-world-bathymetry"]')?.addEventListener('click', () => scene.generateWorldBathymetry());
   root?.querySelector?.('[data-action="env-studio-generate-fields"]')?.addEventListener('click', () => scene.generateFields());
+  root?.querySelector?.('[data-action="env-studio-compose-environment"]')?.addEventListener('click', () => scene.composeReferenceEnvironmentArtifact());
+  root?.querySelector?.('[data-action="env-studio-validate-launch"]')?.addEventListener('click', () => scene.validateReferenceLaunch());
+  root?.querySelector?.('[data-action="env-studio-launch-planning"]')?.addEventListener('click', () => scene.launchReferenceEnvironmentToPlanning());
+  root?.querySelector?.('[data-action="env-studio-export-benchmark"]')?.addEventListener('click', () => scene.exportReferenceBenchmarkBundle());
   root?.querySelector?.('[data-action="env-studio-export-project"]')?.addEventListener('click', () => scene.exportProject());
   root?.querySelector?.('[data-action="env-studio-export-bathymetry"]')?.addEventListener('click', () => scene.exportBathymetryArtifact());
   root?.querySelector?.('[data-env-studio-import]')?.addEventListener('change', (event) => scene.importProject(event.target.files?.[0]));
@@ -3103,6 +3207,58 @@ function fieldRegenerationSummaryHtml(result = null) {
       ${metricHtml('Environment digest', shortDigest(result.environmentArtifactDigest))}
     </div>
     <p class="hud-muted">${escapeHtml(result.sourceLabel ?? 'Package artifacts are synthetic and compactly recorded here.')} Starts/drop zones still need validation; launch and scoring are unchanged.</p>
+  `;
+}
+
+function referenceEnvironmentLaunchSummaryHtml(session = {}) {
+  const launch = session.launchValidationResult;
+  const benchmark = session.benchmarkBundleResult;
+  const composition = session.environmentCompositionResult;
+  if (!session.fieldRegenerationResult?.currentArtifactDigest && !composition && !launch && !benchmark) return '';
+  const field = session.fieldRegenerationResult ?? {};
+  const warningSummary = launch?.warningSummary ?? {};
+  const launchReadyMessage = launch?.planningLaunchReady && launch?.status === 'WARN'
+    ? '<div class="hud-muted warning">Launch ready with non-blocking warnings.</div>'
+    : launch?.planningLaunchReady
+      ? '<div class="hud-muted">Launch ready.</div>'
+      : launch
+        ? '<div class="hud-muted warning">Launch is blocked or needs review.</div>'
+        : '<div class="hud-muted">Run launch validation before launching to Planning.</div>';
+  return `
+    <div class="cell-inspector-metrics">
+      ${metricHtml('Reference Bathymetry', session.bathymetryArtifactDigest ? 'CURRENT' : 'NOT_GENERATED')}
+      ${metricHtml('Currents', field.currentArtifactDigest ? 'CURRENT' : 'REQUIRES_REGENERATION')}
+      ${metricHtml('Scalars', field.scalarArtifactDigest ? 'CURRENT' : 'REQUIRES_REGENERATION')}
+      ${metricHtml('Hotspots', field.hotspotArtifactDigest ? 'CURRENT' : 'REQUIRES_REGENERATION')}
+      ${metricHtml('Hazards', field.hazardCandidateDigest ? 'CURRENT' : 'REQUIRES_REGENERATION')}
+      ${metricHtml('Starts/Drop Zones', launch?.startDropZoneValidation?.status ?? session.dependencyGraph?.nodes?.startsDropZones?.state ?? 'NEEDS_VALIDATION')}
+      ${metricHtml('Environment Artifact', composition?.environmentArtifactStatus ?? field.environmentArtifactStatus ?? 'pending')}
+      ${metricHtml('Launch Validation', launch?.status ?? 'not run')}
+      ${metricHtml('Planning ready', launch?.planningLaunchReady ? 'yes' : 'no')}
+      ${metricHtml('Warnings', launch ? `${warningSummary.totalWarningCount ?? launch.warnings?.length ?? 0} / blocking ${warningSummary.blockingWarningCount ?? 0}` : 'not run')}
+      ${metricHtml('Failures', warningSummary.failureCount ?? launch?.failures?.length ?? 0)}
+      ${metricHtml('Benchmark Bundle', benchmark?.status ?? session.dependencyGraph?.nodes?.benchmarkBundle?.state ?? 'REQUIRES_EXPORT')}
+      ${metricHtml('Benchmark digest', shortDigest(benchmark?.benchmarkBundleDigest))}
+    </div>
+    ${launchReadyMessage}
+    ${launchWarningListHtml(launch)}
+    <p class="hud-muted">Launch uses validated start/drop-zone metadata and package-backed public fields. Environment Studio does not generate a route, change scoring, or become the simulator.</p>
+  `;
+}
+
+function launchWarningListHtml(launch = null) {
+  const warnings = (launch?.warnings ?? []).filter((warning) => warning.severity !== 'INFO').slice(0, 5);
+  if (!launch) return '';
+  if (!warnings.length) return '<div class="hud-muted">No advisory or warning items after launch validation.</div>';
+  return `
+    <div class="environment-studio-validation-list" data-reference-launch-warnings>
+      ${warnings.map((warning) => `
+        <button type="button" data-env-studio-select data-env-studio-select-type="validationIssue" data-env-studio-select-id="warning:${escapeAttr(warning.warningId)}">
+          <strong>${escapeHtml(warning.severity)}</strong>
+          <span>${escapeHtml(warning.title)}: ${escapeHtml(warning.explanation)}</span>
+        </button>
+      `).join('')}
+    </div>
   `;
 }
 

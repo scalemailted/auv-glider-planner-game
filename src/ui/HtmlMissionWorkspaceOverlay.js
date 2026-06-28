@@ -150,6 +150,7 @@ export class HtmlMissionWorkspaceOverlay {
         <strong>${escapeHtml(state.selectedAgentId ?? 'No glider')}</strong>
         <small>${escapeHtml(experience.description)} Window ${Number(state.selectedWindow ?? 0)} | ${escapeHtml(formatMissionTime(level, state.planningTime))} | ${waypointCount} waypoint(s)</small>
       </section>
+      ${referenceEnvironmentSection(state)}
       ${state.ui?.placementMode === 'marker' ? markerInspectionSection(state) : ''}
       ${connectivityWarnings.length ? `
       <section class="console-section warning">
@@ -630,6 +631,23 @@ function selectedGliderCard(state) {
       <div class="hud-muted">Hazards: ${escapeHtml(row.hazardsHit)} | Done/Missed: ${escapeHtml(row.completedWaypoints)}/${escapeHtml(row.missedWaypoints)}</div>
       <div class="hud-muted">Start: ${selectedStart ? `(${selectedStart.x}, ${selectedStart.y})` : 'not selected'} | Markers: ${markers}</div>
       <div class="hud-muted">Planning: W${Number(state.selectedWindow ?? 0)} at ${escapeHtml(formatMissionTime(state.level, state.planningTime))}</div>
+    </section>
+  `;
+}
+
+function referenceEnvironmentSection(state) {
+  const launch = state.referenceEnvironmentLaunch;
+  if (!launch) return '';
+  return `
+    <section class="console-section" data-reference-environment-launch>
+      <h2>Reference-Derived Environment</h2>
+      <div class="hud-muted">${escapeHtml(launch.label ?? state.level?.meta?.name ?? 'Reference-derived Monterey Canyon')}</div>
+      <div class="hud-muted">Source: ETOPO 2022 15 arc-second Monterey Canyon</div>
+      <div class="hud-muted">Fixture: ${escapeHtml(launch.referenceFixtureId ?? state.level?.meta?.referenceFixtureId ?? 'n/a')}</div>
+      <div class="hud-muted">Environment: ${escapeHtml(shortDigest(launch.environmentArtifactDigest ?? state.level?.environmentArtifactDigest ?? state.level?.meta?.environmentArtifactDigest))}</div>
+      <div class="hud-muted">Current: ${escapeHtml(shortDigest(launch.currentArtifactDigest ?? state.level?.meta?.currentArtifactDigest))} | Scalar: ${escapeHtml(shortDigest(launch.scalarArtifactDigest ?? state.level?.meta?.scalarArtifactDigest))}</div>
+      <div class="hud-muted">Launch: ${escapeHtml(launch.launchValidationStatus ?? 'unknown')} | Warnings: ${escapeHtml(launch.warningCount ?? launch.warningSummary?.totalWarningCount ?? 0)} | Benchmark: ${escapeHtml(launch.benchmarkBundleStatus ?? 'REQUIRES_EXPORT')}</div>
+      <div class="hud-muted">Package-backed public fields. Deterministic synthetic benchmark currents/scalars; not an operational forecast or certified navigation product.</div>
     </section>
   `;
 }
@@ -2228,6 +2246,13 @@ function currentEvolutionStatus(debug, state) {
 
 function isTimelineAction(actionKey) {
   return ['time-slider', 'time-start', 'window-prev', 'window-next', 'time-end', 'timeline-waypoint', 'timeline-marker', 'timeline-star', 'timeline-surface'].includes(String(actionKey));
+}
+
+function shortDigest(value) {
+  const text = String(value ?? '');
+  if (!text) return 'n/a';
+  if (text.length <= 18) return text;
+  return `${text.slice(0, 10)}...${text.slice(-6)}`;
 }
 
 function labelize(value) {

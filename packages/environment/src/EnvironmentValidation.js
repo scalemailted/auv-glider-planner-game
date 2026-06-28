@@ -88,7 +88,13 @@ function validateCoordinates(artifact, errors, warnings, checks) {
 }
 
 function areCompatibleLocalMeterFrames(a, b) {
-  const localMeterFrames = new Set(['localEastNorthDown', 'localTangentPlaneMetersV1']);
+  const localMeterFrames = new Set([
+    'localEastNorthDown',
+    'localTangentPlane',
+    'localTangentPlaneMetersV1',
+    'localGridXYDepthTime',
+    'localLevelGridMeters'
+  ]);
   return localMeterFrames.has(String(a)) && localMeterFrames.has(String(b));
 }
 

@@ -396,6 +396,61 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-018",
+      "title": "Reference-derived generated environments need composition, launch validation, and benchmark export.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "SCI",
+        "BENCH",
+        "UX",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Planning Launch / Benchmark Export",
+      "summary": "Environment Studio can now generate reference-derived bathymetry and synthetic bathymetry-conditioned fields, but generated projects still stop before package-backed EnvironmentArtifact composition, validated launch to Planning, and public benchmark-bundle export. Users need the generated environment to become a playable and benchmarkable mission scenario.",
+      "decision": "Accepted for ENV-COMPOSE-LAUNCH-R1.",
+      "proposedPhase": "ENV-COMPOSE-LAUNCH-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Reference-derived field outputs compose into a package-backed EnvironmentArtifact or block with a named contract gap.",
+        "Launch validation promotes valid start/drop-zone candidates before Planning launch.",
+        "Mission Workspace opens the generated reference-derived environment while retaining route-planning ownership.",
+        "Public benchmark bundle export includes reference environment digests and excludes hidden truth, raw external_data paths, operational forecast claims, simulation changes, and scoring changes."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-019",
+      "title": "Reference-derived environment workflow needs launch-warning closure and owner acceptance package.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Environment Launch Acceptance",
+      "summary": "The reference-derived Monterey Canyon environment can now compose, validate, launch to Planning, and export benchmark bundles. Before returning to alpha testers, the launch WARN state needs explicit taxonomy, owner-visible screenshots, public-safety proof, and a complete acceptance package showing the workflow from Environment Studio to Planning and benchmark export.",
+      "decision": "Accepted for ENV-COMPOSE-LAUNCH-R1.1.",
+      "proposedPhase": "ENV-COMPOSE-LAUNCH-R1.1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Launch warnings are classified as INFO, ADVISORY, NON_BLOCKING_WARN, BLOCKING_WARN, or FAIL.",
+        "Planning launch is ready only when no blocking warnings or failures are present.",
+        "Owner-review screenshots and QA summary prove Environment Studio composition, launch validation, Planning, execution, Debrief, project roundtrip, and benchmark export.",
+        "Public artifacts remain free of hidden truth and raw external_data paths.",
+        "Mission simulation, scoring, planners, glider dynamics, and field equations remain unchanged."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

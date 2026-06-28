@@ -21,7 +21,7 @@ assert.ok(field.hotspotArtifactDigest.startsWith('fnv1a32:'));
 assert.ok(field.hazardCandidateDigest.startsWith('fnv1a32:'));
 assert.ok(field.startDropZoneCandidateDigest.startsWith('fnv1a32:'));
 assert.ok(field.environmentArtifactDigest.startsWith('fnv1a32:'));
-assert.ok(['CURRENT', 'REQUIRES_COMPOSITION'].includes(field.environmentArtifactStatus));
+assert.equal(field.environmentArtifactStatus, 'CURRENT');
 assert.ok(!('currentArtifact' in field), 'project field result must not store full current arrays');
 assert.ok(!('scalarArtifact' in field), 'project field result must not store full scalar arrays');
 assert.ok(!('environmentArtifact' in field), 'project field result must not store full environment arrays');
@@ -35,7 +35,7 @@ assert.equal(graph.hotspots.state, 'CURRENT');
 assert.equal(graph.hazards.state, 'CURRENT');
 assert.equal(graph.startsDropZones.state, 'NEEDS_VALIDATION');
 assert.equal(graph.benchmarkBundle.state, 'REQUIRES_REGENERATION');
-assert.ok(['CURRENT', 'REQUIRES_COMPOSITION'].includes(graph.environmentArtifact.state));
+assert.equal(graph.environmentArtifact.state, 'CURRENT');
 assert.equal(graph.validationReport.state, 'CURRENT');
 
 assert.equal(project.flowGenerationInputs.generatedArtifacts.currentField4D, true);
@@ -48,7 +48,7 @@ assert.equal(project.flowGenerationInputs.dependencyPlan.hotspots, 'CURRENT');
 assert.equal(project.flowGenerationInputs.dependencyPlan.hazards, 'CURRENT');
 assert.equal(project.flowGenerationInputs.dependencyPlan.startsDropZones, 'NEEDS_VALIDATION');
 assert.equal(project.flowGenerationInputs.dependencyPlan.benchmarkBundle, 'REQUIRES_REGENERATION');
-assert.ok(['CURRENT', 'REQUIRES_COMPOSITION'].includes(project.flowGenerationInputs.dependencyPlan.environmentArtifact));
+assert.equal(project.flowGenerationInputs.dependencyPlan.environmentArtifact, 'CURRENT');
 
 assert.equal(validation.valid, true, validation.errors.join('\n'));
 assert.equal(reexported.fieldRegenerationResult.fieldRegenerationDigest, project.fieldRegenerationResult.fieldRegenerationDigest);

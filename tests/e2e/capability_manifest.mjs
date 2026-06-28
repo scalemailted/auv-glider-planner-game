@@ -201,7 +201,9 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Reference Bathymetry Atlas Opens": "tests/e2e/environment_studio_r1.spec.js",
   "Reference Patch Generates Bathymetry": "tests/e2e/environment_studio_r1.spec.js",
   "Reference Patch Generates Environment Fields": "tests/e2e/environment_studio_r1.spec.js",
-  "Export / Import Generated Reference Environment": "tests/e2e/environment_studio_r1.spec.js"
+  "Export / Import Generated Reference Environment": "tests/e2e/environment_studio_r1.spec.js",
+  "Reference Environment Owner Walkthrough": "tests/e2e/environment_studio_r1.spec.js",
+  "Reference Environment Export/Benchmark Roundtrip": "tests/e2e/environment_studio_r1.spec.js"
 });
 
 const NODE_COVERAGE = Object.freeze({
@@ -215,7 +217,7 @@ const NODE_COVERAGE = Object.freeze({
   METHODS_VALIDATION: ['node tools/tests/scientific_validation.test.mjs'],
   CLASSICAL_PLANNER_NOTEBOOK: ['node tools/js/audit_colab_classical_benchmark.mjs'],
   EXTERNAL_ALPHA_PREVIEW: ['node tools/js/validate_alpha_release_manifest.mjs', 'node tools/js/audit_alpha_release_readiness.mjs', 'node tools/js/audit_alpha_r1_1_acceptance.mjs'],
-  ENVIRONMENT_STUDIO: ['node tools/js/smoke_environment_studio_contracts.mjs', 'node tools/js/smoke_environment_studio_project.mjs', 'node tools/js/smoke_environment_studio_regional_preview.mjs', 'node tools/js/smoke_reference_bathymetry_atlas.mjs', 'node tools/js/smoke_reference_bathymetry_window.mjs', 'node tools/js/smoke_reference_patch_to_bathymetry_artifact.mjs', 'node tools/js/audit_environment_studio_reference_bathymetry_default.mjs', 'node tools/js/smoke_reference_bathymetry_environment_builder.mjs', 'node tools/js/smoke_reference_bathymetry_current_generation.mjs', 'node tools/js/smoke_reference_bathymetry_scalar_hotspot_generation.mjs', 'node tools/js/audit_reference_bathymetry_environment_artifacts.mjs', 'node tools/js/smoke_environment_atlas_r1.mjs', 'node tools/js/smoke_synthetic_ocean_atlas_engine.mjs', 'node tools/js/smoke_synthetic_world_map_generator.mjs', 'node tools/js/smoke_synthetic_world_tile_generator.mjs', 'node tools/js/smoke_operational_window_selection.mjs', 'node tools/js/smoke_world_window_bathymetry_generation.mjs', 'node tools/js/smoke_synthetic_globe_world_generator.mjs', 'node tools/js/smoke_operational_globe_window_selection.mjs', 'node tools/js/smoke_globe_window_bathymetry_generation.mjs', 'node tools/js/smoke_window_conditioned_bathymetry_builder.mjs', 'node tools/js/audit_synthetic_atlas_bathymetry_usefulness.mjs', 'node tools/js/smoke_atlas_conditioned_current_builder.mjs', 'node tools/js/smoke_atlas_conditioned_scalar_builder.mjs', 'node tools/js/audit_atlas_conditioned_field_regeneration.mjs'],
+  ENVIRONMENT_STUDIO: ['node tools/js/smoke_environment_studio_contracts.mjs', 'node tools/js/smoke_environment_studio_project.mjs', 'node tools/js/smoke_environment_studio_regional_preview.mjs', 'node tools/js/smoke_reference_bathymetry_atlas.mjs', 'node tools/js/smoke_reference_bathymetry_window.mjs', 'node tools/js/smoke_reference_patch_to_bathymetry_artifact.mjs', 'node tools/js/audit_environment_studio_reference_bathymetry_default.mjs', 'node tools/js/smoke_reference_bathymetry_environment_builder.mjs', 'node tools/js/smoke_reference_bathymetry_current_generation.mjs', 'node tools/js/smoke_reference_bathymetry_scalar_hotspot_generation.mjs', 'node tools/js/audit_reference_bathymetry_environment_artifacts.mjs', 'node tools/js/smoke_reference_environment_artifact_composition.mjs', 'node tools/js/smoke_reference_environment_launch_validation.mjs', 'node tools/js/smoke_reference_environment_planning_adapter.mjs', 'node tools/js/smoke_reference_environment_benchmark_bundle.mjs', 'node tools/js/audit_reference_environment_public_safety.mjs', 'node tools/js/audit_reference_environment_launch_warning_taxonomy.mjs', 'node tools/js/audit_reference_environment_benchmark_bundle_acceptance.mjs', 'node tools/js/smoke_environment_atlas_r1.mjs', 'node tools/js/smoke_synthetic_ocean_atlas_engine.mjs', 'node tools/js/smoke_synthetic_world_map_generator.mjs', 'node tools/js/smoke_synthetic_world_tile_generator.mjs', 'node tools/js/smoke_operational_window_selection.mjs', 'node tools/js/smoke_world_window_bathymetry_generation.mjs', 'node tools/js/smoke_synthetic_globe_world_generator.mjs', 'node tools/js/smoke_operational_globe_window_selection.mjs', 'node tools/js/smoke_globe_window_bathymetry_generation.mjs', 'node tools/js/smoke_window_conditioned_bathymetry_builder.mjs', 'node tools/js/audit_synthetic_atlas_bathymetry_usefulness.mjs', 'node tools/js/smoke_atlas_conditioned_current_builder.mjs', 'node tools/js/smoke_atlas_conditioned_scalar_builder.mjs', 'node tools/js/audit_atlas_conditioned_field_regeneration.mjs'],
   ENVIRONMENT_PACKAGE: ['npm.cmd run test:packages'],
   RESOURCE_LIFECYCLE: ['node tools/js/audit_three_vendor_git_tracking.mjs']
 });
@@ -267,7 +269,9 @@ export const CAPABILITIES = Object.freeze([
     'Reference Bathymetry Atlas Opens',
     'Reference Patch Generates Bathymetry',
     'Reference Patch Generates Environment Fields',
-    'Export / Import Generated Reference Environment'
+    'Export / Import Generated Reference Environment',
+    'Reference Environment Owner Walkthrough',
+    'Reference Environment Export/Benchmark Roundtrip'
   ], NODE_COVERAGE.ENVIRONMENT_STUDIO),
   capability('DIVE-PREDICTION', 'Planned dive, sampling target, and clearance', true, false, true, [
     'Surface Waypoints Produce a Predicted Three-Dimensional Dive',

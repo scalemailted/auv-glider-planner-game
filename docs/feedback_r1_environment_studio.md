@@ -1,6 +1,6 @@
 # ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1/R1.1 responded to `ALPHA-FB-008` and `ALPHA-FB-009` with a structured atlas field engine and window-conditioned bathymetry builder. FIELD-REGEN-R1 responded to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from atlas-conditioned regional context. ENV-STUDIO-R2 responded to `ALPHA-FB-011` by making the browser workflow start from a deterministic synthetic world-map artifact and a user-selected operational boundary. ENV-WORLD-R1 responds to `ALPHA-FB-012` by hardening that front door into a pan/zoomable tiled procedural world map with drag-based boundary selection. ENV-WORLD-R1A responds to `ALPHA-FB-013` by adding hard browser visual acceptance evidence for that world-map-first workflow. ENV-GLOBE-R1 responded to `ALPHA-FB-014` with a high-resolution synthetic globe selector. REAL-BATHY-R1 responds to `ALPHA-FB-015` by making the active front door a Reference Bathymetry Atlas with lon/lat bounding-box selection and reference patch bathymetry generation. BATHY-DATA-R1 adds the data bootstrap: ETOPO/GEBCO staging scripts, compact runtime manifest/artifacts, and blocked-state handling when no fixture exists. BATHY-DATA-R1.1 closes provenance by labeling the original Monterey Canyon fixture as a 60 arc-second `lowResolutionReferencePatch`; BATHY-DATA-R1.2 adds a true 15 arc-second `missionReadyPatch` from the NOAA ETOPO 2022 surface-elevation non-ice fallback tile. `ALPHA-FB-017` extends FIELD-REGEN-R1 to the reference-bathymetry-conditioned environment path. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1/R1.1 responded to `ALPHA-FB-008` and `ALPHA-FB-009` with a structured atlas field engine and window-conditioned bathymetry builder. FIELD-REGEN-R1 responded to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from atlas-conditioned regional context. ENV-STUDIO-R2 responded to `ALPHA-FB-011` by making the browser workflow start from a deterministic synthetic world-map artifact and a user-selected operational boundary. ENV-WORLD-R1 responds to `ALPHA-FB-012` by hardening that front door into a pan/zoomable tiled procedural world map with drag-based boundary selection. ENV-WORLD-R1A responds to `ALPHA-FB-013` by adding hard browser visual acceptance evidence for that world-map-first workflow. ENV-GLOBE-R1 responded to `ALPHA-FB-014` with a high-resolution synthetic globe selector. REAL-BATHY-R1 responds to `ALPHA-FB-015` by making the active front door a Reference Bathymetry Atlas with lon/lat bounding-box selection and reference patch bathymetry generation. BATHY-DATA-R1 adds the data bootstrap: ETOPO/GEBCO staging scripts, compact runtime manifest/artifacts, and blocked-state handling when no fixture exists. BATHY-DATA-R1.1 closes provenance by labeling the original Monterey Canyon fixture as a 60 arc-second `lowResolutionReferencePatch`; BATHY-DATA-R1.2 adds a true 15 arc-second `missionReadyPatch` from the NOAA ETOPO 2022 surface-elevation non-ice fallback tile. `ALPHA-FB-017` extends FIELD-REGEN-R1 to the reference-bathymetry-conditioned environment path, `ALPHA-FB-018` adds composition, launch validation, Planning launch, and public benchmark export for that path, and `ALPHA-FB-019` closes launch-warning taxonomy and owner acceptance evidence. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
 
 ## Feedback Classification
 
@@ -138,7 +138,7 @@ Scope:
 4. Project export/import preserves atlas/window/recipe/builder metadata, bathymetry artifact digest, generation attempts, feature records, validation, dependency graph, and dataset tags.
 5. The UI shows atlas/window digests, builder digest, bathymetry artifact digest, feature summary, validation, and honest dependency states.
 
-Noise is used for variation and texture, not as the sole terrain model. FIELD-REGEN-R1 now explicitly generates compact current, scalar, hotspot, and hazard metadata through package-backed synthetic builders. The current production path is public reference bathymetry patch -> bathymetry artifact -> deterministic synthetic bathymetry-conditioned fields -> environment artifact. Starts/drop zones remain candidates needing validation, and benchmark bundles remain staged follow-ups.
+Noise is used for variation and texture, not as the sole terrain model. FIELD-REGEN-R1 now explicitly generates compact current, scalar, hotspot, and hazard metadata through package-backed synthetic builders. The current production path is public reference bathymetry patch -> bathymetry artifact -> deterministic synthetic bathymetry-conditioned fields -> package-backed environment artifact -> validated Planning launch -> public benchmark bundle. Starts/drop zones are validated by the explicit launch-readiness step before launch; public benchmark bundles are exported only after public-safety checks pass.
 
 ## What ENV-STUDIO-R2 Implements
 
@@ -157,7 +157,7 @@ Scope:
 5. `anchor.operational-window` records normalized bounds, sampled field stats, detected context, recommended domain, bathymetry/flow/scalar regimes, suitability, dataset tags, and digest.
 6. Generate 3D Bathymetry creates regional bathymetry from the selected window through the existing window-conditioned builder.
 
-R2 removes glider count, mission duration, mission scale, route execution, and scoring concerns from the primary Environment Studio flow. Currents, scalars, hotspots, starts/drop zones, benchmark bundles, and launch-to-planning remain staged follow-ups unless an explicit later phase validates and generates them.
+R2 removes glider count, mission duration, mission scale, route execution, and scoring concerns from the primary Environment Studio flow. Currents, scalars, hotspots, starts/drop zones, benchmark bundles, and launch-to-planning remain unavailable until explicit generation, composition, validation, and export actions create them.
 
 ## What ENV-WORLD-R1 Implements
 
@@ -219,4 +219,26 @@ ENV-GLOBE-R1 keeps current/scalar/hotspot regeneration separate. It does not add
 
 ## Staged Follow-Ups
 
-Launch-to-planning, provenance-preserving sculpting, reference comparison, start/drop-zone validation, and benchmark-bundle export remain staged follow-ups. Current/scalar/hotspot/hazard regeneration is available only through the explicit FIELD-REGEN-R1 action and remains deterministic synthetic benchmark generation, not calibrated or operational.
+Provenance-preserving sculpting and richer reference comparison remain staged follow-ups. Current/scalar/hotspot/hazard regeneration is available only through the explicit FIELD-REGEN-R1 action and remains deterministic synthetic benchmark generation, not calibrated or operational. ENV-COMPOSE-LAUNCH-R1 adds separate controls for package-backed environment composition, launch validation, Planning launch, and public benchmark-bundle export.
+
+## What ENV-COMPOSE-LAUNCH-R1 Implements
+
+Implemented reference-derived environment composition and launch:
+
+```text
+ENV-COMPOSE-LAUNCH-R1 - Environment Artifact Composition, Mission-Launch Adapter, and Benchmark Bundle Export
+```
+
+Scope:
+
+1. Compose a package-backed `EnvironmentArtifact` from the selected public reference bathymetry patch, generated bathymetry artifact, deterministic synthetic current/scalar artifacts, hotspots, hazards, starts/drop-zone candidates, provenance, and digests.
+2. Validate launch readiness, including start/drop-zone candidates, public hazard safety, field diagnostics, land/below-bottom current masking, component digests, and hidden-truth exclusion.
+3. Launch a generated environment shell into Mission Workspace Planning without assigning routes, dive profiles, execution state, or scores inside Environment Studio.
+4. Export a public `anchor.classical-planner-benchmark-bundle` with `PUBLIC / FORECAST_ONLY` visibility and parity probes.
+5. Preserve composition, launch-validation, Planning launch, benchmark-export, and public-safety summaries in project export/import and `ANCHOR_ENVIRONMENT_STUDIO_DEBUG`.
+
+This phase keeps the scientific claim boundary explicit: reference bathymetry plus deterministic synthetic bathymetry-conditioned fields, not operational forecasts, not calibrated ocean products, and not navigation data. It does not change simulation, official scoring, glider dynamics, planners, benchmark fairness, or Product Hub placement.
+
+## What ENV-COMPOSE-LAUNCH-R1.1 Closes
+
+ENV-COMPOSE-LAUNCH-R1.1 keeps the R1 workflow unchanged but classifies launch messages, packages owner-review evidence, and records public-safety proof for alpha retesting. `planningLaunchReady=true` is valid only when warning severity is limited to `INFO`, `ADVISORY`, or `NON_BLOCKING_WARN`; `BLOCKING_WARN` and `FAIL` prevent launch. The owner package at `test-results/env-compose-launch-r1-1-owner-review/` records the Environment Studio source, generated bathymetry, generated fields, composed artifact, launch-validation report, Planning launch, mission execution, Debrief, public benchmark export, export/import round trip, cleanup state, and `qa-summary.json` fields for hidden-truth and raw-path exclusion.

@@ -28,6 +28,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Reference Patch Generates Bathymetry$/i,
       /^Reference Patch Generates Environment Fields$/i,
       /^Export \/ Import Generated Reference Environment$/i,
+      /^Reference Environment Owner Walkthrough$/i,
+      /^Reference Environment Export\/Benchmark Roundtrip$/i,
       /^Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records$/i,
       /^Cold Repo Root Boot Reaches Main Menu Through Package Modules$/i,
       /^Cold Pages Subpath Boot Reaches Main Menu Through Package Modules$/i,

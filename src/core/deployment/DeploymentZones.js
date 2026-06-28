@@ -184,7 +184,7 @@ function normalizeZone(zone, level, index) {
     id: zone.id ?? `zone_${index + 1}`,
     type: zone.type ?? 'deployment',
     label: zone.label ?? zone.name ?? `Zone ${index + 1}`,
-    cells: uniqueCells(cells).filter((cell) => isWaterCell(level, cell))
+    cells: uniqueCells(cells).filter((cell) => isInBounds(level, cell) && isWaterCell(level, cell))
   };
 }
 
@@ -203,6 +203,18 @@ function cellsFromCircle(level, cx, cy, radius = 1) {
 
 function isWaterCell(level, cell) {
   return !level?.layers?.terrain?.[cell.y]?.[cell.x];
+}
+
+function isInBounds(level, cell) {
+  const grid = level?.world?.grid ?? {};
+  const x = Math.round(Number(cell?.x));
+  const y = Math.round(Number(cell?.y));
+  return Number.isFinite(x)
+    && Number.isFinite(y)
+    && x >= 0
+    && y >= 0
+    && x < Number(grid.width ?? 0)
+    && y < Number(grid.height ?? 0);
 }
 
 function uniqueCells(cells) {
