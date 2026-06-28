@@ -1,11 +1,57 @@
 {
   "artifactType": "anchor.reference-bathymetry-manifest",
   "artifactVersion": "1.0.0",
-  "fixtureStatus": "NO_REFERENCE_DATA_FIXTURE",
-  "overview": null,
-  "fixtures": [],
+  "fixtureStatus": "AVAILABLE",
+  "overview": {
+    "fixtureId": "monterey_canyon",
+    "label": "Reference Bathymetry Overview",
+    "role": "overview",
+    "sourceDataset": "ETOPO_2022",
+    "provider": "NOAA NCEI",
+    "sourceResolution": "60 arc-second",
+    "actualRasterResolutionArcSeconds": 60.0,
+    "columns": 90,
+    "rows": 72,
+    "resolution": "60 arc-second",
+    "rasterPath": "assets/reference_bathymetry/monterey_canyon.reference-bathymetry-raster.json",
+    "digest": "sha256:0b92744b5b89fda7d16b17ef1c05cb39a03d47959a5d1dbdc34b4cc0f2fa0e99",
+    "bounds": {
+      "westLon": -123.0,
+      "eastLon": -121.5,
+      "southLat": 36.0,
+      "northLat": 37.2
+    }
+  },
+  "fixtures": [
+    {
+      "fixtureId": "monterey_canyon",
+      "label": "Monterey Canyon",
+      "role": "lowResolutionReferencePatch",
+      "sourceDataset": "ETOPO_2022",
+      "provider": "NOAA NCEI",
+      "sourceResolution": "60 arc-second",
+      "actualRasterResolutionArcSeconds": 60.0,
+      "columns": 90,
+      "rows": 72,
+      "bounds": {
+        "westLon": -123.0,
+        "eastLon": -121.5,
+        "southLat": 36.0,
+        "northLat": 37.2
+      },
+      "rasterPath": "assets/reference_bathymetry/monterey_canyon.reference-bathymetry-raster.json",
+      "digest": "sha256:0b92744b5b89fda7d16b17ef1c05cb39a03d47959a5d1dbdc34b4cc0f2fa0e99",
+      "tags": [
+        "reference-bathymetry",
+        "shelf",
+        "slope",
+        "basin",
+        "coastal"
+      ]
+    }
+  ],
   "instructions": {
-    "summary": "No preprocessed public reference bathymetry fixture is available.",
+    "summary": "Preprocessed public reference bathymetry fixture is available. High-resolution 15 arc-second mission-ready patch remains pending.",
     "downloadCommand": "npm.cmd run download:reference-bathy",
     "preprocessCommand": "npm.cmd run preprocess:reference-bathy",
     "auditCommand": "npm.cmd run audit:reference-bathy",
@@ -15,12 +61,12 @@
   },
   "provenance": {
     "generatedBy": "anchor-reference-bathy-preprocessor-v1",
-    "source": "assets/reference_bathymetry/manifest.json",
+    "source": "tools/python/preprocess_reference_bathymetry.py",
     "localAbsolutePathsIncluded": false,
     "hiddenTruthExposed": false
   },
   "claimBoundary": {
-    "referenceBathymetryAvailable": false,
+    "referenceBathymetryAvailable": true,
     "placeholderPresentedAsReferenceData": false,
     "currentField4DGenerated": false,
     "scalarField4DGenerated": false,
@@ -28,5 +74,5 @@
     "operationalOceanForecast": false,
     "hiddenTruthExposed": false
   },
-  "manifestDigest": "sha256:4e57d167ceb5407da9752d3be7cd88f1968e8378344e4d4200103bb1893137b1"
+  "manifestDigest": "sha256:123a78b2bda0aaba63c02bbe3186447778be0709c5da542ec1f296bec2696869"
 }

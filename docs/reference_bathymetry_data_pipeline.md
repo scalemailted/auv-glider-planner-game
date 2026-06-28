@@ -18,12 +18,22 @@ npm.cmd run audit:reference-bathy
 
 `audit:reference-bathy` verifies either:
 
-- `AVAILABLE`: manifest paths exist, raster artifacts parse, source metadata and bounds are present, elevation/depth/masks are finite, and no hidden-truth/current/scalar claims are present.
+- `AVAILABLE`: manifest paths exist, raster artifacts parse, source metadata, role, rows/columns, actual arc-second resolution, and bounds are present, elevation/depth/masks are finite, filenames do not contradict actual resolution, and no hidden-truth/current/scalar claims are present.
 - `NO_REFERENCE_DATA_FIXTURE`: the blocked manifest is explicit, has no fake fixtures, and includes setup instructions.
 
 ## Current Checked-In State
 
-The checked-in manifest currently reports `NO_REFERENCE_DATA_FIXTURE`. Environment Studio must show blocked instructions and must not present procedural placeholder bathymetry as reference data.
+The checked-in manifest currently reports `AVAILABLE` with one `lowResolutionReferencePatch`:
+
+- fixture: `monterey_canyon`
+- source dataset: ETOPO 2022
+- provider: NOAA NCEI
+- source resolution: 60 arc-second
+- actual raster resolution: 60 arc-second
+- shape: 90 columns x 72 rows
+- bounds: west -123.0, east -121.5, south 36.0, north 37.2
+
+This is intentionally not labeled as a 15 arc-second mission-ready patch. A true 15 arc-second Monterey Canyon patch should be approximately 360 x 288 cells for the same bounding box and remains pending until a suitable source tile or extract is staged.
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 

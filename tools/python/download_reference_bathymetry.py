@@ -10,9 +10,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import shutil
 import sys
+import warnings
 from pathlib import Path
+
+from reference_bathymetry_provenance import (
+    format_arc_seconds,
+    infer_arc_second_resolution,
+    role_for_arc_seconds,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,10 +29,14 @@ ETOPO_60S_TIF_URL = (
     "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/60s/"
     "60s_bed_elev_gtif/ETOPO_2022_v1_60s_N90W180_bed.tif"
 )
+ETOPO_15S_GTIF_BASE_URL = (
+    "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/15s/"
+    "15s_bed_elev_gtif"
+)
 ETOPO_CITATION = (
     "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 "
-    "15 Arc-Second Global Relief Model. NOAA National Centers for "
-    "Environmental Information. https://doi.org/10.25921/fd45-gt74"
+    "Global Relief Model. NOAA National Centers for Environmental Information. "
+    "https://doi.org/10.25921/fd45-gt74"
 )
 
 
@@ -44,6 +56,7 @@ def main() -> int:
     patch.add_argument("--south", type=float, required=True)
     patch.add_argument("--north", type=float, required=True)
     patch.add_argument("--source-file", type=Path, default=None, help="Local GeoTIFF to crop. Defaults to staged ETOPO 60s overview source if present.")
+    patch.add_argument("--resolution", default="auto", choices=["auto", "60s", "15s"], help="Requested source resolution. 15s attempts a NOAA tile download for the bbox.")
     patch.add_argument("--force", action="store_true")
 
     gebco = subparsers.add_parser("gebco-full", help="Guarded placeholder for full GEBCO global download.")
@@ -106,7 +119,7 @@ def download_overview(args: argparse.Namespace) -> int:
             with rasterio.open(overview_path, "w", **profile) as dst:
                 dst.write(data, 1)
             summary = source_summary(raw_path, overview_path, dataset.bounds, preview_width, preview_height)
-            summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+            summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8", newline="\n")
     except Exception as exc:  # noqa: BLE001
         print(f"Failed to build overview GeoTIFF: {exc}", file=sys.stderr)
         return 1
@@ -126,7 +139,13 @@ def crop_patch(args: argparse.Namespace) -> int:
         return 1
     from rasterio.windows import from_bounds
 
-    source = args.source_file or RAW_ROOT / "etopo2022" / "global" / "ETOPO_2022_v1_60s_N90W180_bed.tif"
+    source = args.source_file
+    if source is None and args.resolution == "15s":
+        source = ensure_etopo_15s_tile_for_bounds(args)
+        if source is None:
+            return 1
+    if source is None:
+        source = RAW_ROOT / "etopo2022" / "global" / "ETOPO_2022_v1_60s_N90W180_bed.tif"
     if not source.exists():
         print("BLOCKED_WAITING_FOR_MANUAL_ETopo_OR_GEBCO_PATCH_DOWNLOAD", file=sys.stderr)
         print("No local source GeoTIFF is available for cropping.", file=sys.stderr)
@@ -139,19 +158,26 @@ def crop_patch(args: argparse.Namespace) -> int:
         print("Patch bounds must satisfy east > west and north > south.", file=sys.stderr)
         return 2
 
-    patch_dir = RAW_ROOT / "patches"
-    patch_dir.mkdir(parents=True, exist_ok=True)
-    patch_path = patch_dir / f"{safe_id(args.name)}.etopo2022_15s_bed.patch.tif"
-    summary_path = patch_path.with_suffix(".summary.json")
-    if patch_path.exists() and not args.force:
-        print(json.dumps({"status": "exists", "patchPath": rel(patch_path), "summaryPath": rel(summary_path)}, indent=2))
-        return 0
-
     try:
         with rasterio.open(source) as dataset:
+            resolution = infer_arc_second_resolution(dataset.res[0], dataset.res[1])
+            arc_label = format_arc_seconds(resolution.arc_seconds)
+            patch_dir = RAW_ROOT / "patches"
+            patch_dir.mkdir(parents=True, exist_ok=True)
+            patch_path = patch_dir / f"{safe_id(args.name)}.etopo2022_{arc_label}s_bed.patch.tif"
+            summary_path = patch_path.with_suffix(".summary.json")
+            if patch_path.exists() and not args.force:
+                print(json.dumps({"status": "exists", "patchPath": rel(patch_path), "summaryPath": rel(summary_path)}, indent=2))
+                return 0
             window = from_bounds(args.west, args.south, args.east, args.north, transform=dataset.transform)
             window = window.round_offsets().round_lengths()
-            data = dataset.read(1, window=window)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message="Setting the shape on a NumPy array has been deprecated.*",
+                    category=DeprecationWarning,
+                )
+                data = dataset.read(1, window=window)
             transform = dataset.window_transform(window)
             profile = dataset.profile.copy()
             profile.update({
@@ -168,9 +194,12 @@ def crop_patch(args: argparse.Namespace) -> int:
                 "right": args.east,
                 "bottom": args.south,
                 "top": args.north,
-            }, data.shape[1], data.shape[0])
-            summary["sourceResolutionNote"] = "Cropped from local GeoTIFF source. Prefer 15 arc-second ETOPO/GEBCO source for high-resolution mission fixtures."
-            summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+            }, data.shape[1], data.shape[0], resolution=resolution, role=role_for_arc_seconds(resolution.arc_seconds))
+            summary["sourceResolutionNote"] = (
+                "Cropped from local GeoTIFF source. This summary records actual source resolution; "
+                "do not infer resolution from requested CLI flags."
+            )
+            summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8", newline="\n")
     except Exception as exc:  # noqa: BLE001
         print(f"Patch crop failed: {exc}", file=sys.stderr)
         return 1
@@ -188,6 +217,41 @@ def guarded_gebco(args: argparse.Namespace) -> int:
     return 1
 
 
+def ensure_etopo_15s_tile_for_bounds(args: argparse.Namespace) -> Path | None:
+    requests = require_module("requests", "pip install requests")
+    if requests is None:
+        return None
+    tile_name = etopo_15s_tile_name(args.west, args.east, args.south, args.north)
+    tile_url = f"{ETOPO_15S_GTIF_BASE_URL}/{tile_name}"
+    tile_path = RAW_ROOT / "etopo2022" / "tiles15s" / tile_name
+    tile_path.parent.mkdir(parents=True, exist_ok=True)
+    if tile_path.exists() and not args.force:
+        return tile_path
+    try:
+        stream_download(requests, tile_url, tile_path)
+        return tile_path
+    except Exception as exc:  # noqa: BLE001 - print exact attempted source.
+        part = tile_path.with_suffix(tile_path.suffix + ".part")
+        if part.exists():
+            part.unlink()
+        print("BLOCKED_WAITING_FOR_TRUE_15S_REFERENCE_PATCH", file=sys.stderr)
+        print(f"Attempted NOAA 15s tile URL: {tile_url}", file=sys.stderr)
+        print(f"Requested bbox: west={args.west} east={args.east} south={args.south} north={args.north}", file=sys.stderr)
+        print(f"Download detail: {exc}", file=sys.stderr)
+        print("Keep any existing lower-resolution fixture honestly labeled until a true 15 arc-second source is staged.", file=sys.stderr)
+        return None
+
+
+def etopo_15s_tile_name(west: float, east: float, south: float, north: float) -> str:
+    # ETOPO 15s GeoTIFF tiles are named by the northwest 15-degree tile corner.
+    del east, south
+    lon_west = int(math.floor(float(west) / 15) * 15)
+    lat_north = int(math.ceil(float(north) / 15) * 15)
+    ns = f"N{abs(lat_north):02d}" if lat_north >= 0 else f"S{abs(lat_north):02d}"
+    ew = f"E{abs(lon_west):03d}" if lon_west >= 0 else f"W{abs(lon_west):03d}"
+    return f"ETOPO_2022_v1_15s_{ns}{ew}_bed.tif"
+
+
 def stream_download(requests, url: str, target: Path) -> None:
     part = target.with_suffix(target.suffix + ".part")
     with requests.get(url, stream=True, timeout=60) as response:
@@ -199,17 +263,25 @@ def stream_download(requests, url: str, target: Path) -> None:
     shutil.move(str(part), str(target))
 
 
-def source_summary(source: Path, output: Path, bounds, columns: int, rows: int) -> dict:
+def source_summary(source: Path, output: Path, bounds, columns: int, rows: int, resolution=None, role: str = "overview") -> dict:
+    actual_resolution = resolution or infer_arc_second_resolution(1 / 60, 1 / 60)
     return {
         "sourceDataset": {
             "name": "ETOPO_2022",
             "provider": "NOAA NCEI",
             "version": "v1",
-            "sourceResolution": "60 arc-second",
+            "sourceResolution": actual_resolution.source_resolution,
             "verticalUnits": "meters relative to sea level",
             "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
             "citation": ETOPO_CITATION,
             "licenseOrTermsNote": "See source provider terms",
+        },
+        "role": role,
+        "sourceResolution": actual_resolution.source_resolution,
+        "actualRasterResolutionArcSeconds": actual_resolution.arc_seconds,
+        "degreeResolution": {
+            "longitudeDegrees": actual_resolution.longitude_degrees,
+            "latitudeDegrees": actual_resolution.latitude_degrees,
         },
         "sourceFileName": source.name,
         "sourceFileDigest": digest_file(source),

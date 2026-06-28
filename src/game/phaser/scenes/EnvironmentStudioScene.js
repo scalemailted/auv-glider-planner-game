@@ -127,7 +127,7 @@ export class EnvironmentStudioScene extends PhaserScene {
       });
       this.referenceManifestLoaded = true;
       if (this.session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true) {
-        this.statusMessage = 'Reference bathymetry fixture manifest loaded. Select a preprocessed patch to generate regional bathymetry.';
+        this.statusMessage = referenceFixtureAvailabilityMessage(this.session);
         this.lastError = null;
       } else {
         this.statusMessage = 'Reference bathymetry data is not available yet. Run the downloader and preprocessor before generating reference-backed bathymetry.';
@@ -488,7 +488,7 @@ export class EnvironmentStudioScene extends PhaserScene {
       this.statusMessage = 'Procedural synthetic sandbox opened as an experimental compatibility path.';
     } else if (sourceMode === 'referenceBathymetryAtlas') {
       this.statusMessage = this.referenceDataAvailable()
-        ? 'Reference Bathymetry Atlas is the default source path. Select a bounding box to extract a patch.'
+        ? referenceFixtureAvailabilityMessage(this.session)
         : 'Reference Bathymetry Atlas is the default source path, but generation is blocked until fixture data is preprocessed.';
     } else {
       this.statusMessage = `${labelize(sourceMode)} is staged; use Reference Bathymetry Atlas for the current browser path.`;
@@ -1283,6 +1283,7 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
   const disabledAttr = referenceAvailable ? '' : 'disabled';
   const manifest = session.referenceBathymetryManifest ?? atlas.manifest ?? {};
   const fixtureCount = atlas.fixtureCount ?? manifest.fixtures?.length ?? 0;
+  const availabilityMessage = referenceFixtureAvailabilityMessage(session);
   return `
     <section class="console-header">
       <div class="console-kicker">Simulation Lab / Environment Studio</div>
@@ -1303,7 +1304,7 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
           ${REFERENCE_BATHYMETRY_SOURCE_MODES.map((mode) => `<option value="${escapeAttr(mode.id)}" ${mode.id === session.sourceMode ? 'selected' : ''}>${escapeHtml(mode.label)}</option>`).join('')}
         </select>
       </label>
-      <div class="hud-muted">Reference Bathymetry Atlas is the default. Imported bathymetry and synthetic variants are staged; Procedural Synthetic Sandbox is compatibility only.</div>
+      <div class="hud-muted">${escapeHtml(availabilityMessage)}</div>
       <div class="cell-inspector-metrics">
         ${metricHtml('Dataset', atlas.sourceDataset?.name ?? NO_REFERENCE_DATA_FIXTURE)}
         ${metricHtml('Fixture', atlas.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE)}
@@ -1315,7 +1316,7 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Fixture Selector</h2>
       ${referenceFixtureSelectorHtml(manifest, atlas)}
-      ${!referenceAvailable ? blockedInstructionsHtml() : '<div class="hud-muted">Select an available fixture or draw a bounding box inside an available preprocessed patch.</div>'}
+      ${!referenceAvailable ? blockedInstructionsHtml() : `<div class="hud-muted">${escapeHtml(availabilityMessage)} Select an available fixture or draw a bounding box inside an available preprocessed patch.</div>`}
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Reference Dataset</h2>
@@ -1323,6 +1324,7 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         ${metricHtml('Provider', atlas.sourceDataset?.provider)}
         ${metricHtml('Version', atlas.sourceDataset?.version)}
         ${metricHtml('Resolution', atlas.sourceDataset?.sourceResolution)}
+        ${metricHtml('Actual arc-sec', atlas.sourceDataset?.actualRasterResolutionArcSeconds ?? manifest.overview?.actualRasterResolutionArcSeconds)}
         ${metricHtml('Units', atlas.sourceDataset?.verticalUnits)}
         ${metricHtml('Frame', atlas.sourceDataset?.horizontalCoordinateFrame)}
         ${metricHtml('Reference data', atlas.sourceDataset?.referenceDataAvailable === true ? 'available' : 'not checked in')}
@@ -1394,14 +1396,30 @@ function referenceFixtureSelectorHtml(manifest = {}, atlas = {}) {
   }
   return `
     <select data-env-reference-fixture-selector aria-label="Reference bathymetry fixtures">
-      ${fixtures.map((fixture) => `<option value="${escapeAttr(fixture.fixtureId)}">${escapeHtml(fixture.label ?? fixture.fixtureId)} (${escapeHtml((fixture.tags ?? []).join(', ') || 'untagged')})</option>`).join('')}
+      ${fixtures.map((fixture) => `<option value="${escapeAttr(fixture.fixtureId)}">${escapeHtml(fixture.label ?? fixture.fixtureId)} (${escapeHtml(fixture.role ?? 'referencePatch')}, ${escapeHtml(fixture.sourceResolution ?? 'unknown resolution')})</option>`).join('')}
     </select>
     <div class="cell-inspector-metrics">
       ${metricHtml('Fixture Count', fixtures.length)}
+      ${metricHtml('Fixture Role', fixtures[0]?.role ?? 'n/a')}
+      ${metricHtml('Source Resolution', fixtures[0]?.sourceResolution ?? 'n/a')}
+      ${metricHtml('Actual Arc-Seconds', fixtures[0]?.actualRasterResolutionArcSeconds ?? 'n/a')}
+      ${metricHtml('Raster Shape', fixtures[0]?.columns && fixtures[0]?.rows ? `${fixtures[0].columns} x ${fixtures[0].rows}` : 'n/a')}
       ${metricHtml('Overview Digest', shortDigest(manifest?.overview?.digest))}
       ${metricHtml('Manifest Digest', shortDigest(manifest?.manifestDigest))}
     </div>
   `;
+}
+
+function referenceFixtureAvailabilityMessage(session = {}) {
+  const manifest = session.referenceBathymetryManifest ?? session.referenceAtlas?.manifest ?? {};
+  const fixtures = Array.isArray(manifest.fixtures) ? manifest.fixtures : [];
+  if (!fixtures.length) return 'Reference bathymetry data is not available yet.';
+  const missionReady = fixtures.find((fixture) => fixture.role === 'missionReadyPatch');
+  if (missionReady) {
+    return `Reference fixture available: ${missionReady.sourceDataset ?? 'reference dataset'} ${missionReady.sourceResolution ?? '15 arc-second'} ${missionReady.label ?? missionReady.fixtureId} mission-ready patch.`;
+  }
+  const fixture = fixtures[0];
+  return `Reference fixture available: ${fixture.sourceDataset ?? 'reference dataset'} ${fixture.sourceResolution ?? 'unknown-resolution'} ${fixture.label ?? fixture.fixtureId} low-resolution reference patch. High-resolution 15 arc-second mission-ready patch pending.`;
 }
 
 function blockedInstructionsHtml() {

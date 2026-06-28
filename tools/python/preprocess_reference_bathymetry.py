@@ -8,7 +8,13 @@ import hashlib
 import json
 import math
 import sys
+import warnings
 from pathlib import Path
+
+from reference_bathymetry_provenance import (
+    infer_arc_second_resolution,
+    role_for_arc_seconds,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -18,8 +24,8 @@ MANIFEST_PATH = ASSET_ROOT / "manifest.json"
 PREPROCESSOR_VERSION = "anchor-reference-bathy-preprocessor-v1"
 ETOPO_CITATION = (
     "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 "
-    "15 Arc-Second Global Relief Model. NOAA National Centers for "
-    "Environmental Information. https://doi.org/10.25921/fd45-gt74"
+    "Global Relief Model. NOAA National Centers for Environmental Information. "
+    "https://doi.org/10.25921/fd45-gt74"
 )
 
 
@@ -59,8 +65,13 @@ def main() -> int:
         fixtures.append({
             "fixtureId": artifact["fixtureId"],
             "label": label_from_id(artifact["fixtureId"]),
+            "role": artifact["role"],
             "sourceDataset": artifact["sourceDataset"]["name"],
             "provider": artifact["sourceDataset"]["provider"],
+            "sourceResolution": artifact["sourceResolution"],
+            "actualRasterResolutionArcSeconds": artifact["actualRasterResolutionArcSeconds"],
+            "columns": artifact["grid"]["columns"],
+            "rows": artifact["grid"]["rows"],
             "bounds": artifact["bounds"],
             "rasterPath": rel(artifact_path),
             "digest": artifact["rasterDigest"],
@@ -75,15 +86,20 @@ def main() -> int:
         "overview": {
             "fixtureId": overview["fixtureId"],
             "label": "Reference Bathymetry Overview",
+            "role": "overview",
             "sourceDataset": overview["sourceDataset"],
             "provider": overview["provider"],
-            "resolution": "preprocessed fixture",
+            "sourceResolution": overview["sourceResolution"],
+            "actualRasterResolutionArcSeconds": overview["actualRasterResolutionArcSeconds"],
+            "columns": overview["columns"],
+            "rows": overview["rows"],
+            "resolution": overview["sourceResolution"],
             "rasterPath": overview["rasterPath"],
             "digest": overview["digest"],
             "bounds": overview["bounds"],
         },
         "fixtures": fixtures,
-        "instructions": blocked_manifest()["instructions"],
+        "instructions": available_instructions(fixtures),
         "provenance": {
             "generatedBy": PREPROCESSOR_VERSION,
             "source": "tools/python/preprocess_reference_bathymetry.py",
@@ -113,16 +129,24 @@ def main() -> int:
 
 def build_fixture_artifact(rasterio, numpy, source: Path, max_width: int, max_height: int) -> dict:
     with rasterio.open(source) as dataset:
+        resolution = infer_arc_second_resolution(dataset.res[0], dataset.res[1])
+        role = role_for_arc_seconds(resolution.arc_seconds)
         width_factor = max(1, math.ceil(dataset.width / max(1, max_width)))
         height_factor = max(1, math.ceil(dataset.height / max(1, max_height)))
         factor = max(width_factor, height_factor)
         rows = max(1, math.ceil(dataset.height / factor))
         columns = max(1, math.ceil(dataset.width / factor))
-        elevation = dataset.read(
-            1,
-            out_shape=(rows, columns),
-            resampling=rasterio.enums.Resampling.average,
-        ).astype(float)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Setting the shape on a NumPy array has been deprecated.*",
+                category=DeprecationWarning,
+            )
+            elevation = dataset.read(
+                1,
+                out_shape=(rows, columns),
+                resampling=rasterio.enums.Resampling.average,
+            ).astype(float)
         nodata = dataset.nodata
         if nodata is not None:
             elevation = numpy.where(elevation == nodata, numpy.nan, elevation)
@@ -146,11 +170,18 @@ def build_fixture_artifact(rasterio, numpy, source: Path, max_width: int, max_he
         "artifactType": "anchor.reference-bathymetry-raster",
         "artifactVersion": "1.0.0",
         "fixtureId": fixture_id,
+        "role": role,
+        "sourceResolution": resolution.source_resolution,
+        "actualRasterResolutionArcSeconds": resolution.arc_seconds,
+        "degreeResolution": {
+            "longitudeDegrees": resolution.longitude_degrees,
+            "latitudeDegrees": resolution.latitude_degrees,
+        },
         "sourceDataset": {
             "name": "ETOPO_2022",
             "provider": "NOAA NCEI",
             "version": "v1",
-            "sourceResolution": "15 arc-second or staged source resolution",
+            "sourceResolution": resolution.source_resolution,
             "verticalUnits": "meters relative to sea level",
             "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
             "citation": ETOPO_CITATION,
@@ -174,6 +205,13 @@ def build_fixture_artifact(rasterio, numpy, source: Path, max_width: int, max_he
             "preprocessor": PREPROCESSOR_VERSION,
             "sourceFileName": source.name,
             "sourceFileDigest": digest_file(source),
+            "sourceResolution": resolution.source_resolution,
+            "actualRasterResolutionArcSeconds": resolution.arc_seconds,
+            "degreeResolution": {
+                "longitudeDegrees": resolution.longitude_degrees,
+                "latitudeDegrees": resolution.latitude_degrees,
+            },
+            "role": role,
             "claimBoundary": "reference bathymetry patch; not certified navigation data",
             "localAbsolutePathsIncluded": False,
             "hiddenTruthExposed": False,
@@ -213,6 +251,23 @@ def blocked_manifest() -> dict:
             "operationalOceanForecast": False,
             "hiddenTruthExposed": False,
         },
+    }
+
+
+def available_instructions(fixtures: list[dict]) -> dict:
+    has_mission_ready = any(fixture.get("role") == "missionReadyPatch" for fixture in fixtures)
+    if has_mission_ready:
+        summary = "Preprocessed public reference bathymetry fixture is available, including a mission-ready 15 arc-second patch."
+    else:
+        summary = "Preprocessed public reference bathymetry fixture is available. High-resolution 15 arc-second mission-ready patch remains pending."
+    return {
+        "summary": summary,
+        "downloadCommand": "npm.cmd run download:reference-bathy",
+        "preprocessCommand": "npm.cmd run preprocess:reference-bathy",
+        "auditCommand": "npm.cmd run audit:reference-bathy",
+        "rawDataDirectory": "external_data/reference_bathymetry/",
+        "artifactDirectory": "assets/reference_bathymetry/",
+        "note": "The browser app does not download NOAA or GEBCO data at runtime.",
     }
 
 
@@ -287,7 +342,7 @@ def digest_file(path: Path) -> str:
 
 def write_json(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(value, indent=2, sort_keys=False) + "\n", encoding="utf-8", newline="\n")
 
 
 def require_module(name: str, install_hint: str):
@@ -301,7 +356,9 @@ def require_module(name: str, install_hint: str):
 
 
 def fixture_id_from_source(path: Path) -> str:
-    text = path.stem.replace(".etopo2022_15s_bed.patch", "")
+    text = path.stem
+    for suffix in (".etopo2022_15s_bed.patch", ".etopo2022_30s_bed.patch", ".etopo2022_60s_bed.patch"):
+        text = text.replace(suffix, "")
     safe = "".join(ch.lower() if ch.isalnum() else "_" for ch in text).strip("_")
     return safe or "reference_bathymetry_patch"
 

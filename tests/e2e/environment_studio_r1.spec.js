@@ -162,9 +162,12 @@ async function readQaSummary() {
 async function writeQaSummary(patch) {
   await fs.mkdir(OWNER_REVIEW_DIR, { recursive: true });
   const current = await readQaSummary();
+  const screenshots = (await fs.readdir(OWNER_REVIEW_DIR))
+    .filter((entry) => entry.endsWith('.png'))
+    .sort();
   await fs.writeFile(
     path.join(OWNER_REVIEW_DIR, 'qa-summary.json'),
-    JSON.stringify({ ...current, ...patch, screenshots: REQUIRED_SCREENSHOTS }, null, 2) + '\n'
+    JSON.stringify({ ...current, ...patch, screenshots }, null, 2) + '\n'
   );
 }
 

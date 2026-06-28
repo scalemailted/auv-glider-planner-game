@@ -130,11 +130,19 @@ function fixtureManifest() {
     artifactType: 'anchor.reference-bathymetry-raster',
     artifactVersion: '1.0.0',
     fixtureId: 'bathy_data_r1_test_fixture',
+    role: 'lowResolutionReferencePatch',
+    sourceResolution: '60 arc-second',
+    actualRasterResolutionArcSeconds: 60,
+    degreeResolution: {
+      longitudeDegrees: 1 / 60,
+      latitudeDegrees: 1 / 60
+    },
     sourceDataset: {
       name: 'ETOPO_2022_TEST_FIXTURE',
       provider: 'NOAA NCEI style local test fixture',
       version: 'v1-test',
-      sourceResolution: 'test raster',
+      sourceResolution: '60 arc-second',
+      actualRasterResolutionArcSeconds: 60,
       verticalUnits: 'meters relative to sea level',
       horizontalCoordinateFrame: 'EPSG:4326 lon/lat',
       citation: 'Synthetic numeric fixture for BATHY-DATA-R1 smoke testing only.',
@@ -190,6 +198,13 @@ function fixtureManifest() {
       preprocessor: 'anchor-reference-bathy-preprocessor-v1',
       sourceFileName: 'bathy_data_r1_test_fixture.tif',
       sourceFileDigest: 'sha256:test',
+      sourceResolution: '60 arc-second',
+      actualRasterResolutionArcSeconds: 60,
+      degreeResolution: {
+        longitudeDegrees: 1 / 60,
+        latitudeDegrees: 1 / 60
+      },
+      role: 'lowResolutionReferencePatch',
       claimBoundary: 'test fixture only; not certified navigation data',
       localAbsolutePathsIncluded: false,
       hiddenTruthExposed: false
@@ -199,8 +214,13 @@ function fixtureManifest() {
   const fixture = {
     fixtureId: rasterArtifact.fixtureId,
     label: 'BATHY-DATA-R1 Test Fixture',
+    role: rasterArtifact.role,
     sourceDataset: rasterArtifact.sourceDataset,
     provider: rasterArtifact.sourceDataset.provider,
+    sourceResolution: rasterArtifact.sourceResolution,
+    actualRasterResolutionArcSeconds: rasterArtifact.actualRasterResolutionArcSeconds,
+    columns: rasterArtifact.grid.columns,
+    rows: rasterArtifact.grid.rows,
     bounds,
     rasterPath: 'assets/reference_bathymetry/bathy_data_r1_test_fixture.reference-bathymetry-raster.json',
     digest: rasterArtifact.rasterDigest,
@@ -214,9 +234,14 @@ function fixtureManifest() {
     overview: {
       fixtureId: fixture.fixtureId,
       label: 'BATHY-DATA-R1 Test Overview',
+      role: 'overview',
       sourceDataset: 'ETOPO_2022_TEST_FIXTURE',
       provider: rasterArtifact.sourceDataset.provider,
-      resolution: 'test raster',
+      sourceResolution: rasterArtifact.sourceResolution,
+      actualRasterResolutionArcSeconds: rasterArtifact.actualRasterResolutionArcSeconds,
+      columns: rasterArtifact.grid.columns,
+      rows: rasterArtifact.grid.rows,
+      resolution: rasterArtifact.sourceResolution,
       rasterPath: fixture.rasterPath,
       digest: rasterArtifact.rasterDigest,
       bounds

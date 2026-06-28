@@ -74,9 +74,12 @@ try {
   const ownerReview = JSON.parse(await fs.readFile(ownerReviewPath, 'utf8'));
   assert.equal(ownerReview.defaultSourceMode, 'referenceBathymetryAtlas');
   assert.equal(ownerReview.proceduralSandboxDefault, false);
-  assert.equal(ownerReview.fixtureStatus, NO_REFERENCE_DATA_FIXTURE);
-  assert.equal(ownerReview.fixtureCount, 0);
-  assert.equal(ownerReview.bathymetryArtifactDigest, null);
+  assert.ok([NO_REFERENCE_DATA_FIXTURE, 'AVAILABLE'].includes(ownerReview.fixtureStatus), 'owner review fixture status is known');
+  assert.ok(Number(ownerReview.fixtureCount ?? 0) >= 0, 'owner review fixture count is nonnegative');
+  if (ownerReview.fixtureStatus === NO_REFERENCE_DATA_FIXTURE) {
+    assert.equal(ownerReview.fixtureCount, 0);
+    assert.equal(ownerReview.bathymetryArtifactDigest, null);
+  }
   assert.equal(ownerReview.hiddenTruthExposed, false);
   assert.equal(ownerReview.simulationChanged, false);
   assert.equal(ownerReview.scoringChanged, false);

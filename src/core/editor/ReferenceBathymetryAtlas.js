@@ -82,13 +82,14 @@ export function normalizeReferenceBathymetryManifest(input = null) {
     : NO_REFERENCE_DATA_FIXTURE;
   const fixtures = Array.isArray(input.fixtures) ? input.fixtures.map(normalizeManifestFixture) : [];
   const overview = input.overview ? normalizeManifestOverview(input.overview) : null;
+  const effectiveStatus = fixtureStatus === REFERENCE_DATA_AVAILABLE && fixtures.length ? REFERENCE_DATA_AVAILABLE : NO_REFERENCE_DATA_FIXTURE;
   const manifestBase = {
     artifactType: REFERENCE_BATHYMETRY_MANIFEST_TYPE,
     artifactVersion: String(input.artifactVersion ?? REFERENCE_BATHYMETRY_MANIFEST_VERSION),
-    fixtureStatus: fixtureStatus === REFERENCE_DATA_AVAILABLE && fixtures.length ? REFERENCE_DATA_AVAILABLE : NO_REFERENCE_DATA_FIXTURE,
-    overview: fixtureStatus === REFERENCE_DATA_AVAILABLE ? overview : null,
-    fixtures: fixtureStatus === REFERENCE_DATA_AVAILABLE ? fixtures : [],
-    instructions: input.instructions ?? createBlockedReferenceBathymetryManifest().instructions,
+    fixtureStatus: effectiveStatus,
+    overview: effectiveStatus === REFERENCE_DATA_AVAILABLE ? overview : null,
+    fixtures: effectiveStatus === REFERENCE_DATA_AVAILABLE ? fixtures : [],
+    instructions: normalizeManifestInstructions(input.instructions, effectiveStatus, fixtures),
     provenance: {
       generatedBy: input.provenance?.generatedBy ?? 'reference-bathymetry-manifest',
       source: input.provenance?.source ?? 'assets/reference_bathymetry/manifest.json',
@@ -97,7 +98,7 @@ export function normalizeReferenceBathymetryManifest(input = null) {
     },
     claimBoundary: {
       ...(input.claimBoundary ?? {}),
-      referenceBathymetryAvailable: fixtureStatus === REFERENCE_DATA_AVAILABLE && fixtures.length > 0,
+      referenceBathymetryAvailable: effectiveStatus === REFERENCE_DATA_AVAILABLE && fixtures.length > 0,
       placeholderPresentedAsReferenceData: false,
       currentField4DGenerated: false,
       scalarField4DGenerated: false,
@@ -107,6 +108,23 @@ export function normalizeReferenceBathymetryManifest(input = null) {
     }
   };
   return withDigest(manifestBase, 'manifestDigest');
+}
+
+function normalizeManifestInstructions(input = null, fixtureStatus = NO_REFERENCE_DATA_FIXTURE, fixtures = []) {
+  const blocked = createBlockedReferenceBathymetryManifest().instructions;
+  if (fixtureStatus !== REFERENCE_DATA_AVAILABLE) return { ...blocked, ...(input ?? {}) };
+  const hasMissionReadyPatch = fixtures.some((fixture) => fixture.role === 'missionReadyPatch');
+  const fallbackSummary = hasMissionReadyPatch
+    ? 'Preprocessed public reference bathymetry fixture is available, including a mission-ready 15 arc-second patch.'
+    : 'Preprocessed public reference bathymetry fixture is available. High-resolution 15 arc-second mission-ready patch remains pending.';
+  const summary = String(input?.summary ?? fallbackSummary);
+  return {
+    ...blocked,
+    ...(input ?? {}),
+    summary: /no preprocessed public reference bathymetry fixture is available/i.test(summary)
+      ? fallbackSummary
+      : summary
+  };
 }
 
 export function compactReferenceBathymetryManifest(input = null) {
@@ -119,8 +137,13 @@ export function compactReferenceBathymetryManifest(input = null) {
     fixtures: manifest.fixtures?.map((fixture) => ({
       fixtureId: fixture.fixtureId,
       label: fixture.label,
+      role: fixture.role,
       sourceDataset: fixture.sourceDataset,
       provider: fixture.provider,
+      sourceResolution: fixture.sourceResolution,
+      actualRasterResolutionArcSeconds: fixture.actualRasterResolutionArcSeconds,
+      columns: fixture.columns,
+      rows: fixture.rows,
       bounds: fixture.bounds,
       rasterPath: fixture.rasterPath,
       digest: fixture.digest,
@@ -153,11 +176,19 @@ export function createReferenceBathymetryAtlas(options = {}) {
   const availableFixtureCount = referenceFixtures.filter((fixture) => fixture?.rasterArtifact?.artifactType === REFERENCE_BATHYMETRY_RASTER_TYPE).length;
   const referenceDataAvailable = options.referenceDataAvailable === true
     || (manifest.fixtureStatus === REFERENCE_DATA_AVAILABLE && availableFixtureCount > 0);
+  const primaryFixture = referenceFixtures.find((fixture) => fixture?.rasterArtifact?.artifactType === REFERENCE_BATHYMETRY_RASTER_TYPE)
+    ?? referenceFixtures[0]
+    ?? null;
   const sourceDataset = normalizeSourceDataset(
     options.sourceDataset
       ?? overviewRasterArtifact?.sourceDataset
-      ?? referenceFixtures.find((fixture) => fixture.sourceDataset)?.sourceDataset
-      ?? manifest.overview?.sourceDataset,
+      ?? {
+        ...(primaryFixture?.rasterArtifact?.sourceDataset ?? {}),
+        name: primaryFixture?.rasterArtifact?.sourceDataset?.name ?? primaryFixture?.sourceDataset ?? manifest.overview?.sourceDataset,
+        provider: primaryFixture?.rasterArtifact?.sourceDataset?.provider ?? primaryFixture?.provider ?? manifest.overview?.provider,
+        sourceResolution: primaryFixture?.rasterArtifact?.sourceResolution ?? primaryFixture?.sourceResolution ?? manifest.overview?.sourceResolution,
+        actualRasterResolutionArcSeconds: primaryFixture?.rasterArtifact?.actualRasterResolutionArcSeconds ?? primaryFixture?.actualRasterResolutionArcSeconds ?? manifest.overview?.actualRasterResolutionArcSeconds
+      },
     referenceDataAvailable
   );
   const atlasBase = {
@@ -733,6 +764,7 @@ function normalizeSourceDataset(input = {}, referenceDataAvailable = false) {
       provider: String(sourceInput.provider ?? 'User-provided local artifact'),
       citation: String(sourceInput.citation ?? 'Public bathymetry/topography fixture supplied outside runtime.'),
       sourceResolution: String(sourceInput.sourceResolution ?? 'preprocessed fixture resolution'),
+      actualRasterResolutionArcSeconds: finiteOrNull(sourceInput.actualRasterResolutionArcSeconds),
       verticalUnits: String(sourceInput.verticalUnits ?? 'meters relative to sea level'),
       horizontalCoordinateFrame: String(sourceInput.horizontalCoordinateFrame ?? 'EPSG:4326 lon/lat'),
       licenseOrTermsNote: String(sourceInput.licenseOrTermsNote ?? 'Preserve source dataset terms in exported project metadata.'),
@@ -756,8 +788,13 @@ function normalizeManifestOverview(input = {}) {
   return {
     fixtureId: String(input.fixtureId ?? 'reference-bathymetry-overview'),
     label: String(input.label ?? 'Reference Bathymetry Overview'),
+    role: String(input.role ?? 'overview'),
     sourceDataset: input.sourceDataset ?? 'UNKNOWN_REFERENCE_DATASET',
     provider: input.provider ?? null,
+    sourceResolution: input.sourceResolution ?? input.resolution ?? null,
+    actualRasterResolutionArcSeconds: finiteOrNull(input.actualRasterResolutionArcSeconds),
+    columns: clampInteger(input.columns ?? 0, 0, 20000),
+    rows: clampInteger(input.rows ?? 0, 0, 20000),
     resolution: input.resolution ?? null,
     rasterPath: input.rasterPath ?? null,
     digest: input.digest ?? null,
@@ -774,8 +811,13 @@ function normalizeManifestFixture(input = {}) {
   return {
     fixtureId: String(input.fixtureId ?? input.id ?? 'reference-bathymetry-fixture'),
     label: String(input.label ?? input.fixtureId ?? input.id ?? 'Reference Bathymetry Fixture'),
+    role: String(input.role ?? 'lowResolutionReferencePatch'),
     sourceDataset: input.sourceDataset ?? 'UNKNOWN_REFERENCE_DATASET',
     provider: input.provider ?? null,
+    sourceResolution: input.sourceResolution ?? input.resolution ?? null,
+    actualRasterResolutionArcSeconds: finiteOrNull(input.actualRasterResolutionArcSeconds),
+    columns: clampInteger(input.columns ?? input.grid?.columns ?? 0, 0, 20000),
+    rows: clampInteger(input.rows ?? input.grid?.rows ?? 0, 0, 20000),
     bounds: input.bounds ? normalizeLonLatBounds(input.bounds) : normalizeLonLatBounds(DEFAULT_REFERENCE_BOUNDS),
     rasterPath: input.rasterPath ?? null,
     digest: input.digest ?? input.rasterDigest ?? null,
@@ -801,6 +843,10 @@ function normalizeReferenceRasterArtifact(input = null) {
     artifactType: REFERENCE_BATHYMETRY_RASTER_TYPE,
     artifactVersion: String(input.artifactVersion ?? REFERENCE_BATHYMETRY_RASTER_VERSION),
     fixtureId: String(input.fixtureId ?? input.id ?? 'reference-bathymetry-raster'),
+    role: String(input.role ?? 'lowResolutionReferencePatch'),
+    sourceResolution: input.sourceResolution ?? input.sourceDataset?.sourceResolution ?? null,
+    actualRasterResolutionArcSeconds: finiteOrNull(input.actualRasterResolutionArcSeconds ?? input.sourceDataset?.actualRasterResolutionArcSeconds),
+    degreeResolution: input.degreeResolution ?? input.provenance?.degreeResolution ?? null,
     sourceDataset: normalizeSourceDataset(input.sourceDataset, true),
     bounds: normalizeLonLatBounds(input.bounds ?? DEFAULT_REFERENCE_BOUNDS),
     grid: {
@@ -1079,6 +1125,11 @@ function clampNumber(value, min, max) {
 
 function clampInteger(value, min, max) {
   return Math.round(clampNumber(value, min, max));
+}
+
+function finiteOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function round(value, digits = 6) {
