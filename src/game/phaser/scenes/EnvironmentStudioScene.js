@@ -949,7 +949,9 @@ export class EnvironmentStudioScene extends PhaserScene {
   generateFields() {
     try {
       this.session = regenerateEnvironmentStudioFields(this.session, { seed: this.readSeed() });
-      this.statusMessage = 'Generated atlas-conditioned synthetic currents, science scalar field, and hotspot candidates.';
+      this.statusMessage = this.session.sourceMode === 'referenceBathymetryAtlas'
+        ? 'Generated reference bathymetry + synthetic bathymetry-conditioned fields.'
+        : 'Generated atlas-conditioned synthetic currents, science scalar field, and hotspot candidates.';
       this.lastError = null;
     } catch (error) {
       this.lastError = error?.message ?? String(error);
@@ -1214,6 +1216,7 @@ export class EnvironmentStudioScene extends PhaserScene {
       ...debug,
       version: ENVIRONMENT_STUDIO_SCENE_VERSION,
       routeActive: Boolean(active),
+      referenceManifestLoaded: this.referenceManifestLoaded === true,
       visualAcceptance: environmentStudioVisualAcceptanceMetrics(this.session),
       globeRendered: Boolean(active && this.globeRendererContext?.renderer),
       sphereVisible: Boolean(active && this.globeRendererContext?.sphere),
@@ -1839,9 +1842,10 @@ function regionalBathymetryConsoleHtml(scene, summary = {}) {
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Artifacts</h2>
+      ${fieldRegenerationSummaryHtml(session.fieldRegenerationResult)}
+      <button class="console-button primary" type="button" data-action="env-studio-generate-fields">Generate Currents &amp; Science Fields</button>
       <button class="console-button secondary" type="button" data-action="env-studio-export-bathymetry">Export Bathymetry</button>
       <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
-      <button class="console-button secondary" type="button" disabled>Generate Fields - planned</button>
       <button class="console-button secondary" type="button" disabled>Launch to Planning - planned</button>
       <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
       <input id="env-studio-import-file" type="file" accept="application/json,.json" hidden data-env-studio-import />
@@ -1892,6 +1896,7 @@ function bindEnvironmentStudioRegionalControls(scene, root) {
     scene.updatePreviewCamera({ verticalExaggeration: Number(event.target.value) });
   });
   root?.querySelector?.('[data-action="env-studio-regenerate-world-bathymetry"]')?.addEventListener('click', () => scene.generateWorldBathymetry());
+  root?.querySelector?.('[data-action="env-studio-generate-fields"]')?.addEventListener('click', () => scene.generateFields());
   root?.querySelector?.('[data-action="env-studio-export-project"]')?.addEventListener('click', () => scene.exportProject());
   root?.querySelector?.('[data-action="env-studio-export-bathymetry"]')?.addEventListener('click', () => scene.exportBathymetryArtifact());
   root?.querySelector?.('[data-env-studio-import]')?.addEventListener('change', (event) => scene.importProject(event.target.files?.[0]));
@@ -3093,8 +3098,11 @@ function fieldRegenerationSummaryHtml(result = null) {
       ${metricHtml('Scalar mean', formatNumber(scalarDiagnostics.scalarMean))}
       ${metricHtml('Depth variation', formatNumber(scalarDiagnostics.depthMeanRange))}
       ${metricHtml('Start/drop candidates', result.startDropZoneCandidates?.candidates?.length ?? 0)}
+      ${metricHtml('Hazards', result.hazardCandidates ? `${result.hazardCandidates.candidates?.length ?? 0} / ${shortDigest(result.hazardCandidateDigest)}` : 'deferred')}
+      ${metricHtml('Environment artifact', result.environmentArtifactStatus ?? 'REQUIRES_COMPOSITION')}
+      ${metricHtml('Environment digest', shortDigest(result.environmentArtifactDigest))}
     </div>
-    <p class="hud-muted">Atlas-conditioned package artifacts are synthetic and compactly recorded here. Starts/drop zones still need validation; launch and scoring are unchanged.</p>
+    <p class="hud-muted">${escapeHtml(result.sourceLabel ?? 'Package artifacts are synthetic and compactly recorded here.')} Starts/drop zones still need validation; launch and scoring are unchanged.</p>
   `;
 }
 
@@ -3129,7 +3137,7 @@ function dependencyRows(graph = {}) {
     { id: 'currentArtifact', ...(nodes.currentArtifact ?? {}) },
     { id: 'scalarArtifact', ...(nodes.scalarArtifact ?? {}) },
     { id: 'hotspots', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null, ...(nodes.hotspots ?? {}) },
-    { id: 'hazards', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null },
+    { id: 'hazards', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null, ...(nodes.hazards ?? {}) },
     { id: 'startsDropZones', state: generated ? 'NEEDS_VALIDATION' : 'NOT_GENERATED', artifactDigest: null, ...(nodes.startsDropZones ?? {}) },
     { id: 'benchmarkBundle', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null, ...(nodes.benchmarkBundle ?? {}) },
     { id: 'environmentArtifact', ...(nodes.environmentArtifact ?? {}) },

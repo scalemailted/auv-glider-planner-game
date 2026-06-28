@@ -369,6 +369,33 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-017",
+      "title": "Reference bathymetry patch needs coupled environment field generation.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "SCI",
+        "BENCH",
+        "UX",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Bathymetry Field Generation",
+      "summary": "ANCHOR now has a verified 15 arc-second Monterey Canyon reference bathymetry patch. To become a usable mission environment, Environment Studio must generate bathymetry-conditioned synthetic currents, scalar fields, hotspots, candidate starts/drop zones, hazards, and an EnvironmentArtifact from that reference patch.",
+      "decision": "Accepted for FIELD-REGEN-R1.",
+      "proposedPhase": "FIELD-REGEN-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Reference bathymetry generates deterministic synthetic current, scalar, hotspot, start/drop-zone, and hazard metadata.",
+        "Exports preserve reference fixture identity, field digests, dependency states, validation report, provenance, and claim boundaries.",
+        "Currents and scalars are labeled as synthetic bathymetry-conditioned benchmark fields, not operational forecasts.",
+        "Mission simulation, scoring, planners, glider dynamics, and benchmark fairness remain unchanged."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

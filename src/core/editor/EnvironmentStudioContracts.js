@@ -27,7 +27,8 @@ export const ENVIRONMENT_STUDIO_DEPENDENCY_STATE = Object.freeze({
   INVALID: 'INVALID',
   NOT_GENERATED: 'NOT_GENERATED',
   NEEDS_VALIDATION: 'NEEDS_VALIDATION',
-  REQUIRES_REGENERATION: 'REQUIRES_REGENERATION'
+  REQUIRES_REGENERATION: 'REQUIRES_REGENERATION',
+  REQUIRES_COMPOSITION: 'REQUIRES_COMPOSITION'
 });
 
 export const ENVIRONMENT_STUDIO_LIMITS = Object.freeze({
@@ -58,6 +59,7 @@ export const ENVIRONMENT_STUDIO_DEPENDENCY_NODES = Object.freeze([
   'currentArtifact',
   'scalarArtifact',
   'hotspots',
+  'hazards',
   'startsDropZones',
   'benchmarkBundle',
   'environmentArtifact',

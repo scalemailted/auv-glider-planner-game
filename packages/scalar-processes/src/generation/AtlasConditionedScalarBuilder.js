@@ -35,21 +35,26 @@ export function buildAtlasConditionedScalarArtifact(options = {}) {
     componentPlan,
     seed: options.seed ?? recipe.randomSeed ?? flowInputs.recipeDigest ?? 'atlas-scalar'
   });
+  const sourceId = options.id ?? `atlas-conditioned-scalar-${stableToken(recipe.recipeDigest ?? flowInputs.recipeDigest ?? 'field')}`;
+  const sourceLabel = options.sourceLabel ?? options.label ?? 'Atlas-conditioned synthetic scalar science field';
   const sourceMetadata = {
-    sourceId: options.id ?? `atlas-conditioned-scalar-${stableToken(recipe.recipeDigest ?? flowInputs.recipeDigest ?? 'field')}`,
-    fieldId: options.id ?? `atlas-conditioned-scalar-${stableToken(recipe.recipeDigest ?? flowInputs.recipeDigest ?? 'field')}`,
-    label: options.label ?? 'Atlas-conditioned synthetic scalar science field',
-    sourceTier: 'scientificallyConstrainedSynthetic',
-    sourceType: 'atlas-conditioned-synthetic-scalar',
-    processKind: 'atlasConditionedScalarRegimeSyntheticV1',
-    equationFamily: 'atlasConditionedScalarRegimeSyntheticV1',
-    generatorBackend: 'atlasConditionedScalarBuilder',
-    generatorVersion: ATLAS_CONDITIONED_SCALAR_BUILDER_VERSION,
+    ...(options.sourceMetadata ?? {}),
+    sourceId,
+    fieldId: sourceId,
+    label: sourceLabel,
+    sourceTier: options.sourceTier ?? options.sourceMetadata?.sourceTier ?? 'scientificallyConstrainedSynthetic',
+    sourceType: options.sourceType ?? options.sourceMetadata?.sourceType ?? 'atlas-conditioned-synthetic-scalar',
+    processKind: options.processKind ?? options.sourceMetadata?.processKind ?? 'atlasConditionedScalarRegimeSyntheticV1',
+    equationFamily: options.equationFamily ?? options.sourceMetadata?.equationFamily ?? 'atlasConditionedScalarRegimeSyntheticV1',
+    generatorBackend: options.generatorBackend ?? options.sourceMetadata?.generatorBackend ?? 'atlasConditionedScalarBuilder',
+    generatorVersion: options.generatorVersion ?? options.sourceMetadata?.generatorVersion ?? ATLAS_CONDITIONED_SCALAR_BUILDER_VERSION,
     atlasDigest: flowInputs.atlasDigest ?? recipe.atlasDigest ?? null,
     windowDigest: flowInputs.windowDigest ?? recipe.windowDigest ?? null,
     recipeDigest: flowInputs.recipeDigest ?? recipe.recipeDigest ?? null,
     bathymetryArtifactDigest: flowInputs.bathymetryArtifactDigest ?? options.bathymetryArtifact?.artifactDigest ?? null,
     currentArtifactDigest: options.currentArtifactDigest ?? currentArtifact?.digest ?? null,
+    referenceFixtureId: options.referenceFixtureId ?? options.sourceMetadata?.referenceFixtureId ?? flowInputs.referenceFixtureId ?? null,
+    fieldPolicy: options.fieldPolicy ?? options.sourceMetadata?.fieldPolicy ?? flowInputs.fieldPolicy ?? null,
     scalarRegimeHints,
     scalarRegimeComponents: componentPlan.componentMetadata,
     sourceZones: componentPlan.sourceZones,
@@ -65,10 +70,11 @@ export function buildAtlasConditionedScalarArtifact(options = {}) {
     depthDependent: true,
     timeDependent: true,
     units: 'normalized science value',
-    warnings: [
+    warnings: uniqueStrings([
+      ...(Array.isArray(options.warnings) ? options.warnings : []),
       'Atlas-conditioned synthetic scalar field for deterministic benchmark use; not a calibrated ocean forecast, ecological forecast, biogeochemical forecast, or operational product.',
       'Scalar hotspots are generated from atlas regime hints, bathymetry, masks, feature zones, and generated synthetic currents.'
-    ]
+    ])
   };
   const scalarArtifact = createScalarField4D({
     id: sourceMetadata.fieldId,

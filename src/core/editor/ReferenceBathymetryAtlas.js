@@ -151,11 +151,19 @@ export function compactReferenceBathymetryManifest(input = null) {
       digest: fixture.digest,
       tags: fixture.tags
     })) ?? [],
-    instructions: manifest.instructions,
+    instructions: compactReferenceManifestInstructions(manifest.instructions, manifest.fixtureStatus),
     provenance: manifest.provenance,
     claimBoundary: manifest.claimBoundary,
     manifestDigest: manifest.manifestDigest
   };
+}
+
+function compactReferenceManifestInstructions(instructions = {}, fixtureStatus = NO_REFERENCE_DATA_FIXTURE) {
+  const compact = { ...(instructions ?? {}) };
+  if (fixtureStatus === REFERENCE_DATA_AVAILABLE) {
+    delete compact.rawDataDirectory;
+  }
+  return compact;
 }
 
 export function createReferenceBathymetryAtlasFromManifest(manifestInput = null, options = {}) {

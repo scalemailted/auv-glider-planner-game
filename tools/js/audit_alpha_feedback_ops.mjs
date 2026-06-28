@@ -25,7 +25,7 @@ assert.equal(ledger.artifactType, 'anchor.alpha-feedback-ledger');
 assert.equal(ledger.phase, 'FEEDBACK-OPS-R1');
 assert.ok(Array.isArray(ledger.items), 'feedback ledger items must be an array');
 
-const requiredFeedbackIds = ['ALPHA-FB-001', 'ALPHA-FB-002', 'ALPHA-FB-003', 'ALPHA-FB-004'];
+const requiredFeedbackIds = ['ALPHA-FB-001', 'ALPHA-FB-002', 'ALPHA-FB-003', 'ALPHA-FB-004', 'ALPHA-FB-017'];
 const validStatuses = new Set(ledger.taxonomy?.validStatuses ?? []);
 const validCategories = new Set(Object.keys(ledger.taxonomy?.categories ?? {}));
 const validSeverities = new Set(Object.keys(ledger.taxonomy?.severities ?? {}));

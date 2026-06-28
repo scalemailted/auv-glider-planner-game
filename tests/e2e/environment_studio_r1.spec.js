@@ -16,10 +16,13 @@ const REQUIRED_SCREENSHOTS = [
   '04-reference-patch-generated-3d-bathymetry.png',
   '05-blocked-instructions-if-no-data.png'
 ];
+const FNV_DIGEST_PATTERN = /(?:^|-)fnv1a32:/;
 
 export const EXACT_TITLES = [
   'Reference Bathymetry Atlas Opens',
-  'Reference Patch Generates Bathymetry'
+  'Reference Patch Generates Bathymetry',
+  'Reference Patch Generates Environment Fields',
+  'Export / Import Generated Reference Environment'
 ];
 
 test.setTimeout(180000);
@@ -61,7 +64,7 @@ test(EXACT_TITLES[0], async ({ page }) => {
   expect(debug.simulationChanged).toBe(false);
   expect(debug.scoringChanged).toBe(false);
 
-  if (debug.referenceFixtureStatus === 'NO_REFERENCE_DATA_FIXTURE') {
+  if (!hasReferenceFixture(debug)) {
     await expect(page.locator('[data-env-reference-blocked-panel]')).toBeVisible();
     await expect(page.locator('[data-env-reference-blocked-instructions]').first()).toContainText('BLOCKED_WAITING_FOR_REFERENCE_BATHYMETRY_DOWNLOAD');
     await expect(page.locator('[data-env-reference-bathymetry-map]')).toHaveCount(0);
@@ -86,7 +89,7 @@ test(EXACT_TITLES[1], async ({ page }) => {
   await waitForReferenceManifest(page);
 
   const initialDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
-  if (initialDebug.referenceFixtureStatus === 'NO_REFERENCE_DATA_FIXTURE') {
+  if (!hasReferenceFixture(initialDebug)) {
     await expect(page.locator('[data-env-reference-blocked-instructions]').first()).toContainText('npm.cmd run download:reference-bathy');
     await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[2]);
     await expect(page.locator('[data-action="env-reference-generate-bathymetry"]')).toBeDisabled();
@@ -110,7 +113,7 @@ test(EXACT_TITLES[1], async ({ page }) => {
   }
 
   await page.locator('[data-action="env-reference-select-boundary"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedPatchDigest ?? null), { timeout: 15000 }).toMatch(/^fnv1a32:/);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedPatchDigest ?? null), { timeout: 15000 }).toMatch(FNV_DIGEST_PATTERN);
   await captureOwnerScreenshot(page, REQUIRED_SCREENSHOTS[2]);
   await page.locator('#mission-console [data-action="env-reference-generate-bathymetry"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 20000 }).toBe('regionalBathymetry');
@@ -119,6 +122,82 @@ test(EXACT_TITLES[1], async ({ page }) => {
 
   const debugAfterGeneration = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
   await writeQaSummary(ownerReviewSummaryFromDebug(debugAfterGeneration));
+  browserErrors.assertClean();
+});
+
+test(EXACT_TITLES[2], async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
+  const debug = await generateReferenceEnvironmentFields(page);
+  if (!hasReferenceFixture(debug)) {
+    browserErrors.assertClean();
+    return;
+  }
+
+  await expect(page.locator('#mission-console')).toContainText('Current artifact');
+  await expect(page.locator('#mission-console')).toContainText('Scalar artifact');
+  await expect(page.locator('#mission-console')).toContainText('Hazards');
+  await expect(page.locator('#mission-console')).toContainText('Environment artifact');
+  expect(debug.fieldGenerationStatus).toBe('CURRENT');
+  expect(debug.currentArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(debug.scalarArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(debug.hotspotArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(debug.hazardCandidateDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(debug.environmentArtifactDigest).toMatch(FNV_DIGEST_PATTERN);
+  expect(['CURRENT', 'REQUIRES_COMPOSITION']).toContain(debug.environmentArtifactStatus);
+  expect(debug.currentDiagnostics.landVectorCount).toBe(0);
+  expect(debug.currentDiagnostics.belowBottomVectorCount).toBe(0);
+  expect(debug.currentDiagnostics.temporalChangeRms).toBeGreaterThan(0);
+  expect(debug.currentDiagnostics.surfaceToDeepVectorDifferenceRms).toBeGreaterThan(0);
+  expect(debug.scalarDiagnostics.scalarMean).toBeGreaterThanOrEqual(0);
+  expect(debug.startDropZoneDiagnostics.candidateCount).toBeGreaterThan(0);
+  expect(debug.hazardDiagnostics.candidateCount).toBeGreaterThan(0);
+  expect(debug.dependencyGraph.nodes.currentArtifact.state).toBe('CURRENT');
+  expect(debug.dependencyGraph.nodes.scalarArtifact.state).toBe('CURRENT');
+  expect(debug.dependencyGraph.nodes.hotspots.state).toBe('CURRENT');
+  expect(debug.dependencyGraph.nodes.hazards.state).toBe('CURRENT');
+  expect(debug.dependencyGraph.nodes.startsDropZones.state).toBe('NEEDS_VALIDATION');
+  expect(debug.dependencyGraph.nodes.benchmarkBundle.state).toBe('REQUIRES_REGENERATION');
+  expect(['CURRENT', 'REQUIRES_COMPOSITION']).toContain(debug.dependencyGraph.nodes.environmentArtifact.state);
+  expect(debug.hiddenTruthExposed).toBe(false);
+  expect(debug.simulationChanged).toBe(false);
+  expect(debug.scoringChanged).toBe(false);
+
+  await writeQaSummary(ownerReviewSummaryFromDebug(debug));
+  browserErrors.assertClean();
+});
+
+test(EXACT_TITLES[3], async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
+  const debug = await generateReferenceEnvironmentFields(page);
+  if (!hasReferenceFixture(debug)) {
+    browserErrors.assertClean();
+    return;
+  }
+
+  const exported = await downloadStudioProject(page);
+  expect(exported.data.sourceMode).toBe('referenceBathymetryAtlas');
+  expect(exported.data.fieldRegenerationResult.referenceFixtureId).toBe('monterey_canyon_15s');
+  expect(exported.data.fieldRegenerationResult.currentArtifactDigest).toBe(debug.currentArtifactDigest);
+  expect(exported.data.fieldRegenerationResult.hazardCandidateDigest).toBe(debug.hazardCandidateDigest);
+  expect(exported.data.fieldRegenerationResult.environmentArtifactDigest).toBe(debug.environmentArtifactDigest);
+  expect(exported.data.flowGenerationInputs.dependencyPlan.hazards).toBe('CURRENT');
+  expect(exported.data.provenance.hiddenTruthExposed).toBe(false);
+  expect(JSON.stringify(exported.data.fieldRegenerationResult)).not.toMatch(/"currentArtifact"\s*:\s*\{|"scalarArtifact"\s*:\s*\{|"environmentArtifact"\s*:\s*\{/);
+
+  await page.locator('input[data-env-studio-import]').setInputFiles(exported.path);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.currentArtifactDigest ?? null), { timeout: 15000 }).toBe(debug.currentArtifactDigest);
+  const importedDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+  expect(importedDebug.referenceFixtureId).toBe(debug.referenceFixtureId);
+  expect(importedDebug.currentArtifactDigest).toBe(debug.currentArtifactDigest);
+  expect(importedDebug.scalarArtifactDigest).toBe(debug.scalarArtifactDigest);
+  expect(importedDebug.hazardCandidateDigest).toBe(debug.hazardCandidateDigest);
+  expect(importedDebug.environmentArtifactDigest).toBe(debug.environmentArtifactDigest);
+  expect(importedDebug.dependencyGraph.nodes.hazards.state).toBe('CURRENT');
+  expect(importedDebug.hiddenTruthExposed).toBe(false);
+  expect(importedDebug.previewRendererCount).toBe(0);
+  expect(importedDebug.activeRafCount).toBe(0);
+
+  await writeQaSummary(ownerReviewSummaryFromDebug(importedDebug));
   browserErrors.assertClean();
 });
 
@@ -132,9 +211,28 @@ async function openEnvironmentStudio(page) {
 
 async function waitForReferenceManifest(page) {
   await expect.poll(
-    () => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.referenceFixtureStatus ?? null),
+    () => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.referenceManifestLoaded === true),
     { timeout: 15000 }
-  ).toBeTruthy();
+  ).toBe(true);
+}
+
+async function generateReferenceEnvironmentFields(page) {
+  await openEnvironmentStudio(page);
+  await waitForReferenceManifest(page);
+  const initialDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+  if (!hasReferenceFixture(initialDebug)) {
+    await expect(page.locator('[data-action="env-reference-generate-bathymetry"]')).toBeDisabled();
+    return initialDebug;
+  }
+  await page.locator('[data-action="env-reference-select-boundary"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedPatchDigest ?? null), { timeout: 15000 }).toMatch(FNV_DIGEST_PATTERN);
+  await page.locator('#mission-console [data-action="env-reference-generate-bathymetry"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 20000 }).toBe('regionalBathymetry');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 20000 }).toMatch(FNV_DIGEST_PATTERN);
+  await page.locator('[data-action="env-studio-generate-fields"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.fieldGenerationStatus ?? null), { timeout: 30000 }).toBe('CURRENT');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.currentArtifactDigest ?? null), { timeout: 30000 }).toMatch(FNV_DIGEST_PATTERN);
+  return page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
 }
 
 async function resetOwnerReviewPackage() {
@@ -176,9 +274,15 @@ function ownerReviewSummaryFromDebug(debug = {}) {
     fixtureStatus: debug.referenceFixtureStatus ?? 'NO_REFERENCE_DATA_FIXTURE',
     overviewDigest: debug.overviewDigest ?? null,
     fixtureCount: debug.referenceFixtureCount ?? 0,
-    selectedFixtureId: debug.selectedFixtureId ?? null,
+    selectedFixtureId: debug.referenceFixtureId ?? debug.selectedFixtureId ?? null,
     selectedPatchDigest: debug.selectedPatchDigest ?? null,
     bathymetryArtifactDigest: debug.bathymetryArtifactDigest ?? null,
+    currentArtifactDigest: debug.currentArtifactDigest ?? null,
+    scalarArtifactDigest: debug.scalarArtifactDigest ?? null,
+    hotspotArtifactDigest: debug.hotspotArtifactDigest ?? null,
+    hazardCandidateDigest: debug.hazardCandidateDigest ?? null,
+    environmentArtifactDigest: debug.environmentArtifactDigest ?? null,
+    environmentArtifactStatus: debug.environmentArtifactStatus ?? null,
     defaultSourceMode: debug.defaultSourceMode ?? 'referenceBathymetryAtlas',
     proceduralSandboxDefault: debug.proceduralSandboxDefault === true ? true : false,
     hiddenTruthExposed: false,
@@ -187,10 +291,17 @@ function ownerReviewSummaryFromDebug(debug = {}) {
   };
 }
 
+function hasReferenceFixture(debug = {}) {
+  return debug.referenceDataAvailable === true
+    || debug.referenceFixtureStatus === 'AVAILABLE'
+    || debug.referenceBathymetryManifest?.fixtureStatus === 'AVAILABLE'
+    || Number(debug.referenceFixtureCount ?? 0) > 0;
+}
+
 async function downloadStudioProject(page) {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.locator('#mission-console [data-action="env-studio-export-project"]').click()
+    page.locator('[data-action="env-studio-export-project"]').first().click()
   ]);
   const filePath = await download.path();
   const text = await fs.readFile(filePath, 'utf8');

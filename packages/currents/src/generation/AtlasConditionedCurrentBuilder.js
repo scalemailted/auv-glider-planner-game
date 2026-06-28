@@ -65,22 +65,27 @@ export function buildAtlasConditionedCurrentArtifact(options = {}) {
     seed: numericSeed(options.seed ?? recipe.randomSeed ?? flowInputs.recipeDigest ?? 'atlas-current'),
     ...componentPlan.parameters
   });
+  const sourceId = options.id ?? `atlas-conditioned-current-${stableToken(recipe.recipeDigest ?? flowInputs.recipeDigest ?? 'field')}`;
+  const sourceLabel = options.sourceLabel ?? options.label ?? 'Atlas-conditioned synthetic 4D current field';
   const sourceMetadata = {
     ...(base.sourceMetadata ?? {}),
-    sourceId: options.id ?? `atlas-conditioned-current-${stableToken(recipe.recipeDigest ?? flowInputs.recipeDigest ?? 'field')}`,
-    sourceLabel: 'Atlas-conditioned synthetic 4D current field',
-    label: 'Atlas-conditioned synthetic 4D current field',
-    sourceTier: 'scientificallyConstrainedSynthetic',
-    sourceType: 'atlas-conditioned-synthetic-current',
-    equationFamily: 'atlasConditionedReducedOrderStreamfunctionSyntheticV1',
-    generatorBackend: 'atlasConditionedCurrentBuilder',
-    generatorVersion: ATLAS_CONDITIONED_CURRENT_BUILDER_VERSION,
+    ...(options.sourceMetadata ?? {}),
+    sourceId,
+    sourceLabel,
+    label: sourceLabel,
+    sourceTier: options.sourceTier ?? options.sourceMetadata?.sourceTier ?? 'scientificallyConstrainedSynthetic',
+    sourceType: options.sourceType ?? options.sourceMetadata?.sourceType ?? 'atlas-conditioned-synthetic-current',
+    equationFamily: options.equationFamily ?? options.sourceMetadata?.equationFamily ?? 'atlasConditionedReducedOrderStreamfunctionSyntheticV1',
+    generatorBackend: options.generatorBackend ?? options.sourceMetadata?.generatorBackend ?? 'atlasConditionedCurrentBuilder',
+    generatorVersion: options.generatorVersion ?? options.sourceMetadata?.generatorVersion ?? ATLAS_CONDITIONED_CURRENT_BUILDER_VERSION,
     environmentGeneratorBackendId: CURRENT_GENERATION_BACKEND_V3_ID,
     atlasDigest: flowInputs.atlasDigest ?? recipe.atlasDigest ?? null,
     windowDigest: flowInputs.windowDigest ?? recipe.windowDigest ?? null,
     recipeDigest: flowInputs.recipeDigest ?? recipe.recipeDigest ?? null,
     bathymetryArtifactDigest: flowInputs.bathymetryArtifactDigest ?? options.bathymetryArtifact?.artifactDigest ?? null,
     wetLandMaskDigest: flowInputs.wetLandMaskIdentity?.wetMaskDigest ?? null,
+    referenceFixtureId: options.referenceFixtureId ?? options.sourceMetadata?.referenceFixtureId ?? flowInputs.referenceFixtureId ?? null,
+    fieldPolicy: options.fieldPolicy ?? options.sourceMetadata?.fieldPolicy ?? flowInputs.fieldPolicy ?? null,
     currentRegimeHints,
     currentRegimeComponents: componentPlan.componentMetadata,
     componentIds: componentPlan.enabledComponents,
@@ -99,11 +104,13 @@ export function buildAtlasConditionedCurrentArtifact(options = {}) {
     hiddenTruthIncluded: false,
     publicSafe: true,
     references: [
+      ...(Array.isArray(options.references) ? options.references : []),
       'FIELD-REGEN-R1 atlas-conditioned current regeneration',
       'packages/currents bathymetry-conditioned 4D current backend'
     ],
     warnings: uniqueStrings([
       ...(base.sourceMetadata?.warnings ?? []),
+      ...(Array.isArray(options.warnings) ? options.warnings : []),
       'Atlas-conditioned synthetic currents for deterministic benchmark use. Not a calibrated HYCOM, Marine Copernicus, operational forecast, or certified navigation product.',
       'Current vectors are generated from bathymetry, masks, coastline/open-boundary metadata, regime hints, streamfunction-style coherent components, depth profiles, and canonical mission time.'
     ])

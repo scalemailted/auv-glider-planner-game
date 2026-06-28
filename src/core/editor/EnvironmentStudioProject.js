@@ -19,6 +19,10 @@ import {
   createBathymetryArtifactFromField
 } from '../generation/BathymetryArtifactAdapter.js';
 import {
+  REFERENCE_BATHYMETRY_ENVIRONMENT_BUILDER_VERSION,
+  buildReferenceBathymetryEnvironment
+} from '../generation/ReferenceBathymetryEnvironmentBuilder.js';
+import {
   WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
   buildWindowConditionedBathymetry,
   compactWindowConditionedBathymetryResult
@@ -1090,8 +1094,33 @@ export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {
     missionDurationSeconds: missionDurationSecondsFromSession(session, session.flowGenerationInputs ?? {}),
     seed
   };
-  const currentResult = buildAtlasConditionedCurrentArtifact(fieldOptions);
-  const scalarResult = buildAtlasConditionedScalarArtifact({
+  const isReferenceBathymetryProject = session.sourceMode === 'referenceBathymetryAtlas'
+    || session.flowGenerationInputs?.type === 'anchor.reference-patch.flow-generation-inputs'
+    || session.bathymetryBuilderResult?.type === 'anchor.reference-patch-bathymetry-builder-summary';
+  const referenceEnvironmentResult = isReferenceBathymetryProject
+    ? buildReferenceBathymetryEnvironment({
+        ...fieldOptions,
+        referenceFixtureId: referenceFixtureIdForSession(session),
+        coastlineSummary: session.flowGenerationInputs?.coastlineSummary ?? session.bathymetryBuilderResult?.coastlineSummary,
+        slopeStats: session.flowGenerationInputs?.slopeStats ?? session.selectedReferenceWindow?.sampledStats?.slopeStats,
+        shelfFraction: session.flowGenerationInputs?.shelfFraction ?? session.selectedReferenceWindow?.sampledStats?.shelfFraction,
+        basinFraction: session.flowGenerationInputs?.basinFraction ?? session.selectedReferenceWindow?.sampledStats?.basinFraction,
+        sourceMetadata: referenceSourceMetadataForSession(session),
+        fieldPolicy: {
+          label: 'Reference bathymetry + synthetic bathymetry-conditioned fields.',
+          bathymetryArtifact: 'REFERENCE_PATCH',
+          currentArtifact: 'GENERATE_SYNTHETIC',
+          scalarArtifact: 'GENERATE_SYNTHETIC',
+          hotspots: 'GENERATE_SYNTHETIC',
+          startsDropZones: 'GENERATE_CANDIDATES_NEEDS_VALIDATION',
+          hazards: 'GENERATE_CANDIDATES',
+          environmentArtifact: 'COMPOSE_IF_PACKAGE_VALID',
+          benchmarkBundle: 'REQUIRES_REGENERATION'
+        }
+      })
+    : null;
+  const currentResult = referenceEnvironmentResult?.currentResult ?? buildAtlasConditionedCurrentArtifact(fieldOptions);
+  const scalarResult = referenceEnvironmentResult?.scalarResult ?? buildAtlasConditionedScalarArtifact({
     ...fieldOptions,
     currentArtifact: currentResult.currentArtifact,
     currentArtifactDigest: currentResult.currentArtifactDigest
@@ -1101,6 +1130,7 @@ export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {
     bathymetryArtifact,
     currentResult,
     scalarResult,
+    referenceEnvironmentResult,
     seed
   });
   return refreshEnvironmentStudioSession({
@@ -1700,8 +1730,12 @@ function flowGenerationInputsForSession(session = {}, context = {}) {
     ?? base.bathymetryArtifactDigest
     ?? null;
   const dependencyStates = flowDependencyStates(context.dependencyGraph);
+  const hazardsGenerated = Boolean(fieldResult?.hazardCandidateDigest);
+  const environmentArtifactCurrent = fieldResult?.environmentArtifactStatus === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT;
   const enhanced = {
     ...base,
+    referenceFixtureId: base.referenceFixtureId ?? (session.sourceMode === 'referenceBathymetryAtlas' ? referenceFixtureIdForSession(session) : null),
+    fieldPolicy: fieldResult?.fieldGenerationPolicy ?? base.fieldPolicy ?? null,
     sourceGridShape: context.sourceGridShape ?? base.sourceGridShape ?? null,
     previewGridShape: context.previewGridShape ?? base.previewGridShape ?? null,
     intendedGliders: session.intendedGliders ?? base.intendedGliders ?? null,
@@ -1714,8 +1748,12 @@ function flowGenerationInputsForSession(session = {}, context = {}) {
       currents: hasRegeneratedFields ? 'CURRENT' : 'REQUIRES_REGENERATION',
       scalarFields: hasRegeneratedFields ? 'CURRENT' : 'REQUIRES_REGENERATION',
       hotspots: hasRegeneratedFields ? 'CURRENT' : 'REQUIRES_REGENERATION',
+      hazards: hazardsGenerated ? 'CURRENT' : 'REQUIRES_REGENERATION',
       startsDropZones: 'NEEDS_VALIDATION',
-      benchmarkBundle: 'REQUIRES_REGENERATION'
+      benchmarkBundle: 'REQUIRES_REGENERATION',
+      environmentArtifact: hasRegeneratedFields
+        ? (fieldResult?.environmentArtifactStatus ?? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_COMPOSITION)
+        : (base.dependencyPlan?.environmentArtifact ?? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION)
     },
     dependencyStates,
     regeneratedArtifactDigests: hasRegeneratedFields ? {
@@ -1723,23 +1761,29 @@ function flowGenerationInputsForSession(session = {}, context = {}) {
       currentArtifactDigest: fieldResult.currentArtifactDigest ?? null,
       scalarArtifactDigest: fieldResult.scalarArtifactDigest ?? null,
       hotspotArtifactDigest: fieldResult.hotspotArtifactDigest ?? null,
-      startDropZoneCandidateDigest: fieldResult.startDropZoneCandidateDigest ?? null
+      startDropZoneCandidateDigest: fieldResult.startDropZoneCandidateDigest ?? null,
+      hazardCandidateDigest: fieldResult.hazardCandidateDigest ?? null,
+      environmentArtifactDigest: fieldResult.environmentArtifactDigest ?? null
     } : null,
     generatedArtifacts: {
       ...(base.generatedArtifacts ?? {}),
       currentField4D: hasRegeneratedFields,
       scalarField4D: hasRegeneratedFields,
       hotspots: hasRegeneratedFields,
+      hazards: hazardsGenerated,
       startsDropZonesValidated: false,
-      benchmarkBundle: false
+      benchmarkBundle: false,
+      environmentArtifact: environmentArtifactCurrent
     },
     claimBoundary: {
       ...(base.claimBoundary ?? {}),
       synthetic: session.referenceAtlas?.sourceDataset?.referenceDataAvailable !== true,
       referenceBathymetryPatch: session.sourceMode === 'referenceBathymetryAtlas' || base.claimBoundary?.referenceBathymetryPatch === true,
+      syntheticBathymetryConditionedFields: hasRegeneratedFields,
       currentField4DGenerated: hasRegeneratedFields,
       scalarField4DGenerated: hasRegeneratedFields,
       hotspotsGenerated: hasRegeneratedFields,
+      hazardsGenerated,
       calibratedOceanProduct: false,
       operationalForecast: false,
       hiddenTruthExposed: false
@@ -1755,8 +1799,10 @@ function flowDependencyStates(graph = {}) {
     currentArtifact: nodes.currentArtifact?.state ?? 'NOT_GENERATED',
     scalarArtifact: nodes.scalarArtifact?.state ?? 'NOT_GENERATED',
     hotspots: nodes.hotspots?.state ?? 'NOT_GENERATED',
+    hazards: nodes.hazards?.state ?? 'NOT_GENERATED',
     startsDropZones: nodes.startsDropZones?.state ?? 'NOT_GENERATED',
-    benchmarkBundle: nodes.benchmarkBundle?.state ?? 'NOT_GENERATED'
+    benchmarkBundle: nodes.benchmarkBundle?.state ?? 'NOT_GENERATED',
+    environmentArtifact: nodes.environmentArtifact?.state ?? 'NOT_GENERATED'
   };
 }
 
@@ -1940,11 +1986,13 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     referenceBathymetryManifest: compactReferenceBathymetryManifest(session.referenceBathymetryManifest ?? session.referenceAtlas?.manifest),
     referenceBathymetryManifestDigest: session.referenceBathymetryManifest?.manifestDigest ?? session.referenceAtlas?.manifest?.manifestDigest ?? null,
     referenceFixtureCount: session.referenceAtlas?.fixtureCount ?? session.referenceBathymetryManifest?.fixtures?.length ?? 0,
+    referenceFixtureId: referenceFixtureIdForSession(session),
     overviewDigest: session.referenceAtlas?.overviewDigest ?? session.referenceBathymetryManifest?.overview?.digest ?? null,
     referenceDataset: session.referenceAtlas?.sourceDataset ?? null,
     referenceDatasetName: session.referenceAtlas?.sourceDataset?.name ?? null,
     referenceDataAvailable: session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true,
     referenceFixtureStatus: session.referenceAtlas?.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE,
+    referenceFixtureId: referenceFixtureIdForSession(session),
     referenceLayer: session.referenceLayer,
     selectedReferenceWindow: session.selectedReferenceWindow,
     selectedPatchDigest: session.selectedReferenceWindow?.patchDigest ?? null,
@@ -1990,14 +2038,21 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     fieldRegenVersion: session.fieldRegenerationResult?.version ?? null,
     fieldRegenerationDigest: session.fieldRegenerationResult?.fieldRegenerationDigest ?? null,
     fieldRegenerationStatus: session.fieldRegenerationResult?.status ?? null,
+    fieldGenerationStatus: session.fieldRegenerationResult?.fieldGenerationStatus ?? session.fieldRegenerationResult?.status ?? null,
+    fieldGenerationPolicy: session.fieldRegenerationResult?.fieldGenerationPolicy ?? session.flowGenerationInputs?.fieldPolicy ?? null,
     currentArtifactDigest: session.fieldRegenerationResult?.currentArtifactDigest ?? null,
     scalarArtifactDigest: session.fieldRegenerationResult?.scalarArtifactDigest ?? null,
     hotspotArtifactDigest: session.fieldRegenerationResult?.hotspotArtifactDigest ?? null,
     startDropZoneCandidateDigest: session.fieldRegenerationResult?.startDropZoneCandidateDigest ?? null,
+    hazardCandidateDigest: session.fieldRegenerationResult?.hazardCandidateDigest ?? null,
+    environmentArtifactDigest: session.fieldRegenerationResult?.environmentArtifactDigest ?? null,
+    environmentArtifactStatus: session.fieldRegenerationResult?.environmentArtifactStatus ?? null,
     currentRegimeComponents: session.fieldRegenerationResult?.currentRegimeComponents ?? [],
     scalarRegimeComponents: session.fieldRegenerationResult?.scalarRegimeComponents ?? [],
     currentDiagnostics: session.fieldRegenerationResult?.currentDiagnostics ?? null,
     scalarDiagnostics: session.fieldRegenerationResult?.scalarDiagnostics ?? null,
+    startDropZoneDiagnostics: session.fieldRegenerationResult?.startDropZoneDiagnostics ?? null,
+    hazardDiagnostics: session.fieldRegenerationResult?.hazardDiagnostics ?? null,
     landVectorCount: session.fieldRegenerationResult?.currentDiagnostics?.landVectorCount ?? null,
     belowBottomVectorCount: session.fieldRegenerationResult?.currentDiagnostics?.belowBottomVectorCount ?? null,
     coastNormalLeakage: session.fieldRegenerationResult?.currentDiagnostics?.coastlineNormalSpeedRms ?? null,
@@ -2007,6 +2062,7 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     depthDistinctness: session.fieldRegenerationResult?.currentDiagnostics?.surfaceToDeepVectorDifferenceRms ?? null,
     hotspotCount: session.fieldRegenerationResult?.hotspotArtifact?.hotspots?.length ?? null,
     startDropZoneCandidateCount: session.fieldRegenerationResult?.startDropZoneCandidates?.candidates?.length ?? null,
+    hazardCandidateCount: session.fieldRegenerationResult?.hazardCandidates?.candidates?.length ?? null,
     regionalTemplate: session.regionalTemplate,
     coastlineOrientation: session.coastlineOrientation,
     openOceanBoundaries: session.openOceanBoundaries,
@@ -2101,6 +2157,9 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     currentArtifactDigest: session.fieldRegenerationResult?.currentArtifactDigest ?? null,
     scalarArtifactDigest: session.fieldRegenerationResult?.scalarArtifactDigest ?? null,
     hotspotArtifactDigest: session.fieldRegenerationResult?.hotspotArtifactDigest ?? null,
+    hazardCandidateDigest: session.fieldRegenerationResult?.hazardCandidateDigest ?? null,
+    environmentArtifactDigest: session.fieldRegenerationResult?.environmentArtifactDigest ?? null,
+    environmentArtifactStatus: session.fieldRegenerationResult?.environmentArtifactStatus ?? null,
     regionalTemplate: session.regionalTemplate,
     previewMode: session.previewMode,
     sourceGridShape: session.sourceGridShape,
@@ -2128,20 +2187,71 @@ export function environmentStudioPackageVersions() {
     windowConditionedBathymetryBuilder: WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
     bathymetryPackage: BATHYMETRY_PACKAGE_VERSION,
     fieldRegeneration: ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION,
+    referenceBathymetryEnvironmentBuilder: REFERENCE_BATHYMETRY_ENVIRONMENT_BUILDER_VERSION,
     atlasConditionedCurrentBuilder: ATLAS_CONDITIONED_CURRENT_BUILDER_VERSION,
     atlasConditionedScalarBuilder: ATLAS_CONDITIONED_SCALAR_BUILDER_VERSION
   };
 }
 
-function buildFieldRegenerationResult({ session = {}, bathymetryArtifact = {}, currentResult = {}, scalarResult = {}, seed = '' } = {}) {
+function referenceFixtureIdForSession(session = {}) {
+  const flowFixtureId = session.flowGenerationInputs?.referenceFixtureId;
+  if (flowFixtureId) return String(flowFixtureId);
+  const fixtures = session.referenceBathymetryManifest?.fixtures
+    ?? session.referenceAtlas?.manifest?.fixtures
+    ?? [];
+  const missionReady = fixtures.find((fixture) => fixture.role === 'missionReadyPatch');
+  return String((missionReady ?? fixtures[0])?.fixtureId ?? 'reference-fixture-unknown');
+}
+
+function referenceSourceMetadataForSession(session = {}) {
+  const fixtureId = referenceFixtureIdForSession(session);
+  const fixtures = session.referenceBathymetryManifest?.fixtures
+    ?? session.referenceAtlas?.manifest?.fixtures
+    ?? [];
+  const fixture = fixtures.find((entry) => entry.fixtureId === fixtureId) ?? fixtures[0] ?? null;
+  return {
+    referenceFixtureId: fixtureId,
+    sourceDataset: session.referenceAtlas?.sourceDataset ?? fixture?.sourceDataset ?? null,
+    atlasDigest: session.referenceAtlas?.atlasDigest ?? session.flowGenerationInputs?.atlasDigest ?? null,
+    patchDigest: session.selectedReferenceWindow?.patchDigest ?? session.flowGenerationInputs?.patchDigest ?? null,
+    referenceBathymetryManifestDigest: session.referenceBathymetryManifest?.manifestDigest ?? session.referenceAtlas?.manifest?.manifestDigest ?? null,
+    bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
+    fixtureStatus: session.referenceAtlas?.provenance?.fixtureStatus ?? session.referenceBathymetryManifest?.fixtureStatus ?? null,
+    fixtureRole: fixture?.role ?? null,
+    actualRasterResolutionArcSeconds: fixture?.actualRasterResolutionArcSeconds ?? session.referenceAtlas?.sourceDataset?.actualRasterResolutionArcSeconds ?? null,
+    sourceVariant: fixture?.sourceVariant ?? session.referenceAtlas?.sourceDataset?.sourceVariant ?? null,
+    localAbsolutePathsIncluded: false,
+    hiddenTruthExposed: false
+  };
+}
+
+function buildFieldRegenerationResult({ session = {}, bathymetryArtifact = {}, currentResult = {}, scalarResult = {}, referenceEnvironmentResult = null, seed = '' } = {}) {
   const currentDiagnostics = compactCurrentDiagnostics(currentResult.currentDiagnostics);
   const scalarDiagnostics = compactScalarDiagnostics(scalarResult.scalarDiagnostics);
-  const startDropZoneCandidates = createStartDropZoneCandidates({ session, bathymetryArtifact, scalarResult });
+  const startDropZoneCandidates = referenceEnvironmentResult?.startDropZoneCandidates
+    ?? createStartDropZoneCandidates({ session, bathymetryArtifact, scalarResult });
+  const hazardCandidates = referenceEnvironmentResult?.hazardCandidates ?? null;
+  const isReferenceBathymetryProject = Boolean(referenceEnvironmentResult)
+    || session.sourceMode === 'referenceBathymetryAtlas'
+    || session.flowGenerationInputs?.type === 'anchor.reference-patch.flow-generation-inputs';
+  const environmentArtifactStatus = referenceEnvironmentResult?.environmentArtifactStatus
+    ?? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_COMPOSITION;
+  const environmentArtifactDigest = referenceEnvironmentResult?.environmentArtifactDigest ?? null;
+  const fieldPolicy = referenceEnvironmentResult?.fieldPolicy ?? null;
   const base = {
     type: 'anchor.environment-studio.field-regeneration-result',
     version: ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION,
     status: 'CURRENT',
-    generatedBy: 'src/core/editor/EnvironmentStudioProject.js',
+    generatedBy: isReferenceBathymetryProject
+      ? 'src/core/generation/ReferenceBathymetryEnvironmentBuilder.js'
+      : 'src/core/editor/EnvironmentStudioProject.js',
+    sourceMode: session.sourceMode,
+    sourceLabel: isReferenceBathymetryProject
+      ? 'Reference bathymetry + synthetic bathymetry-conditioned fields.'
+      : 'Atlas-conditioned synthetic package fields.',
+    referenceFixtureId: isReferenceBathymetryProject ? referenceFixtureIdForSession(session) : null,
+    fieldGenerationStatus: 'CURRENT',
+    fieldGenerationPolicy: fieldPolicy,
     deterministicSeed: String(seed ?? session.seed ?? 'field-regen-r1'),
     bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? bathymetryArtifact.artifactDigest ?? null,
     regeneratedBathymetryArtifactDigest: bathymetryArtifact.artifactDigest ?? null,
@@ -2165,25 +2275,45 @@ function buildFieldRegenerationResult({ session = {}, bathymetryArtifact = {}, c
     hotspotArtifact: scalarResult.hotspotArtifact ?? null,
     startDropZoneCandidates,
     startDropZoneCandidateDigest: startDropZoneCandidates.candidateDigest,
+    startDropZoneDiagnostics: startDropZoneCandidates.diagnostics ?? {
+      candidateCount: startDropZoneCandidates.candidates?.length ?? 0,
+      status: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION
+    },
+    hazardCandidates,
+    hazardCandidateDigest: hazardCandidates?.hazardDigest ?? null,
+    hazardDiagnostics: hazardCandidates?.diagnostics ?? null,
+    environmentArtifactStatus,
+    environmentArtifactDigest,
+    environmentArtifactReason: referenceEnvironmentResult?.environmentArtifactReason ?? (environmentArtifactStatus === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_COMPOSITION ? 'Environment artifact composition is deferred until package validation succeeds.' : null),
+    environmentArtifactSummary: referenceEnvironmentResult?.environmentArtifactSummary ?? null,
     generatedArtifacts: {
       currentField4D: true,
       scalarField4D: true,
       hotspots: true,
+      hazards: Boolean(hazardCandidates?.hazardDigest),
       startsDropZonesValidated: false,
       benchmarkBundle: false,
-      environmentArtifact: false
+      environmentArtifact: environmentArtifactStatus === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT
     },
     dependencyPlan: {
       currents: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT,
       scalarFields: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT,
       hotspots: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT,
+      hazards: hazardCandidates?.status ?? (hazardCandidates ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION),
       startsDropZones: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION,
       benchmarkBundle: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION,
-      environmentArtifact: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION
+      environmentArtifact: environmentArtifactStatus
     },
     validation: {
       current: compactFieldValidation(currentResult.validation),
-      scalar: compactFieldValidation(scalarResult.validation)
+      scalar: compactFieldValidation(scalarResult.validation),
+      referenceEnvironment: referenceEnvironmentResult?.validationReport ? {
+        status: referenceEnvironmentResult.validationReport.status,
+        valid: referenceEnvironmentResult.validationReport.valid === true,
+        validationReportDigest: referenceEnvironmentResult.validationReport.validationReportDigest ?? null,
+        errors: referenceEnvironmentResult.validationReport.errors ?? [],
+        warnings: referenceEnvironmentResult.validationReport.warnings ?? []
+      } : null
     },
     storagePolicy: {
       projectStoresFullCurrentField4D: false,
@@ -2193,6 +2323,9 @@ function buildFieldRegenerationResult({ session = {}, bathymetryArtifact = {}, c
     },
     claimBoundary: {
       synthetic: true,
+      referenceBathymetryPatch: isReferenceBathymetryProject,
+      publicReferenceBathymetry: isReferenceBathymetryProject,
+      syntheticBathymetryConditionedFields: isReferenceBathymetryProject,
       scientificallyConstrainedSynthetic: true,
       calibratedOceanProduct: false,
       operationalForecast: false,
@@ -2202,7 +2335,9 @@ function buildFieldRegenerationResult({ session = {}, bathymetryArtifact = {}, c
       scoringChanged: false,
       usesRealHycom: false,
       usesRealMarineCopernicus: false,
-      note: 'Synthetic atlas-conditioned package artifacts, not HYCOM, Marine Copernicus, an operational forecast, or certified navigation data.'
+      note: isReferenceBathymetryProject
+        ? 'Reference bathymetry + synthetic bathymetry-conditioned fields. Currents/scalars/hotspots are deterministic synthetic benchmark artifacts, not HYCOM, Marine Copernicus, an operational forecast, or certified navigation data.'
+        : 'Synthetic atlas-conditioned package artifacts, not HYCOM, Marine Copernicus, an operational forecast, or certified navigation data.'
     },
     hiddenTruthExposed: false,
     simulationChanged: false,
@@ -2573,6 +2708,12 @@ function dependencyGraphForState(state = {}) {
   const bathymetryDigest = state.bathymetryArtifactDigest ?? state.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(tiles);
   const fieldResult = normalizeFieldRegenerationResult(state.fieldRegenerationResult);
   const hasRegeneratedFields = Boolean(fieldResult?.currentArtifactDigest && fieldResult?.scalarArtifactDigest);
+  const hasHazards = Boolean(fieldResult?.hazardCandidateDigest);
+  const environmentArtifactState = fieldResult?.environmentArtifactStatus
+    ?? (hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_COMPOSITION : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED);
+  const fieldSourceLabel = fieldResult?.sourceLabel?.includes('Reference bathymetry')
+    ? 'Reference bathymetry + synthetic bathymetry-conditioned'
+    : 'Package-backed atlas-conditioned';
   return createEnvironmentStudioDependencyGraph({
     id: 'environment-studio-r1-dependency-graph',
     nodes: {
@@ -2583,12 +2724,13 @@ function dependencyGraphForState(state = {}) {
       bathymetryArtifact: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, bathymetryDigest),
       wetLandMask: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, bathymetryDigest, hasMosaic ? 'Wet/land mask is derived from generated bathymetry and preserved for FIELD-REGEN-R1.' : null),
       coastline: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, bathymetryDigest, hasMosaic ? 'Coastline summary is derived from the wet/land boundary and preserved for FIELD-REGEN-R1.' : null),
-      currentArtifact: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.currentArtifactDigest ?? null, hasRegeneratedFields ? 'Package-backed atlas-conditioned CurrentField4D was regenerated and compact metadata was preserved.' : hasMosaic ? 'Currents require FIELD-REGEN-R1 regeneration.' : null),
-      scalarArtifact: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.scalarArtifactDigest ?? null, hasRegeneratedFields ? 'Package-backed atlas-conditioned ScalarField4D was regenerated and compact metadata was preserved.' : hasMosaic ? 'Scalar fields require FIELD-REGEN-R1 regeneration.' : null),
+      currentArtifact: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.currentArtifactDigest ?? null, hasRegeneratedFields ? `${fieldSourceLabel} CurrentField4D was regenerated and compact metadata was preserved.` : hasMosaic ? 'Currents require FIELD-REGEN-R1 regeneration.' : null),
+      scalarArtifact: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.scalarArtifactDigest ?? null, hasRegeneratedFields ? `${fieldSourceLabel} ScalarField4D was regenerated and compact metadata was preserved.` : hasMosaic ? 'Scalar fields require FIELD-REGEN-R1 regeneration.' : null),
       hotspots: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.hotspotArtifactDigest ?? null, hasRegeneratedFields ? 'Synthetic hotspot candidates were regenerated from the scalar artifact and still need mission-level review.' : hasMosaic ? 'Hotspot generation requires FIELD-REGEN-R1 regeneration.' : null),
+      hazards: node(hasHazards ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.hazardCandidateDigest ?? null, hasHazards ? 'Synthetic hazard candidates were derived from reference bathymetry, slope, coast proximity, and current diagnostics.' : hasMosaic ? 'Hazard candidates require FIELD-REGEN-R1 generation.' : null),
       startsDropZones: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.startDropZoneCandidateDigest ?? null, hasRegeneratedFields ? 'Start/drop-zone candidates were derived but remain NEEDS_VALIDATION.' : hasMosaic ? 'Start/drop-zone candidates need validation against regenerated flow/scalar products.' : null),
       benchmarkBundle: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Benchmark bundles are deferred until currents, scalars, hotspots, and starts are regenerated.' : null),
-      environmentArtifact: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Launch-to-planning adapter is deferred to ENV-STUDIO-R1.2.' : null),
+      environmentArtifact: node(environmentArtifactState, fieldResult?.environmentArtifactDigest ?? null, fieldResult?.environmentArtifactReason ?? (hasRegeneratedFields ? 'EnvironmentArtifact composition is package-validated when possible; otherwise compact components remain generated.' : hasMosaic ? 'EnvironmentArtifact composition requires field regeneration.' : null)),
       validationReport: node(validationReport ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, validationReport ? 'Validation report digest is stored on the report to avoid a circular dependency graph digest.' : null),
       preview: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, tileDigestListDigest(tiles))
     },
@@ -2711,7 +2853,7 @@ function validationExtras(state = {}) {
         generatedArtifacts: inputs.generatedArtifacts,
         regeneratedArtifactDigests: inputs.regeneratedArtifactDigests
       }));
-      checks.push(check('field-regeneration-current-dependency-states', inputs.dependencyPlan?.currents === 'CURRENT' && inputs.dependencyPlan?.scalarFields === 'CURRENT' && inputs.dependencyPlan?.hotspots === 'CURRENT' && inputs.dependencyPlan?.startsDropZones === 'NEEDS_VALIDATION' && inputs.dependencyPlan?.benchmarkBundle === 'REQUIRES_REGENERATION', {
+      checks.push(check('field-regeneration-current-dependency-states', inputs.dependencyPlan?.currents === 'CURRENT' && inputs.dependencyPlan?.scalarFields === 'CURRENT' && inputs.dependencyPlan?.hotspots === 'CURRENT' && inputs.dependencyPlan?.startsDropZones === 'NEEDS_VALIDATION' && inputs.dependencyPlan?.benchmarkBundle === 'REQUIRES_REGENERATION' && ['CURRENT', 'REQUIRES_COMPOSITION'].includes(inputs.dependencyPlan?.environmentArtifact), {
         dependencyPlan: inputs.dependencyPlan
       }));
     } else {
@@ -2739,6 +2881,15 @@ function validationExtras(state = {}) {
     checks.push(check('field-regeneration-hotspot-artifact-digest', Boolean(result.hotspotArtifactDigest), {
       hotspotArtifactDigest: result.hotspotArtifactDigest
     }));
+    checks.push(check('field-regeneration-hazard-status-honest', !result.hazardCandidates || Boolean(result.hazardCandidateDigest), {
+      hazardCandidateDigest: result.hazardCandidateDigest,
+      hazardStatus: result.hazardCandidates?.status ?? null
+    }));
+    checks.push(check('field-regeneration-environment-artifact-status', ['CURRENT', 'REQUIRES_COMPOSITION'].includes(result.environmentArtifactStatus ?? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_COMPOSITION), {
+      environmentArtifactStatus: result.environmentArtifactStatus,
+      environmentArtifactDigest: result.environmentArtifactDigest,
+      reason: result.environmentArtifactReason
+    }));
     checks.push(check('field-regeneration-current-diagnostics-finite', finiteDiagnostics(currentDiagnostics, ['speedMean', 'speedMaximum', 'divergenceRms', 'coastlineNormalSpeedRms', 'verticalShearRms']), currentDiagnostics));
     checks.push(check('field-regeneration-scalar-diagnostics-finite', finiteDiagnostics(scalarDiagnostics, ['scalarMean', 'scalarMaximum', 'depthMeanRange', 'timeMeanRange']), scalarDiagnostics));
     checks.push(check('field-regeneration-hidden-truth-boundary', result.hiddenTruthExposed === false && result.claimBoundary?.hiddenTruthExposed === false, result.claimBoundary));
@@ -2758,6 +2909,9 @@ function validationExtras(state = {}) {
   }
   if (state.dependencyGraph?.nodes?.environmentArtifact?.state === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION) {
     warnings.push('Launch-to-planning is deferred until an environment adapter regenerates current/scalar/environment artifacts.');
+  }
+  if (state.dependencyGraph?.nodes?.environmentArtifact?.state === ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_COMPOSITION) {
+    warnings.push('EnvironmentArtifact composition is pending or package-validation deferred; current/scalar/hotspot metadata remains preserved.');
   }
   return { errors, warnings, checks };
 }

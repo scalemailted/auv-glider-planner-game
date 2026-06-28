@@ -2,7 +2,7 @@
 
 Environment Studio is the planned unified authoring surface for ANCHOR environment projects. It should help instructors and researchers select or import bathymetry context, generate reproducible regional bathymetry, inspect generated field dependencies, validate artifacts, and export public-safe JSON.
 
-R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1/R1.1 added a structured atlas field engine and window-conditioned bathymetry builder. ENV-STUDIO-R2, ENV-WORLD-R1/R1A, and ENV-GLOBE-R1 explored procedural synthetic world/globe selectors. REAL-BATHY-R1 made the active browser front door a **Reference Bathymetry Atlas** workflow. BATHY-DATA-R1 adds the reference-data bootstrap: offline downloader/preprocessor scripts, a compact runtime manifest, blocked browser handling when fixtures are absent, and Monterey Canyon reference fixtures. BATHY-DATA-R1.2 adds a true 15 arc-second mission-ready patch while preserving the original 60 arc-second low-resolution fallback. The procedural world/globe workflow remains available only as an experimental sandbox / compatibility path.
+R0 implemented contracts only. ENV-STUDIO-R1 added a visible browser thin slice that made those contracts round-trippable from Simulation Lab without changing simulation, scoring, or scientific generation equations. ENV-STUDIO-R1.1 upgraded that thin slice into a regional bathymetry authoring workflow. ENV-ATLAS-R1/R1.1 added a structured atlas field engine and window-conditioned bathymetry builder. ENV-STUDIO-R2, ENV-WORLD-R1/R1A, and ENV-GLOBE-R1 explored procedural synthetic world/globe selectors. REAL-BATHY-R1 made the active browser front door a **Reference Bathymetry Atlas** workflow. BATHY-DATA-R1 adds the reference-data bootstrap: offline downloader/preprocessor scripts, a compact runtime manifest, blocked browser handling when fixtures are absent, and Monterey Canyon reference fixtures. BATHY-DATA-R1.2 adds a true 15 arc-second mission-ready patch while preserving the original 60 arc-second low-resolution fallback. FIELD-REGEN-R1 adds the explicit public reference bathymetry patch -> bathymetry artifact -> synthetic bathymetry-conditioned fields -> environment artifact path. The procedural world/globe workflow remains available only as an experimental sandbox / compatibility path.
 
 ## Product Placement
 
@@ -83,20 +83,22 @@ ENV-ATLAS-R1.1 also preserves a compact `flowGenerationInputs` block for FIELD-R
 
 ## FIELD-REGEN-R1 Field Regeneration
 
-FIELD-REGEN-R1 adds an explicit browser action that consumes the atlas context, Regional Mission Recipe, generated bathymetry, wet/land mask, coastline/open-boundary metadata, feature records, current-regime hints, scalar-regime hints, depth axis, and mission time axis.
+FIELD-REGEN-R1 adds an explicit browser action that consumes the reference fixture identity, selected patch bathymetry artifact, wet/land mask, coastline/open-boundary metadata, feature records, current-regime hints, scalar-regime hints, depth axis, and mission time axis. Synthetic atlas/window metadata remains supported as a compatibility input, but the production path is reference-bathymetry-conditioned.
 
 It delegates scientific artifacts to packages:
 
 - `packages/currents/src/generation/AtlasConditionedCurrentBuilder.js` generates a package-backed synthetic `CurrentField4D` through the existing bathymetry-conditioned current backend and records streamfunction-style reduced-order components, depth shear, time evolution, masks, and diagnostics.
 - `packages/scalar-processes/src/generation/AtlasConditionedScalarBuilder.js` generates a package-backed synthetic `ScalarField4D` plus hotspot candidates from scalar-regime hints, feature zones, bathymetry, masks, and generated synthetic currents.
 
-Project export records compact regeneration metadata: field-regeneration digest, current/scalar/hotspot digests, summaries, component plans, diagnostics, hotspot candidates, start/drop-zone candidates, validation summaries, and claim boundaries. It does not store full 4D current or scalar arrays in the Environment Studio project.
+Project export records compact regeneration metadata: field-regeneration digest, current/scalar/hotspot/hazard digests, environment-artifact status/digest, summaries, component plans, diagnostics, hotspot candidates, start/drop-zone candidates, hazard candidates, validation summaries, and claim boundaries. It does not store full 4D current or scalar arrays in the Environment Studio project.
 
 After FIELD-REGEN-R1:
 
 - `currentArtifact`, `scalarArtifact`, and `hotspots` become `CURRENT`;
+- `hazards` becomes `CURRENT` when hazard candidates are generated;
 - `startsDropZones` remains `NEEDS_VALIDATION`;
-- `benchmarkBundle` and `environmentArtifact` remain `REQUIRES_REGENERATION`;
+- `environmentArtifact` becomes `CURRENT` only when package composition validates, otherwise it is honestly marked `REQUIRES_COMPOSITION`;
+- `benchmarkBundle` remains `REQUIRES_REGENERATION`;
 - launch-to-planning, simulation, official scoring, planner behavior, and benchmark fairness are unchanged.
 
 Generated fields are deterministic synthetic benchmark fixtures. They are not HYCOM, Marine Copernicus, calibrated ocean products, operational forecasts, ecological forecasts, real bathymetry, or navigation data.
@@ -216,8 +218,9 @@ Supported states:
 - `NOT_GENERATED`
 - `NEEDS_VALIDATION`
 - `REQUIRES_REGENERATION`
+- `REQUIRES_COMPOSITION`
 
-For example, a bathymetry tile edit makes the tile current, the mosaic stale, and downstream bathymetry/current/scalar/environment artifacts require regeneration. After bathymetry generation but before FIELD-REGEN-R1, `currentArtifact`, `scalarArtifact`, `hotspots`, and `benchmarkBundle` remain `REQUIRES_REGENERATION`; `startsDropZones` remains `NEEDS_VALIDATION`. After the explicit field-regeneration action, `currentArtifact`, `scalarArtifact`, and `hotspots` become `CURRENT`, while `startsDropZones` still need validation and benchmark/environment exports remain deferred. This keeps UI honest about what is previewed versus what is validated.
+For example, a bathymetry tile edit makes the tile current, the mosaic stale, and downstream bathymetry/current/scalar/environment artifacts require regeneration. After bathymetry generation but before FIELD-REGEN-R1, `currentArtifact`, `scalarArtifact`, `hotspots`, `hazards`, and `benchmarkBundle` remain `REQUIRES_REGENERATION`; `startsDropZones` remains `NEEDS_VALIDATION`. After the explicit field-regeneration action, `currentArtifact`, `scalarArtifact`, `hotspots`, and generated hazard candidates become `CURRENT`, `startsDropZones` still need validation, `environmentArtifact` is `CURRENT` or `REQUIRES_COMPOSITION`, and benchmark export remains deferred. This keeps UI honest about what is previewed versus what is validated.
 
 ## Validation Report
 
@@ -257,7 +260,7 @@ R1 import/export uses the contract JSON directly:
 - keep hidden truth out of public exports;
 - remain static-host compatible.
 
-Later phases may add an adapter from a validated Environment Studio mosaic to the existing generated environment artifact pipeline. That adapter must be explicit and tested, not inferred from UI state.
+Later phases may connect a validated Environment Studio environment artifact to mission launch and benchmark bundle export. That connection must be explicit and tested, not inferred from UI state.
 
 ## Regional Preview Metadata
 
@@ -309,7 +312,7 @@ Implemented R1.1 browser workflow:
 4. Generate mixed regional bathymetry with at least three feature families by default.
 5. Preserve regional recipe, feature mix, tile provenance, source-grid shape, preview-grid shape, decimation, feature summary, suitability checks, validation report, and dependency state in project export/import.
 
-Sculpting, real patch import, launch-to-planning, environment-artifact export, and benchmark-bundle export remain staged follow-ups. FIELD-REGEN-R1 now regenerates compact current/scalar/hotspot metadata through package-backed synthetic builders. Current synthetic bathymetry and regenerated fields are scientifically constrained and validation-aware, but not calibrated real-ocean products.
+Sculpting, launch-to-planning, start/drop-zone validation, and benchmark-bundle export remain staged follow-ups. FIELD-REGEN-R1 now regenerates compact current/scalar/hotspot/hazard metadata through package-backed synthetic builders from the reference bathymetry path. Reference bathymetry plus regenerated fields are benchmark-oriented and validation-aware, but the generated currents/scalars/hotspots are deterministic synthetic benchmark fields, not calibrated real-ocean products.
 
 ## ENV-ATLAS-R1/R1.1 Atlas Workflow
 
@@ -322,4 +325,4 @@ Implemented atlas pivot and field-engine upgrade:
 5. Generate 3D Region creates a Regional Mission Recipe and runs the window-conditioned bathymetry builder. Regional Detail shows builder digest, bathymetry artifact digest, validation, feature summary, dependency graph, and source/preview grid metadata.
 6. Feature-mix controls, source-tile provenance, validation, and dependency diagnostics remain available as secondary regional-detail mechanisms rather than the first visible model.
 
-ENV-ATLAS-R1.1 does not change mission simulation, official scoring, glider dynamics, planner behavior, benchmark fairness, or existing Alpha workflows. FIELD-REGEN-R1 adds explicit package-backed synthetic current/scalar/hotspot generation for Environment Studio projects without connecting those projects to mission launch or scoring.
+ENV-ATLAS-R1.1 does not change mission simulation, official scoring, glider dynamics, planner behavior, benchmark fairness, or existing Alpha workflows. FIELD-REGEN-R1 adds explicit package-backed synthetic current/scalar/hotspot/hazard generation for Environment Studio projects without connecting those projects to mission launch or scoring.

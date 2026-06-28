@@ -53,6 +53,16 @@ Environment Studio prefers the 15 arc-second `missionReadyPatch` when present an
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 
+## Field Regeneration
+
+FIELD-REGEN-R1 adds the explicit browser/package path:
+
+```text
+public reference bathymetry patch -> bathymetry artifact -> synthetic bathymetry-conditioned fields -> environment artifact
+```
+
+The generated currents, scalars, hotspots, and hazard candidates are deterministic synthetic benchmark fields conditioned by the selected reference bathymetry, wet/land mask, coastline/open-boundary metadata, depth axis, and time axis. They are not operational forecast products, HYCOM, Marine Copernicus, calibrated ecological products, or hidden truth. Start/drop zones are candidates that still require mission validation, and benchmark bundle export / launch into Planning remain separate follow-ups.
+
 ## Boundaries
 
 Reference bathymetry is a public source surface for `bottomDepthMeters = h(x, y)`.
