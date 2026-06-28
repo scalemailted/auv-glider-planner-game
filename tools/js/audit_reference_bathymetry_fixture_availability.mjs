@@ -41,12 +41,20 @@ if (manifest.fixtureStatus === NO_REFERENCE_DATA_FIXTURE) {
 }
 
 assert.equal(manifest.fixtureStatus, 'AVAILABLE', 'manifest status is AVAILABLE or NO_REFERENCE_DATA_FIXTURE');
-assert.ok(manifest.overview?.rasterPath, 'available manifest has overview raster path');
+assert.equal(manifest.overview?.role, 'globalOverview', 'available manifest has a global overview');
+assert.ok(manifest.overview?.overviewPath, 'available manifest has overview artifact path');
 assert.ok(Array.isArray(manifest.fixtures) && manifest.fixtures.length > 0, 'available manifest has fixtures');
 assert.equal(manifest.claimBoundary.referenceBathymetryAvailable, true, 'available manifest claims reference availability');
 
-const overviewPath = resolveRuntimeAsset(manifest.overview.rasterPath);
-await assertReadable(overviewPath, 'overview raster path exists');
+const overviewPath = resolveRuntimeAsset(manifest.overview.overviewPath);
+await assertReadable(overviewPath, 'overview artifact path exists');
+const overviewArtifact = JSON.parse(await fs.readFile(overviewPath, 'utf8'));
+assert.equal(overviewArtifact.artifactType, 'anchor.reference-bathymetry-overview', 'overview artifact type');
+assert.equal(overviewArtifact.role, 'globalOverview', 'overview artifact role');
+assert.equal(overviewArtifact.claimBoundary?.hiddenTruthExposed, false, 'overview has no hidden truth');
+assert.equal(overviewArtifact.claimBoundary?.missionResolutionBathymetry, false, 'overview is not mission-resolution bathymetry');
+assert.equal(overviewArtifact.localAbsolutePathsIncluded, false, 'overview has no local paths');
+assert.equal(overviewArtifact.rawExternalDataPathIncluded, false, 'overview has no raw external path');
 const fixtureReports = [];
 for (const fixture of manifest.fixtures) {
   assert.ok(fixture.fixtureId, 'fixture has id');

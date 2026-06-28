@@ -10,6 +10,7 @@ import {
   createEnvironmentStudioSession,
   generateEnvironmentStudioRegionFromReferenceWindow,
   importEnvironmentStudioProject,
+  loadEnvironmentStudioReferenceFixture,
   regenerateEnvironmentStudioFields,
   selectEnvironmentStudioReferenceWindow,
   validateEnvironmentStudioProject
@@ -77,7 +78,7 @@ export function buildReferenceEnvironment(seed = 'field-regen-r1-reference-smoke
       actualRasterResolutionArcSeconds: context.fixture.actualRasterResolutionArcSeconds
     },
     fieldPolicy: {
-      label: 'Reference bathymetry + synthetic bathymetry-conditioned fields.'
+      label: 'Reference bathymetry + deterministic synthetic bathymetry-conditioned fields.'
     },
     flowGenerationInputs: context.bathymetryResult.flowGenerationInputs,
     intendedGliders: 3,
@@ -97,6 +98,7 @@ export function buildReferenceStudioSession(seed = 'field-regen-r1-reference-stu
     ...fixture.bounds,
     selectedResolutionMeters: 1500
   });
+  session = loadEnvironmentStudioReferenceFixture(session, fixture.fixtureId);
   session = generateEnvironmentStudioRegionFromReferenceWindow(session, { seed: `${seed}:bathy` });
   session = regenerateEnvironmentStudioFields(session, { seed: `${seed}:fields` });
   const project = buildEnvironmentStudioProject(session);

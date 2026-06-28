@@ -12,6 +12,7 @@ import {
   createEnvironmentStudioSession,
   generateEnvironmentStudioRegionFromReferenceWindow,
   importEnvironmentStudioProject,
+  loadEnvironmentStudioReferenceFixture,
   selectEnvironmentStudioReferenceWindow,
   validateEnvironmentStudioProject
 } from '../../src/core/editor/EnvironmentStudioProject.js';
@@ -69,14 +70,16 @@ let session = createEnvironmentStudioSession({
   referenceFixtures: [fixture]
 });
 assert.equal(session.sourceMode, 'referenceBathymetryAtlas');
-assert.equal(session.studioStage, 'referenceAtlas');
+assert.equal(session.studioStage, 'globalAtlasSelector');
 assert.equal(session.referenceAtlas.sourceDataset.referenceDataAvailable, true);
 session = selectEnvironmentStudioReferenceWindow(session, window.bounds);
+session = loadEnvironmentStudioReferenceFixture(session, fixture.fixtureId);
+assert.equal(session.studioStage, 'regionalPatchWorkspace');
 session = generateEnvironmentStudioRegionFromReferenceWindow(session, {
   seed: 'bathy-data-r1-studio-smoke:generated'
 });
 
-assert.equal(session.studioStage, 'regionalBathymetry');
+assert.equal(session.studioStage, 'regionalPatchWorkspace');
 assert.equal(session.tiles.length, 4);
 assert.equal(session.bathymetryArtifactDigest, session.bathymetryBuilderResult.bathymetryArtifactDigest);
 assert.equal(session.dependencyGraph.nodes.currentArtifact.state, 'REQUIRES_REGENERATION');
@@ -232,19 +235,27 @@ function fixtureManifest() {
     artifactVersion: '1.0.0',
     fixtureStatus: 'AVAILABLE',
     overview: {
-      fixtureId: fixture.fixtureId,
-      label: 'BATHY-DATA-R1 Test Overview',
-      role: 'overview',
+      overviewId: 'bathy_data_r1_test_global_overview',
+      label: 'BATHY-DATA-R1 Test Global Overview',
+      role: 'globalOverview',
       sourceDataset: 'ETOPO_2022_TEST_FIXTURE',
       provider: rasterArtifact.sourceDataset.provider,
       sourceResolution: rasterArtifact.sourceResolution,
+      sourceKey: 'bathy_data_r1_test_global_overview',
+      sourceVariant: 'test global overview metadata',
       actualRasterResolutionArcSeconds: rasterArtifact.actualRasterResolutionArcSeconds,
-      columns: rasterArtifact.grid.columns,
-      rows: rasterArtifact.grid.rows,
+      displayResolution: {
+        columns: 360,
+        rows: 180
+      },
       resolution: rasterArtifact.sourceResolution,
-      rasterPath: fixture.rasterPath,
       digest: rasterArtifact.rasterDigest,
-      bounds
+      bounds: {
+        westLon: -180,
+        eastLon: 180,
+        southLat: -90,
+        northLat: 90
+      }
     },
     fixtures: [fixture],
     provenance: {

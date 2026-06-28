@@ -483,6 +483,38 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-021",
+      "title": "Reference atlas should open as a global selector before regional patch generation.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Bathymetry Atlas",
+      "summary": "Alpha review found that Environment Studio still read like a local Monterey patch viewer. The production path should open on a global reference overview, show staged patch coverage, require loading a staged regional fixture before generation, and export a patch request when a selected region is not staged.",
+      "decision": "Accepted for REF-ATLAS-UX-R1.",
+      "proposedPhase": "REF-ATLAS-UX-R1",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/ref-atlas-ux-r1/qa-summary.json",
+        "assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-overview.json",
+        "docs/reference_bathymetry_data_pipeline.md"
+      ],
+      "acceptanceCriteria": [
+        "Environment Studio defaults to Global Atlas Selector, not a regional Monterey patch workspace.",
+        "Manifest metadata distinguishes global overview, mission-ready patch, and low-resolution fallback roles.",
+        "Available patch coverage is visible and selectable before regional generation.",
+        "Unstaged regions produce a patch-request artifact instead of placeholder reference bathymetry.",
+        "The owner-review package records overview, patch coverage, staged patch load, generated environment, hidden-truth exclusion, raw-path exclusion, and unchanged simulation/scoring flags."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

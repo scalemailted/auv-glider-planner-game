@@ -1,0 +1,66 @@
+{
+  "artifactType": "anchor.reference-bathymetry-overview",
+  "artifactVersion": "1.0.0",
+  "overviewId": "etopo2022_global_overview_60s",
+  "label": "ETOPO 2022 Global 60s Overview",
+  "role": "globalOverview",
+  "sourceDataset": "ETOPO_2022",
+  "provider": "NOAA NCEI",
+  "sourceResolution": "60 arc-second",
+  "sourceKey": "etopo2022_60s_bed_global_overview",
+  "sourceVariant": "bedrock elevation overview",
+  "actualRasterResolutionArcSeconds": 60.0,
+  "verticalUnits": "meters relative to sea level",
+  "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
+  "citation": "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 15 Arc-Second Global Relief Model. https://doi.org/10.25921/fd45-gt74",
+  "licenseOrTermsNote": "See source provider terms.",
+  "bounds": {
+    "westLon": -180,
+    "eastLon": 180,
+    "southLat": -90,
+    "northLat": 90
+  },
+  "displayResolution": {
+    "columns": 4096,
+    "rows": 2048
+  },
+  "previewPath": null,
+  "previewKind": "metadataDrivenCanvas",
+  "colorRamp": [
+    { "label": "land", "color": "#536f40" },
+    { "label": "shelf", "color": "#4bbdb8" },
+    { "label": "slope", "color": "#184b8a" },
+    { "label": "deep", "color": "#061a4a" }
+  ],
+  "elevationSummary": {
+    "status": "NOT_INCLUDED_IN_APP_ARTIFACT",
+    "summaryAvailableInSourceOverview": true,
+    "reason": "The compact browser overview stores provenance and display metadata only. Mission bathymetry extraction uses staged regional patch artifacts."
+  },
+  "depthSummary": {
+    "status": "NOT_INCLUDED_IN_APP_ARTIFACT",
+    "summaryAvailableInSourceOverview": true,
+    "reason": "The overview is for atlas selection and patch availability, not mission-resolution bathymetry."
+  },
+  "landOceanSummary": {
+    "status": "NOT_INCLUDED_IN_APP_ARTIFACT",
+    "summaryAvailableInSourceOverview": true,
+    "reason": "The browser renders a deterministic atlas overview and uses staged fixture coverage for patch loading."
+  },
+  "sourceFileDigest": "sha256:a2cc72f8a4292dee928f439069457cdefc1fba319876807c626edce40258ba7a",
+  "sourceOverviewDigest": "sha256:9a460e923b7ca598ab87db90b57c9cb5345aa5f5ba040f0df1423d7a23564dd9",
+  "localAbsolutePathsIncluded": false,
+  "rawExternalDataPathIncluded": false,
+  "digest": "sha256:9a460e923b7ca598ab87db90b57c9cb5345aa5f5ba040f0df1423d7a23564dd9",
+  "claimBoundary": {
+    "overviewForSelectionOnly": true,
+    "missionResolutionBathymetry": false,
+    "referenceBathymetryAvailable": true,
+    "currentField4DGenerated": false,
+    "scalarField4DGenerated": false,
+    "certifiedForNavigation": false,
+    "operationalOceanForecast": false,
+    "calibratedForecastSystem": false,
+    "hiddenTruthExposed": false
+  }
+}

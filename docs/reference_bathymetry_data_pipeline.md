@@ -14,7 +14,7 @@ npm.cmd run audit:reference-bathy
 
 `download:reference-bathy` stages ETOPO 2022 source data under `external_data/reference_bathymetry/`.
 
-`preprocess:reference-bathy` converts staged GeoTIFF patches into `anchor.reference-bathymetry-raster` JSON artifacts and updates `assets/reference_bathymetry/manifest.json`.
+`preprocess:reference-bathy` converts staged GeoTIFF patches into `anchor.reference-bathymetry-raster` JSON artifacts, writes compact overview metadata when available, and updates `assets/reference_bathymetry/manifest.json`.
 
 `audit:reference-bathy` verifies either:
 
@@ -23,7 +23,19 @@ npm.cmd run audit:reference-bathy
 
 ## Current Checked-In State
 
-The checked-in manifest currently reports `AVAILABLE` with two Monterey Canyon fixtures:
+The checked-in manifest currently reports `AVAILABLE` with a metadata-only global overview and two Monterey Canyon fixtures. The overview is:
+
+- overview: `etopo2022_global_overview_60s`
+- role: `globalOverview`
+- source dataset: ETOPO 2022
+- provider: NOAA NCEI
+- source resolution: 60 arc-second
+- bounds: west -180, east 180, south -90, north 90
+- path: `assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-overview.json`
+
+The overview is for atlas selection and patch coverage display. It is not mission-resolution bathymetry and does not contain raw source data or hidden truth.
+
+The two Monterey Canyon fixtures are:
 
 - fixture: `monterey_canyon_15s`
 - role: `missionReadyPatch`
@@ -49,7 +61,7 @@ The preserved fallback fixture is:
 - shape: 90 columns x 72 rows
 - bounds: west -123.0, east -121.5, south 36.0, north 37.2
 
-Environment Studio prefers the 15 arc-second `missionReadyPatch` when present and keeps the 60 arc-second fixture available as a low-resolution fallback.
+Environment Studio opens to the Global Atlas Selector, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users load a staged patch into the Regional Patch Workspace before generating regional bathymetry. If a selected region is not staged, the browser exports an `anchor.reference-bathymetry-patch-request` with local commands instead of generating fake reference data.
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 

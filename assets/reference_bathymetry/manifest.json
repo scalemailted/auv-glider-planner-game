@@ -3,25 +3,27 @@
   "artifactVersion": "1.0.0",
   "fixtureStatus": "AVAILABLE",
   "overview": {
-    "fixtureId": "monterey_canyon_15s",
-    "label": "Reference Bathymetry Overview",
-    "role": "overview",
+    "overviewId": "etopo2022_global_overview_60s",
+    "label": "ETOPO 2022 Global 60s Overview",
+    "role": "globalOverview",
     "sourceDataset": "ETOPO_2022",
     "provider": "NOAA NCEI",
-    "sourceResolution": "15 arc-second",
-    "sourceKey": "etopo2022_15s_surface_non_ice_fallback",
-    "sourceVariant": "surface elevation, non-ice fallback",
-    "actualRasterResolutionArcSeconds": 15.0,
-    "columns": 360,
-    "rows": 288,
-    "resolution": "15 arc-second",
-    "rasterPath": "assets/reference_bathymetry/monterey_canyon_15s.reference-bathymetry-raster.json",
-    "digest": "sha256:4d5800eda8518f5cfc7b47aba8a147e9f714caaa906aa1b567d3d6965edbf19b",
+    "sourceResolution": "60 arc-second",
+    "sourceKey": "etopo2022_60s_bed_global_overview",
+    "sourceVariant": "bedrock elevation overview",
+    "actualRasterResolutionArcSeconds": 60.0,
+    "displayResolution": {
+      "columns": 4096,
+      "rows": 2048
+    },
+    "overviewPath": "assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-overview.json",
+    "previewPath": null,
+    "digest": "sha256:9a460e923b7ca598ab87db90b57c9cb5345aa5f5ba040f0df1423d7a23564dd9",
     "bounds": {
-      "westLon": -123.0,
-      "eastLon": -121.5,
-      "southLat": 36.0,
-      "northLat": 37.2
+      "westLon": -180,
+      "eastLon": 180,
+      "southLat": -90,
+      "northLat": 90
     }
   },
   "fixtures": [
@@ -90,7 +92,6 @@
     "downloadCommand": "npm.cmd run download:reference-bathy",
     "preprocessCommand": "npm.cmd run preprocess:reference-bathy",
     "auditCommand": "npm.cmd run audit:reference-bathy",
-    "rawDataDirectory": "external_data/reference_bathymetry/",
     "artifactDirectory": "assets/reference_bathymetry/",
     "note": "The browser app does not download NOAA or GEBCO data at runtime."
   },
@@ -109,5 +110,5 @@
     "operationalOceanForecast": false,
     "hiddenTruthExposed": false
   },
-  "manifestDigest": "sha256:307c486448904658605a54e8e2f02bdb04656283f8665d1e9abec322dfd5dd1c"
+  "manifestDigest": "fnv1a32:3884ab88"
 }

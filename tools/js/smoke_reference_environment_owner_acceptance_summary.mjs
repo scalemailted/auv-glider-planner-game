@@ -3,31 +3,34 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const ownerReviewDir = path.resolve(root, process.env.ANCHOR_ENV_COMPOSE_OWNER_REVIEW_DIR ?? 'test-results/env-compose-launch-r1-1-owner-review');
+const ownerReviewDir = path.resolve(root, process.env.ANCHOR_ENV_COMPOSE_OWNER_REVIEW_DIR ?? process.env.ANCHOR_E2E_OWNER_REVIEW_DIR ?? 'artifacts/owner-review/ref-atlas-ux-r1');
 const summaryPath = path.join(ownerReviewDir, 'qa-summary.json');
 
 const requiredScreenshots = [
-  '01-environment-studio-reference-source.png',
-  '02-reference-bathymetry-generated.png',
-  '03-currents-and-science-fields-generated.png',
-  '04-environment-artifact-composed.png',
-  '05-launch-validation-report.png',
-  '06-planning-launch-ready.png',
-  '07-mission-workspace-reference-environment.png',
-  '08-planning-current-layer-visible.png',
-  '09-planning-scalar-hotspot-layer-visible.png',
-  '10-waypoint-placement-on-reference-environment.png',
-  '11-execute-mission-from-reference-environment.png',
-  '12-debrief-reference-environment-result.png',
-  '13-public-benchmark-bundle-export.png',
-  '14-project-export-import-roundtrip.png',
-  '15-main-menu-cleanup.png'
+  '01-global-atlas-default.png',
+  '02-patch-coverage-overlay.png',
+  '03-monterey-patch-selected.png',
+  '04-regional-patch-workspace.png',
+  '05-reference-bathymetry-generated.png',
+  '06-synthetic-fields-generated.png',
+  '07-environment-artifact-composed.png',
+  '08-launch-validation-report.png',
+  '09-planning-launch-warning-review.png',
+  '10-planning-launch-ready.png'
 ];
 
 const requiredFields = [
   'status',
   'branch',
   'head',
+  'phase',
+  'defaultStage',
+  'overviewIsGlobal',
+  'defaultViewIsRegionalPatch',
+  'missionReadyPatchCount',
+  'patchCoverageOverlayCount',
+  'matchedFixtureId',
+  'loadedFixtureId',
   'referenceFixtureId',
   'referenceFixtureDigest',
   'bathymetryArtifactDigest',
@@ -65,6 +68,13 @@ for (const screenshot of requiredScreenshots) {
 }
 
 assert.ok(['PASS', 'PASS_WITH_NON_BLOCKING_WARNINGS'].includes(summary.status), `invalid owner-review status ${summary.status}`);
+assert.equal(summary.phase, 'REF-ATLAS-UX-R1');
+assert.equal(summary.defaultStage, 'globalAtlasSelector');
+assert.equal(summary.overviewIsGlobal, true);
+assert.equal(summary.defaultViewIsRegionalPatch, false);
+assert.ok(Number(summary.missionReadyPatchCount) >= 1);
+assert.ok(Number(summary.patchCoverageOverlayCount) >= 1);
+assert.equal(summary.loadedFixtureId, 'monterey_canyon_15s');
 assert.equal(summary.referenceFixtureId, 'monterey_canyon_15s');
 assert.ok(String(summary.referenceFixtureDigest).startsWith('sha256:'), 'reference fixture digest must be SHA-256');
 for (const field of [

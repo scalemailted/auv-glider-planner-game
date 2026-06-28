@@ -12,6 +12,10 @@ export const REFERENCE_BATHYMETRY_MANIFEST_TYPE = 'anchor.reference-bathymetry-m
 export const REFERENCE_BATHYMETRY_MANIFEST_VERSION = '1.0.0';
 export const REFERENCE_BATHYMETRY_RASTER_TYPE = 'anchor.reference-bathymetry-raster';
 export const REFERENCE_BATHYMETRY_RASTER_VERSION = '1.0.0';
+export const REFERENCE_BATHYMETRY_OVERVIEW_TYPE = 'anchor.reference-bathymetry-overview';
+export const REFERENCE_BATHYMETRY_OVERVIEW_VERSION = '1.0.0';
+export const REFERENCE_BATHYMETRY_PATCH_REQUEST_TYPE = 'anchor.reference-bathymetry-patch-request';
+export const REFERENCE_BATHYMETRY_PATCH_REQUEST_VERSION = '1.0.0';
 export const REFERENCE_PATCH_BATHYMETRY_BUILDER_VERSION = 'real-bathy-r1-reference-patch-builder';
 export const NO_REFERENCE_DATA_FIXTURE = 'NO_REFERENCE_DATA_FIXTURE';
 export const REFERENCE_DATA_AVAILABLE = 'AVAILABLE';
@@ -27,6 +31,7 @@ export const REFERENCE_BATHYMETRY_SOURCE_MODES = Object.freeze([
 export const REFERENCE_BATHYMETRY_LAYER_OPTIONS = Object.freeze([
   { id: 'topographyBathymetry', label: 'Topography/Bathymetry' },
   { id: 'landOcean', label: 'Land/Ocean' },
+  { id: 'patchCoverage', label: 'Available Patches' },
   { id: 'slope', label: 'Slope' },
   { id: 'sourceQuality', label: 'Source Quality' }
 ]);
@@ -177,6 +182,13 @@ export function createReferenceBathymetryAtlas(options = {}) {
   const manifest = normalizeReferenceBathymetryManifest(options.manifest ?? options.referenceManifest ?? options.referenceBathymetryManifest);
   const manifestFixtures = manifest.fixtures ?? [];
   const referenceFixtures = normalizeReferenceFixtures(options.referenceFixtures ?? manifestFixtures);
+  const overviewArtifact = normalizeReferenceOverviewArtifact(
+    options.overviewArtifact
+      ?? options.referenceOverviewArtifact
+      ?? options.referenceBathymetryOverview
+      ?? manifest.overview
+      ?? null
+  );
   const overviewRasterArtifact = normalizeReferenceRasterArtifact(options.overviewRasterArtifact ?? options.overviewRaster ?? null);
   const previewResolution = normalizePreviewResolution(options.previewResolution);
   const raster = options.previewRaster
@@ -189,15 +201,17 @@ export function createReferenceBathymetryAtlas(options = {}) {
   const primaryFixture = selectPrimaryReferenceFixture(referenceFixtures);
   const sourceDataset = normalizeSourceDataset(
     options.sourceDataset
+      ?? overviewArtifact?.sourceDataset
       ?? overviewRasterArtifact?.sourceDataset
       ?? {
         ...(primaryFixture?.rasterArtifact?.sourceDataset ?? {}),
-        name: primaryFixture?.rasterArtifact?.sourceDataset?.name ?? primaryFixture?.sourceDataset ?? manifest.overview?.sourceDataset,
-        provider: primaryFixture?.rasterArtifact?.sourceDataset?.provider ?? primaryFixture?.provider ?? manifest.overview?.provider,
-        sourceResolution: primaryFixture?.rasterArtifact?.sourceResolution ?? primaryFixture?.sourceResolution ?? manifest.overview?.sourceResolution,
-        sourceKey: primaryFixture?.rasterArtifact?.sourceKey ?? primaryFixture?.sourceKey ?? manifest.overview?.sourceKey,
-        sourceVariant: primaryFixture?.rasterArtifact?.sourceVariant ?? primaryFixture?.sourceVariant ?? manifest.overview?.sourceVariant,
-        actualRasterResolutionArcSeconds: primaryFixture?.rasterArtifact?.actualRasterResolutionArcSeconds ?? primaryFixture?.actualRasterResolutionArcSeconds ?? manifest.overview?.actualRasterResolutionArcSeconds
+        name: overviewArtifact?.sourceDataset?.name ?? primaryFixture?.rasterArtifact?.sourceDataset?.name ?? primaryFixture?.sourceDataset ?? manifest.overview?.sourceDataset,
+        provider: overviewArtifact?.sourceDataset?.provider ?? primaryFixture?.rasterArtifact?.sourceDataset?.provider ?? primaryFixture?.provider ?? manifest.overview?.provider,
+        citation: overviewArtifact?.sourceDataset?.citation ?? primaryFixture?.rasterArtifact?.sourceDataset?.citation,
+        sourceResolution: overviewArtifact?.sourceDataset?.sourceResolution ?? primaryFixture?.rasterArtifact?.sourceResolution ?? primaryFixture?.sourceResolution ?? manifest.overview?.sourceResolution,
+        sourceKey: overviewArtifact?.sourceDataset?.sourceKey ?? primaryFixture?.rasterArtifact?.sourceKey ?? primaryFixture?.sourceKey ?? manifest.overview?.sourceKey,
+        sourceVariant: overviewArtifact?.sourceDataset?.sourceVariant ?? primaryFixture?.rasterArtifact?.sourceVariant ?? primaryFixture?.sourceVariant ?? manifest.overview?.sourceVariant,
+        actualRasterResolutionArcSeconds: overviewArtifact?.sourceDataset?.actualRasterResolutionArcSeconds ?? primaryFixture?.rasterArtifact?.actualRasterResolutionArcSeconds ?? primaryFixture?.actualRasterResolutionArcSeconds ?? manifest.overview?.actualRasterResolutionArcSeconds
       },
     referenceDataAvailable
   );
@@ -209,9 +223,17 @@ export function createReferenceBathymetryAtlas(options = {}) {
     sourceDataset,
     manifest: compactReferenceBathymetryManifest(manifest),
     fixtureCount: referenceFixtures.length,
-    overviewDigest: manifest.overview?.digest ?? overviewRasterArtifact?.rasterDigest ?? null,
+    overviewDigest: overviewArtifact?.digest ?? manifest.overview?.digest ?? overviewRasterArtifact?.rasterDigest ?? null,
+    overviewArtifact,
+    overviewBounds: overviewArtifact?.bounds ?? manifest.overview?.bounds ?? {
+      westLon: -180,
+      eastLon: 180,
+      southLat: -90,
+      northLat: 90
+    },
     overviewRasterArtifact,
     referenceFixtures,
+    fixtureCoverageOverlays: referenceFixtureCoverageOverlays(referenceFixtures),
     previewResolution,
     previewExtent: {
       westLon: -180,
@@ -264,6 +286,9 @@ export function compactReferenceBathymetryAtlas(input = {}) {
     manifest: atlas.manifest,
     fixtureCount: atlas.fixtureCount,
     overviewDigest: atlas.overviewDigest,
+    overviewArtifact: atlas.overviewArtifact,
+    overviewBounds: atlas.overviewBounds,
+    fixtureCoverageOverlays: atlas.fixtureCoverageOverlays,
     previewResolution: atlas.previewResolution,
     previewExtent: atlas.previewExtent,
     previewRasterDigest: atlas.previewRasterDigest,
@@ -281,6 +306,7 @@ export function createReferenceBathymetryWindow(input = {}, atlasInput = createR
   const selectedResolutionMeters = positive(input.selectedResolutionMeters ?? input.outputResolutionMeters, 1500);
   const previewResolutionMeters = positive(input.previewResolutionMeters, Math.max(3000, selectedResolutionMeters * 4));
   const sampledStats = sampleReferenceWindowStats(atlas, bounds);
+  const availability = referenceFixtureAvailabilityForBounds(atlas, bounds);
   const windowBase = {
     artifactType: REFERENCE_BATHYMETRY_WINDOW_TYPE,
     artifactVersion: REFERENCE_BATHYMETRY_WINDOW_VERSION,
@@ -298,6 +324,9 @@ export function createReferenceBathymetryWindow(input = {}, atlasInput = createR
     selectedResolutionMeters,
     previewResolutionMeters,
     sampledStats,
+    availability,
+    matchedFixtureId: availability.matchedFixtureId,
+    matchedFixtureRole: availability.matchedFixtureRole,
     detectedRegionTags: detectReferenceRegionTags(sampledStats),
     validation: validateReferenceWindow(bounds, sampledStats),
     provenance: {
@@ -326,6 +355,106 @@ export function normalizeReferenceBathymetryWindow(input = null, atlasInput = cr
 
 export function createDefaultReferenceBathymetryWindow(atlasInput = createReferenceBathymetryAtlas()) {
   return createReferenceBathymetryWindow(DEFAULT_REFERENCE_BOUNDS, atlasInput);
+}
+
+export function referenceFixtureCoverageOverlays(atlasOrFixtures = []) {
+  const fixtures = Array.isArray(atlasOrFixtures)
+    ? atlasOrFixtures
+    : normalizeReferenceBathymetryAtlas(atlasOrFixtures).referenceFixtures;
+  return normalizeReferenceFixtures(fixtures).map((fixture) => ({
+    fixtureId: fixture.fixtureId,
+    label: fixture.label,
+    role: fixture.role,
+    sourceDataset: fixture.sourceDataset,
+    sourceResolution: fixture.sourceResolution,
+    actualRasterResolutionArcSeconds: fixture.actualRasterResolutionArcSeconds,
+    bounds: fixture.bounds,
+    digest: fixture.digest ?? fixture.rasterArtifact?.rasterDigest ?? null,
+    coverageKind: fixture.role === 'missionReadyPatch' ? 'missionReadyPatch' : 'lowResolutionReferencePatch',
+    hiddenTruthExposed: false
+  }));
+}
+
+export function referenceFixtureAtLonLat(atlasInput = {}, lon = 0, lat = 0) {
+  const atlas = normalizeReferenceBathymetryAtlas(atlasInput);
+  const fixture = referenceFixtureForLonLat(atlas.referenceFixtures, lon, lat);
+  return fixture ? compactReferenceFixture(fixture) : null;
+}
+
+export function referenceFixtureAvailabilityForBounds(atlasInput = {}, boundsInput = DEFAULT_REFERENCE_BOUNDS) {
+  const atlas = normalizeReferenceBathymetryAtlas(atlasInput);
+  const bounds = normalizeLonLatBounds(boundsInput);
+  const fixtures = normalizeReferenceFixtures(atlas.referenceFixtures ?? atlas.manifest?.fixtures ?? []);
+  const matches = fixtures
+    .map((fixture) => ({
+      fixture,
+      overlapFraction: boundsOverlapFraction(bounds, fixture.bounds),
+      containsSelection: boundsContainsBounds(fixture.bounds, bounds)
+    }))
+    .filter((entry) => entry.containsSelection || entry.overlapFraction >= 0.72)
+    .sort((a, b) => referenceFixtureSortKey(a.fixture, b.fixture) || b.overlapFraction - a.overlapFraction);
+  const best = matches[0] ?? null;
+  const status = !best
+    ? 'notStaged'
+    : best.fixture.role === 'missionReadyPatch'
+      ? 'missionReadyPatchAvailable'
+      : 'lowResolutionReferencePatchAvailable';
+  return {
+    status,
+    available: Boolean(best),
+    matchedFixtureId: best?.fixture?.fixtureId ?? null,
+    matchedFixtureRole: best?.fixture?.role ?? null,
+    matchedFixture: best?.fixture ? compactReferenceFixture(best.fixture) : null,
+    overlapFraction: best ? round(best.overlapFraction) : 0,
+    requestedBounds: bounds,
+    recommendedAction: !best
+      ? 'exportPatchRequest'
+      : best.fixture.role === 'missionReadyPatch'
+        ? 'loadMissionPatch'
+        : 'loadLowResolutionFallback',
+    hiddenTruthExposed: false
+  };
+}
+
+export function createReferenceBathymetryPatchRequest(boundsInput = DEFAULT_REFERENCE_BOUNDS, atlasInput = {}, options = {}) {
+  const atlas = normalizeReferenceBathymetryAtlas(atlasInput);
+  const bounds = normalizeLonLatBounds(boundsInput);
+  const suggestedFixtureId = String(options.suggestedFixtureId ?? `reference_patch_${stableToken(canonicalJsonDigest(bounds))}`);
+  const requestedResolution = String(options.requestedResolution ?? '15 arc-second');
+  const downloadCommand = [
+    'python tools/python/download_reference_bathymetry.py patch',
+    `--name ${suggestedFixtureId}`,
+    '--resolution 15s',
+    `--west ${round(bounds.westLon)}`,
+    `--east ${round(bounds.eastLon)}`,
+    `--south ${round(bounds.southLat)}`,
+    `--north ${round(bounds.northLat)}`
+  ].join(' ');
+  const requestBase = {
+    artifactType: REFERENCE_BATHYMETRY_PATCH_REQUEST_TYPE,
+    artifactVersion: REFERENCE_BATHYMETRY_PATCH_REQUEST_VERSION,
+    sourceDataset: atlas.sourceDataset?.name ?? 'ETOPO_2022',
+    provider: atlas.sourceDataset?.provider ?? 'NOAA NCEI',
+    requestedResolution,
+    bounds,
+    suggestedFixtureId,
+    downloadCommand,
+    preprocessCommand: 'npm.cmd run preprocess:reference-bathy',
+    auditCommand: 'npm.cmd run audit:reference-bathy',
+    browserRunsPython: false,
+    localAbsolutePathsIncluded: false,
+    rawExternalDataPathIncluded: false,
+    claimBoundary: {
+      patchRequestOnly: true,
+      bathymetryGenerated: false,
+      currentField4DGenerated: false,
+      scalarField4DGenerated: false,
+      certifiedForNavigation: false,
+      operationalOceanForecast: false,
+      hiddenTruthExposed: false
+    }
+  };
+  return withDigest(requestBase, 'requestDigest');
 }
 
 export function buildBathymetryFromReferenceWindow(atlasInput = {}, windowInput = {}, options = {}) {
@@ -440,6 +569,11 @@ export function sampleReferenceBathymetryElevation(atlasInput = {}, lon = 0, lat
 export function referenceBathymetryLayerColor(atlasInput = {}, layer = 'topographyBathymetry', lon = 0, lat = 0) {
   const elevation = sampleReferenceBathymetryElevation(atlasInput, lon, lat);
   if (layer === 'landOcean') return elevation >= 0 ? [127, 117, 72, 255] : [30, 116, 160, 255];
+  if (layer === 'patchCoverage') {
+    const fixture = referenceFixtureForLonLat(normalizeReferenceBathymetryAtlas(atlasInput).referenceFixtures, lon, lat);
+    if (!fixture) return elevation >= 0 ? [82, 100, 74, 255] : [22, 67, 104, 255];
+    return fixture.role === 'missionReadyPatch' ? [244, 180, 70, 255] : [91, 172, 211, 255];
+  }
   if (layer === 'sourceQuality') return [80, 128, 150, 255];
   if (layer === 'slope') {
     const slope = localSlopeMagnitude(atlasInput, lon, lat, 0.3);
@@ -457,21 +591,39 @@ export function referenceBathymetryLayerColor(atlasInput = {}, layer = 'topograp
 export function referenceBathymetryVisualMetrics(atlasInput = {}, windowInput = null) {
   const atlas = normalizeReferenceBathymetryAtlas(atlasInput);
   const window = normalizeReferenceBathymetryWindow(windowInput, atlas);
+  const overlays = referenceFixtureCoverageOverlays(atlas);
+  const overviewBounds = atlas.overviewBounds ?? atlas.overviewArtifact?.bounds ?? atlas.manifest?.overview?.bounds ?? null;
+  const overviewIsGlobal = isWorldScaleBounds(overviewBounds);
+  const selectedAvailability = window
+    ? referenceFixtureAvailabilityForBounds(atlas, window.bounds)
+    : null;
   return {
     type: 'anchor.reference-bathymetry.visual-acceptance-metrics',
+    defaultStage: 'globalAtlasSelector',
     defaultSourceMode: 'referenceBathymetryAtlas',
     proceduralSandboxDefault: false,
     referenceDatasetName: atlas.sourceDataset?.name ?? null,
     referenceDataAvailable: atlas.sourceDataset?.referenceDataAvailable === true,
     fixtureStatus: atlas.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE,
     fixtureCount: atlas.fixtureCount ?? 0,
+    missionReadyPatchCount: overlays.filter((entry) => entry.role === 'missionReadyPatch').length,
+    lowResolutionPatchCount: overlays.filter((entry) => entry.role === 'lowResolutionReferencePatch').length,
     overviewDigest: atlas.overviewDigest ?? null,
+    overviewStatus: overviewIsGlobal ? 'globalOverviewAvailable' : 'missingOrRegionalOverview',
+    globalOverviewBounds: overviewBounds,
+    overviewIsGlobal,
+    defaultViewIsRegionalPatch: false,
+    patchCoverageOverlays: overlays,
     manifestDigest: atlas.manifest?.manifestDigest ?? atlas.provenance?.manifestDigest ?? null,
     referenceAtlasDigest: atlas.atlasDigest,
     selectedPatchDigest: window?.patchDigest ?? null,
     selectedBounds: window?.bounds ?? null,
+    selectedRegionAvailability: selectedAvailability?.status ?? null,
+    matchedFixtureId: selectedAvailability?.matchedFixtureId ?? null,
+    matchedFixtureRole: selectedAvailability?.matchedFixtureRole ?? null,
     sampledStats: window?.sampledStats ?? null,
     forbiddenPrimaryControlCount: 0,
+    rawExternalDataPathExposed: false,
     hiddenTruthExposed: false,
     simulationChanged: false,
     scoringChanged: false
@@ -797,19 +949,29 @@ function normalizeSourceDataset(input = {}, referenceDataAvailable = false) {
 }
 
 function normalizeManifestOverview(input = {}) {
+  const displayResolution = input.displayResolution ?? input.grid ?? {};
+  const columns = clampInteger(input.columns ?? displayResolution.columns ?? 0, 0, 20000);
+  const rows = clampInteger(input.rows ?? displayResolution.rows ?? 0, 0, 20000);
   return {
-    fixtureId: String(input.fixtureId ?? 'reference-bathymetry-overview'),
+    overviewId: String(input.overviewId ?? input.fixtureId ?? input.id ?? 'reference-bathymetry-overview'),
+    fixtureId: input.fixtureId ? String(input.fixtureId) : null,
     label: String(input.label ?? 'Reference Bathymetry Overview'),
-    role: String(input.role ?? 'overview'),
+    role: String(input.role ?? 'globalOverview'),
     sourceDataset: input.sourceDataset ?? 'UNKNOWN_REFERENCE_DATASET',
     provider: input.provider ?? null,
     sourceResolution: input.sourceResolution ?? input.resolution ?? null,
     sourceKey: input.sourceKey ?? null,
     sourceVariant: input.sourceVariant ?? null,
     actualRasterResolutionArcSeconds: finiteOrNull(input.actualRasterResolutionArcSeconds),
-    columns: clampInteger(input.columns ?? 0, 0, 20000),
-    rows: clampInteger(input.rows ?? 0, 0, 20000),
+    columns,
+    rows,
+    displayResolution: {
+      columns,
+      rows
+    },
     resolution: input.resolution ?? null,
+    overviewPath: input.overviewPath ?? input.path ?? null,
+    previewPath: input.previewPath ?? null,
     rasterPath: input.rasterPath ?? null,
     digest: input.digest ?? null,
     bounds: input.bounds ? normalizeLonLatBounds(input.bounds) : {
@@ -856,6 +1018,27 @@ function selectPrimaryReferenceFixture(fixtures = []) {
     ?? null;
 }
 
+function compactReferenceFixture(fixture = {}) {
+  if (!fixture) return null;
+  return {
+    fixtureId: fixture.fixtureId,
+    label: fixture.label,
+    role: fixture.role,
+    sourceDataset: fixture.sourceDataset,
+    provider: fixture.provider,
+    sourceResolution: fixture.sourceResolution,
+    sourceKey: fixture.sourceKey,
+    sourceVariant: fixture.sourceVariant,
+    actualRasterResolutionArcSeconds: fixture.actualRasterResolutionArcSeconds,
+    columns: fixture.columns,
+    rows: fixture.rows,
+    bounds: fixture.bounds,
+    digest: fixture.digest ?? fixture.rasterArtifact?.rasterDigest ?? null,
+    tags: Array.isArray(fixture.tags) ? fixture.tags.slice() : [],
+    hiddenTruthExposed: false
+  };
+}
+
 function referenceFixtureSortKey(a = {}, b = {}) {
   const roleA = a.role === 'missionReadyPatch' ? 0 : 1;
   const roleB = b.role === 'missionReadyPatch' ? 0 : 1;
@@ -864,6 +1047,64 @@ function referenceFixtureSortKey(a = {}, b = {}) {
   const resB = Number(b.actualRasterResolutionArcSeconds ?? 9999);
   if (resA !== resB) return resA - resB;
   return String(a.fixtureId ?? '').localeCompare(String(b.fixtureId ?? ''));
+}
+
+function normalizeReferenceOverviewArtifact(input = null) {
+  if (!input || typeof input !== 'object') return null;
+  const artifactType = input.artifactType ?? REFERENCE_BATHYMETRY_OVERVIEW_TYPE;
+  const role = String(input.role ?? 'globalOverview');
+  if (artifactType !== REFERENCE_BATHYMETRY_OVERVIEW_TYPE && role !== 'globalOverview') return null;
+  const displayResolution = input.displayResolution ?? input.grid ?? {};
+  const sourceDataset = normalizeSourceDataset({
+    name: input.sourceDataset?.name ?? input.sourceDataset ?? 'ETOPO_2022',
+    version: input.sourceDataset?.version ?? input.version ?? 'v1',
+    provider: input.sourceDataset?.provider ?? input.provider ?? 'NOAA NCEI',
+    citation: input.sourceDataset?.citation ?? input.citation,
+    sourceResolution: input.sourceDataset?.sourceResolution ?? input.sourceResolution ?? '60 arc-second',
+    sourceKey: input.sourceDataset?.sourceKey ?? input.sourceKey ?? null,
+    sourceVariant: input.sourceDataset?.sourceVariant ?? input.sourceVariant ?? null,
+    actualRasterResolutionArcSeconds: input.sourceDataset?.actualRasterResolutionArcSeconds ?? input.actualRasterResolutionArcSeconds,
+    verticalUnits: input.sourceDataset?.verticalUnits ?? input.verticalUnits,
+    horizontalCoordinateFrame: input.sourceDataset?.horizontalCoordinateFrame ?? input.horizontalCoordinateFrame,
+    licenseOrTermsNote: input.sourceDataset?.licenseOrTermsNote ?? input.licenseOrTermsNote
+  }, true);
+  return {
+    artifactType: REFERENCE_BATHYMETRY_OVERVIEW_TYPE,
+    artifactVersion: String(input.artifactVersion ?? REFERENCE_BATHYMETRY_OVERVIEW_VERSION),
+    overviewId: String(input.overviewId ?? input.id ?? input.fixtureId ?? 'reference-bathymetry-global-overview'),
+    label: String(input.label ?? 'Reference Bathymetry Global Overview'),
+    role,
+    sourceDataset,
+    bounds: normalizeLonLatBounds(input.bounds ?? {
+      westLon: -180,
+      eastLon: 180,
+      southLat: -90,
+      northLat: 90
+    }),
+    displayResolution: {
+      columns: clampInteger(input.columns ?? displayResolution.columns ?? 0, 0, 20000),
+      rows: clampInteger(input.rows ?? displayResolution.rows ?? 0, 0, 20000)
+    },
+    previewPath: input.previewPath ?? null,
+    previewKind: input.previewKind ?? 'metadataDrivenCanvas',
+    colorRamp: Array.isArray(input.colorRamp) ? input.colorRamp.map((entry) => ({ ...entry })) : [],
+    elevationSummary: input.elevationSummary ?? null,
+    depthSummary: input.depthSummary ?? null,
+    landOceanSummary: input.landOceanSummary ?? null,
+    sourceFileDigest: input.sourceFileDigest ?? null,
+    sourceOverviewDigest: input.sourceOverviewDigest ?? null,
+    digest: input.digest ?? input.sourceOverviewDigest ?? null,
+    localAbsolutePathsIncluded: input.localAbsolutePathsIncluded === true ? true : false,
+    rawExternalDataPathIncluded: input.rawExternalDataPathIncluded === true ? true : false,
+    claimBoundary: {
+      ...(input.claimBoundary ?? {}),
+      overviewForSelectionOnly: true,
+      missionResolutionBathymetry: false,
+      certifiedForNavigation: false,
+      operationalOceanForecast: false,
+      hiddenTruthExposed: false
+    }
+  };
 }
 
 function normalizeReferenceRasterArtifact(input = null) {
@@ -917,6 +1158,32 @@ function referenceFixtureForLonLat(fixtures = [], lon = 0, lat = 0) {
       && y >= Number(bounds.southLat)
       && y <= Number(bounds.northLat);
   }) ?? null;
+}
+
+function boundsContainsBounds(outer = {}, inner = {}) {
+  return Number(inner.westLon) >= Number(outer.westLon)
+    && Number(inner.eastLon) <= Number(outer.eastLon)
+    && Number(inner.southLat) >= Number(outer.southLat)
+    && Number(inner.northLat) <= Number(outer.northLat);
+}
+
+function boundsOverlapFraction(a = {}, b = {}) {
+  const west = Math.max(Number(a.westLon), Number(b.westLon));
+  const east = Math.min(Number(a.eastLon), Number(b.eastLon));
+  const south = Math.max(Number(a.southLat), Number(b.southLat));
+  const north = Math.min(Number(a.northLat), Number(b.northLat));
+  const overlapArea = Math.max(0, east - west) * Math.max(0, north - south);
+  const aArea = Math.max(0.000001, (Number(a.eastLon) - Number(a.westLon)) * (Number(a.northLat) - Number(a.southLat)));
+  const bArea = Math.max(0.000001, (Number(b.eastLon) - Number(b.westLon)) * (Number(b.northLat) - Number(b.southLat)));
+  return overlapArea / Math.min(aArea, bArea);
+}
+
+function isWorldScaleBounds(bounds = null) {
+  if (!bounds) return false;
+  return Number(bounds.westLon) <= -179
+    && Number(bounds.eastLon) >= 179
+    && Number(bounds.southLat) <= -89
+    && Number(bounds.northLat) >= 89;
 }
 
 function sampleReferenceRasterArtifact(artifact = null, lon = 0, lat = 0) {
@@ -987,7 +1254,7 @@ function normalizePreviewResolution(input = {}) {
 function normalizeLonLatBounds(input = DEFAULT_REFERENCE_BOUNDS) {
   const westLon = clampNumber(input.westLon ?? input.west ?? DEFAULT_REFERENCE_BOUNDS.westLon, -180, 179.9);
   const eastLon = clampNumber(input.eastLon ?? input.east ?? DEFAULT_REFERENCE_BOUNDS.eastLon, westLon + 0.05, 180);
-  const southLat = clampNumber(input.southLat ?? input.south ?? DEFAULT_REFERENCE_BOUNDS.southLat, -89.9, 89.8);
+  const southLat = clampNumber(input.southLat ?? input.south ?? DEFAULT_REFERENCE_BOUNDS.southLat, -90, 89.8);
   const northLat = clampNumber(input.northLat ?? input.north ?? DEFAULT_REFERENCE_BOUNDS.northLat, southLat + 0.05, 90);
   return {
     westLon: round(westLon),

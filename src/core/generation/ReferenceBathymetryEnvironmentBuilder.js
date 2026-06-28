@@ -113,7 +113,7 @@ export function buildReferenceBathymetryEnvironment(input = {}) {
       'packages/currents bathymetry-conditioned 4D current backend'
     ],
     warnings: [
-      'Reference bathymetry + synthetic bathymetry-conditioned fields. Currents are deterministic synthetic benchmark fields, not calibrated forecast currents.'
+      'Reference bathymetry + deterministic synthetic bathymetry-conditioned fields. Currents are deterministic synthetic benchmark fields, not calibrated forecast currents.'
     ]
   });
 
@@ -137,7 +137,7 @@ export function buildReferenceBathymetryEnvironment(input = {}) {
       bathymetryConditionedSynthetic: true
     },
     warnings: [
-      'Reference bathymetry + synthetic bathymetry-conditioned fields. Scalars and hotspots are deterministic synthetic benchmark fields, not calibrated ecological or ocean forecast products.'
+      'Reference bathymetry + deterministic synthetic bathymetry-conditioned fields. Scalars and hotspots are deterministic synthetic benchmark fields, not calibrated ecological or ocean forecast products.'
     ]
   });
 
@@ -411,7 +411,7 @@ function composeEnvironmentArtifact(options = {}) {
         generatorVersion: REFERENCE_BATHYMETRY_ENVIRONMENT_BUILDER_VERSION,
         seed: options.seed,
         referenceFixtureId: options.referenceFixtureId,
-        notes: ['Reference bathymetry + synthetic bathymetry-conditioned fields.']
+        notes: ['Reference bathymetry + deterministic synthetic bathymetry-conditioned fields.']
       },
       claimBoundary: {
         synthetic: true,
@@ -547,7 +547,7 @@ function normalizeSourceMetadata(input = {}, context = {}) {
 
 function normalizeFieldPolicy(input = {}, sourceMetadata = {}) {
   return {
-    label: 'Reference bathymetry + synthetic bathymetry-conditioned fields.',
+    label: 'Reference bathymetry + deterministic synthetic bathymetry-conditioned fields.',
     bathymetryArtifact: 'REFERENCE_PATCH',
     currentArtifact: 'GENERATE_SYNTHETIC',
     scalarArtifact: 'GENERATE_SYNTHETIC',

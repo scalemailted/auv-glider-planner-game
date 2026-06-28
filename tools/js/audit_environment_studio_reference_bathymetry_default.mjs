@@ -20,10 +20,13 @@ const summary = environmentStudioSessionSummary(session);
 const debug = environmentStudioDebugPayload(session);
 
 assert.equal(session.sourceMode, 'referenceBathymetryAtlas');
-assert.equal(session.studioStage, 'referenceAtlas');
+assert.equal(session.studioStage, 'globalAtlasSelector');
 assert.equal(summary.defaultSourceMode, 'referenceBathymetryAtlas');
+assert.equal(summary.defaultStage, 'globalAtlasSelector');
 assert.equal(summary.proceduralSandboxDefault, false);
 assert.equal(debug.defaultSourceMode, 'referenceBathymetryAtlas');
+assert.equal(debug.defaultStage, 'globalAtlasSelector');
+assert.equal(debug.defaultViewIsRegionalPatch, false);
 assert.equal(debug.proceduralSandboxDefault, false);
 assert.equal(debug.referenceDatasetName, NO_REFERENCE_DATA_FIXTURE);
 assert.equal(debug.referenceFixtureStatus, NO_REFERENCE_DATA_FIXTURE);

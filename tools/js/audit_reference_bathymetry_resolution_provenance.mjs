@@ -6,11 +6,13 @@ const ROOT = process.cwd();
 const manifestPath = path.resolve(ROOT, 'assets', 'reference_bathymetry', 'manifest.json');
 
 const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+const manifestText = await fs.readFile(manifestPath, 'utf8');
 assert.equal(manifest.artifactType, 'anchor.reference-bathymetry-manifest', 'manifest type');
 assert.equal(manifest.provenance?.hiddenTruthExposed, false, 'manifest does not expose hidden truth');
 assert.equal(manifest.claimBoundary?.hiddenTruthExposed, false, 'claim boundary does not expose hidden truth');
 assert.equal(manifest.claimBoundary?.currentField4DGenerated, false, 'manifest does not claim generated currents');
 assert.equal(manifest.claimBoundary?.scalarField4DGenerated, false, 'manifest does not claim generated scalars');
+assert.doesNotMatch(manifestText, /external_data|rawDataDirectory|[A-Z]:\\\\|\/Users\//, 'manifest does not expose raw/local data paths');
 
 if (manifest.fixtureStatus === 'AVAILABLE') {
   assert.doesNotMatch(
@@ -98,13 +100,28 @@ if (manifest.fixtureStatus === 'AVAILABLE') {
 }
 
 if (manifest.overview) {
-  assert.equal(manifest.overview.role, 'overview', 'overview role is overview');
+  assert.equal(manifest.overview.role, 'globalOverview', 'overview role is globalOverview');
   assert.ok(manifest.overview.sourceResolution, 'overview sourceResolution is required');
   assert.ok(manifest.overview.sourceKey, 'overview sourceKey is required');
   assert.ok(manifest.overview.sourceVariant, 'overview sourceVariant is required');
   assert.ok(Number.isFinite(Number(manifest.overview.actualRasterResolutionArcSeconds)), 'overview actual resolution is required');
-  assert.ok(Number.isFinite(Number(manifest.overview.columns)) && Number(manifest.overview.columns) > 0, 'overview columns are required');
-  assert.ok(Number.isFinite(Number(manifest.overview.rows)) && Number(manifest.overview.rows) > 0, 'overview rows are required');
+  assert.ok(Number.isFinite(Number(manifest.overview.displayResolution?.columns)) && Number(manifest.overview.displayResolution.columns) > 0, 'overview display columns are required');
+  assert.ok(Number.isFinite(Number(manifest.overview.displayResolution?.rows)) && Number(manifest.overview.displayResolution.rows) > 0, 'overview display rows are required');
+  assert.ok(manifest.overview.overviewPath, 'overview overviewPath is required');
+  assert.equal(manifest.overview.bounds?.westLon, -180, 'overview westLon is global');
+  assert.equal(manifest.overview.bounds?.eastLon, 180, 'overview eastLon is global');
+  assert.equal(manifest.overview.bounds?.southLat, -90, 'overview southLat is global');
+  assert.equal(manifest.overview.bounds?.northLat, 90, 'overview northLat is global');
+  const overviewPath = path.resolve(ROOT, manifest.overview.overviewPath.replaceAll('/', path.sep));
+  const overviewText = await fs.readFile(overviewPath, 'utf8');
+  const overview = JSON.parse(overviewText);
+  assert.equal(overview.artifactType, 'anchor.reference-bathymetry-overview', 'overview artifact type');
+  assert.equal(overview.role, 'globalOverview', 'overview artifact role');
+  assert.equal(overview.localAbsolutePathsIncluded, false, 'overview has no local absolute paths');
+  assert.equal(overview.rawExternalDataPathIncluded, false, 'overview has no raw external data path');
+  assert.equal(overview.claimBoundary?.hiddenTruthExposed, false, 'overview has no hidden truth');
+  assert.equal(overview.claimBoundary?.missionResolutionBathymetry, false, 'overview is not mission-resolution bathymetry');
+  assert.doesNotMatch(overviewText, /external_data|[A-Z]:\\\\|\/Users\//, 'overview does not expose raw/local paths');
 }
 
 console.log('audit_reference_bathymetry_resolution_provenance: ok', {

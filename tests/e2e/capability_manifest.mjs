@@ -198,8 +198,8 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Alpha Pages and Compact Layout": "tests/e2e/alpha_r1_external_preview.spec.js",
   "Alpha Browser Compatibility Critical Path": "tests/e2e/alpha_r1_1_acceptance.spec.js",
   "ALPHA-R1 Full External Pilot Walkthrough": "tests/e2e/alpha_r1_1_acceptance.spec.js",
-  "Reference Bathymetry Atlas Opens": "tests/e2e/environment_studio_r1.spec.js",
-  "Reference Patch Generates Bathymetry": "tests/e2e/environment_studio_r1.spec.js",
+  "Global Reference Atlas Opens": "tests/e2e/environment_studio_r1.spec.js",
+  "Select Monterey Patch from Atlas and Generate Environment": "tests/e2e/environment_studio_r1.spec.js",
   "Reference Patch Generates Environment Fields": "tests/e2e/environment_studio_r1.spec.js",
   "Export / Import Generated Reference Environment": "tests/e2e/environment_studio_r1.spec.js",
   "Reference Environment Owner Walkthrough": "tests/e2e/environment_studio_r1.spec.js",
@@ -266,8 +266,8 @@ export const CAPABILITIES = Object.freeze([
     'Planning Execute Simulation Preserve One Environment Identity'
   ], NODE_COVERAGE.ENVIRONMENT_PACKAGE),
   capability('ENVIRONMENT-STUDIO', 'Browser-side reference bathymetry authoring, validation, and project import/export', false, false, true, [
-    'Reference Bathymetry Atlas Opens',
-    'Reference Patch Generates Bathymetry',
+    'Global Reference Atlas Opens',
+    'Select Monterey Patch from Atlas and Generate Environment',
     'Reference Patch Generates Environment Fields',
     'Export / Import Generated Reference Environment',
     'Reference Environment Owner Walkthrough',
