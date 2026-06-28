@@ -3,18 +3,20 @@
   "artifactVersion": "1.0.0",
   "fixtureStatus": "AVAILABLE",
   "overview": {
-    "fixtureId": "monterey_canyon",
+    "fixtureId": "monterey_canyon_15s",
     "label": "Reference Bathymetry Overview",
     "role": "overview",
     "sourceDataset": "ETOPO_2022",
     "provider": "NOAA NCEI",
-    "sourceResolution": "60 arc-second",
-    "actualRasterResolutionArcSeconds": 60.0,
-    "columns": 90,
-    "rows": 72,
-    "resolution": "60 arc-second",
-    "rasterPath": "assets/reference_bathymetry/monterey_canyon.reference-bathymetry-raster.json",
-    "digest": "sha256:0b92744b5b89fda7d16b17ef1c05cb39a03d47959a5d1dbdc34b4cc0f2fa0e99",
+    "sourceResolution": "15 arc-second",
+    "sourceKey": "etopo2022_15s_surface_non_ice_fallback",
+    "sourceVariant": "surface elevation, non-ice fallback",
+    "actualRasterResolutionArcSeconds": 15.0,
+    "columns": 360,
+    "rows": 288,
+    "resolution": "15 arc-second",
+    "rasterPath": "assets/reference_bathymetry/monterey_canyon_15s.reference-bathymetry-raster.json",
+    "digest": "sha256:4d5800eda8518f5cfc7b47aba8a147e9f714caaa906aa1b567d3d6965edbf19b",
     "bounds": {
       "westLon": -123.0,
       "eastLon": -121.5,
@@ -24,12 +26,44 @@
   },
   "fixtures": [
     {
+      "fixtureId": "monterey_canyon_15s",
+      "label": "Monterey Canyon 15s",
+      "role": "missionReadyPatch",
+      "sourceDataset": "ETOPO_2022",
+      "provider": "NOAA NCEI",
+      "sourceResolution": "15 arc-second",
+      "sourceKey": "etopo2022_15s_surface_non_ice_fallback",
+      "sourceVariant": "surface elevation, non-ice fallback",
+      "actualRasterResolutionArcSeconds": 15.0,
+      "columns": 360,
+      "rows": 288,
+      "bounds": {
+        "westLon": -123.0,
+        "eastLon": -121.5,
+        "southLat": 36.0,
+        "northLat": 37.2
+      },
+      "rasterPath": "assets/reference_bathymetry/monterey_canyon_15s.reference-bathymetry-raster.json",
+      "digest": "sha256:4d5800eda8518f5cfc7b47aba8a147e9f714caaa906aa1b567d3d6965edbf19b",
+      "tags": [
+        "reference-bathymetry",
+        "shelf",
+        "slope",
+        "basin",
+        "coastal",
+        "canyon",
+        "mission-ready"
+      ]
+    },
+    {
       "fixtureId": "monterey_canyon",
       "label": "Monterey Canyon",
       "role": "lowResolutionReferencePatch",
       "sourceDataset": "ETOPO_2022",
       "provider": "NOAA NCEI",
       "sourceResolution": "60 arc-second",
+      "sourceKey": "etopo2022_60s_bed",
+      "sourceVariant": "bedrock elevation",
       "actualRasterResolutionArcSeconds": 60.0,
       "columns": 90,
       "rows": 72,
@@ -40,18 +74,19 @@
         "northLat": 37.2
       },
       "rasterPath": "assets/reference_bathymetry/monterey_canyon.reference-bathymetry-raster.json",
-      "digest": "sha256:0b92744b5b89fda7d16b17ef1c05cb39a03d47959a5d1dbdc34b4cc0f2fa0e99",
+      "digest": "sha256:333ec1dd9bea8ab4bab1781c24743941d7fe2afe29a177b039d974d19153c7ee",
       "tags": [
         "reference-bathymetry",
         "shelf",
         "slope",
         "basin",
-        "coastal"
+        "coastal",
+        "canyon"
       ]
     }
   ],
   "instructions": {
-    "summary": "Preprocessed public reference bathymetry fixture is available. High-resolution 15 arc-second mission-ready patch remains pending.",
+    "summary": "Preprocessed public reference bathymetry fixture is available, including a mission-ready 15 arc-second patch.",
     "downloadCommand": "npm.cmd run download:reference-bathy",
     "preprocessCommand": "npm.cmd run preprocess:reference-bathy",
     "auditCommand": "npm.cmd run audit:reference-bathy",
@@ -74,5 +109,5 @@
     "operationalOceanForecast": false,
     "hiddenTruthExposed": false
   },
-  "manifestDigest": "sha256:123a78b2bda0aaba63c02bbe3186447778be0709c5da542ec1f296bec2696869"
+  "manifestDigest": "sha256:307c486448904658605a54e8e2f02bdb04656283f8665d1e9abec322dfd5dd1c"
 }

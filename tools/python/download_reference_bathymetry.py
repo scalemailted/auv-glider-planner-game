@@ -29,9 +29,13 @@ ETOPO_60S_TIF_URL = (
     "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/60s/"
     "60s_bed_elev_gtif/ETOPO_2022_v1_60s_N90W180_bed.tif"
 )
-ETOPO_15S_GTIF_BASE_URL = (
+ETOPO_15S_BED_GTIF_BASE_URL = (
     "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/15s/"
     "15s_bed_elev_gtif"
+)
+ETOPO_15S_SURFACE_GTIF_BASE_URL = (
+    "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/15s/"
+    "15s_surface_elev_gtif"
 )
 ETOPO_CITATION = (
     "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 "
@@ -140,12 +144,15 @@ def crop_patch(args: argparse.Namespace) -> int:
     from rasterio.windows import from_bounds
 
     source = args.source_file
+    source_metadata = source_metadata_from_path(source) if source is not None else None
     if source is None and args.resolution == "15s":
-        source = ensure_etopo_15s_tile_for_bounds(args)
-        if source is None:
+        source_metadata = ensure_etopo_15s_tile_for_bounds(args)
+        if source_metadata is None:
             return 1
+        source = source_metadata["path"]
     if source is None:
         source = RAW_ROOT / "etopo2022" / "global" / "ETOPO_2022_v1_60s_N90W180_bed.tif"
+        source_metadata = source_metadata_from_path(source)
     if not source.exists():
         print("BLOCKED_WAITING_FOR_MANUAL_ETopo_OR_GEBCO_PATCH_DOWNLOAD", file=sys.stderr)
         print("No local source GeoTIFF is available for cropping.", file=sys.stderr)
@@ -162,9 +169,10 @@ def crop_patch(args: argparse.Namespace) -> int:
         with rasterio.open(source) as dataset:
             resolution = infer_arc_second_resolution(dataset.res[0], dataset.res[1])
             arc_label = format_arc_seconds(resolution.arc_seconds)
+            source_kind = source_metadata_from_path(source, source_metadata)
             patch_dir = RAW_ROOT / "patches"
             patch_dir.mkdir(parents=True, exist_ok=True)
-            patch_path = patch_dir / f"{safe_id(args.name)}.etopo2022_{arc_label}s_bed.patch.tif"
+            patch_path = patch_dir / f"{safe_id(args.name)}.etopo2022_{arc_label}s_{source_kind['patchKind']}.patch.tif"
             summary_path = patch_path.with_suffix(".summary.json")
             if patch_path.exists() and not args.force:
                 print(json.dumps({"status": "exists", "patchPath": rel(patch_path), "summaryPath": rel(summary_path)}, indent=2))
@@ -187,6 +195,8 @@ def crop_patch(args: argparse.Namespace) -> int:
                 "compress": "deflate",
                 "tiled": True,
             })
+            if args.resolution == "15s":
+                verify_15s_patch_or_raise(args, resolution, data.shape[1], data.shape[0])
             with rasterio.open(patch_path, "w", **profile) as dst:
                 dst.write(data, 1)
             summary = source_summary(source, patch_path, {
@@ -194,7 +204,7 @@ def crop_patch(args: argparse.Namespace) -> int:
                 "right": args.east,
                 "bottom": args.south,
                 "top": args.north,
-            }, data.shape[1], data.shape[0], resolution=resolution, role=role_for_arc_seconds(resolution.arc_seconds))
+            }, data.shape[1], data.shape[0], resolution=resolution, role=role_for_arc_seconds(resolution.arc_seconds), source_kind=source_kind)
             summary["sourceResolutionNote"] = (
                 "Cropped from local GeoTIFF source. This summary records actual source resolution; "
                 "do not infer resolution from requested CLI flags."
@@ -217,39 +227,125 @@ def guarded_gebco(args: argparse.Namespace) -> int:
     return 1
 
 
-def ensure_etopo_15s_tile_for_bounds(args: argparse.Namespace) -> Path | None:
+def ensure_etopo_15s_tile_for_bounds(args: argparse.Namespace) -> dict | None:
     requests = require_module("requests", "pip install requests")
     if requests is None:
         return None
-    tile_name = etopo_15s_tile_name(args.west, args.east, args.south, args.north)
-    tile_url = f"{ETOPO_15S_GTIF_BASE_URL}/{tile_name}"
-    tile_path = RAW_ROOT / "etopo2022" / "tiles15s" / tile_name
-    tile_path.parent.mkdir(parents=True, exist_ok=True)
-    if tile_path.exists() and not args.force:
-        return tile_path
-    try:
-        stream_download(requests, tile_url, tile_path)
-        return tile_path
-    except Exception as exc:  # noqa: BLE001 - print exact attempted source.
-        part = tile_path.with_suffix(tile_path.suffix + ".part")
-        if part.exists():
-            part.unlink()
+    tile_ids = etopo_15s_tile_ids(args.west, args.east, args.south, args.north)
+    if len(tile_ids) != 1:
         print("BLOCKED_WAITING_FOR_TRUE_15S_REFERENCE_PATCH", file=sys.stderr)
-        print(f"Attempted NOAA 15s tile URL: {tile_url}", file=sys.stderr)
-        print(f"Requested bbox: west={args.west} east={args.east} south={args.south} north={args.north}", file=sys.stderr)
-        print(f"Download detail: {exc}", file=sys.stderr)
-        print("Keep any existing lower-resolution fixture honestly labeled until a true 15 arc-second source is staged.", file=sys.stderr)
+        print(f"Requested bbox intersects {len(tile_ids)} ETOPO 15s tiles; scripted mosaic cropping is not implemented yet.", file=sys.stderr)
+        print(f"Intersecting tiles: {', '.join(tile_ids)}", file=sys.stderr)
         return None
 
+    tile_id = tile_ids[0]
+    failures = []
+    for candidate in etopo_15s_tile_candidates(tile_id, args):
+        tile_path = candidate["path"]
+        tile_path.parent.mkdir(parents=True, exist_ok=True)
+        if tile_path.exists() and not args.force:
+            return { **candidate, "downloaded": False }
+        try:
+            stream_download(requests, candidate["url"], tile_path)
+            return { **candidate, "downloaded": True }
+        except Exception as exc:  # noqa: BLE001 - CLI must print exact attempted source.
+            part = tile_path.with_suffix(tile_path.suffix + ".part")
+            if part.exists():
+                part.unlink()
+            failures.append({ **candidate, "error": str(exc) })
 
-def etopo_15s_tile_name(west: float, east: float, south: float, north: float) -> str:
-    # ETOPO 15s GeoTIFF tiles are named by the northwest 15-degree tile corner.
-    del east, south
-    lon_west = int(math.floor(float(west) / 15) * 15)
-    lat_north = int(math.ceil(float(north) / 15) * 15)
-    ns = f"N{abs(lat_north):02d}" if lat_north >= 0 else f"S{abs(lat_north):02d}"
-    ew = f"E{abs(lon_west):03d}" if lon_west >= 0 else f"W{abs(lon_west):03d}"
-    return f"ETOPO_2022_v1_15s_{ns}{ew}_bed.tif"
+    print("BLOCKED_WAITING_FOR_TRUE_15S_REFERENCE_PATCH", file=sys.stderr)
+    print(f"Requested bbox: west={args.west} east={args.east} south={args.south} north={args.north}", file=sys.stderr)
+    for failure in failures:
+        print(f"Attempted NOAA 15s tile URL: {failure['url']}", file=sys.stderr)
+        print(f"Download detail: {failure['error']}", file=sys.stderr)
+    print("Keep any existing lower-resolution fixture honestly labeled until a true 15 arc-second source is staged.", file=sys.stderr)
+    return None
+
+
+def etopo_15s_tile_ids(west: float, east: float, south: float, north: float) -> list[str]:
+    # ETOPO 15s tiles are 15-degree cells named by northwest tile corner.
+    eps = 1e-9
+    west = float(west)
+    east = float(east)
+    south = float(south)
+    north = float(north)
+    lon_start = int(math.floor((west + eps) / 15) * 15)
+    lon_end = int(math.floor((east - eps) / 15) * 15)
+    lat_start_north = int(math.floor((south + eps) / 15) * 15 + 15)
+    lat_end_north = int(math.ceil((north - eps) / 15) * 15)
+    tile_ids = []
+    for lat_north in range(lat_start_north, lat_end_north + 1, 15):
+        for lon_west in range(lon_start, lon_end + 1, 15):
+            ns = f"N{abs(lat_north):02d}" if lat_north >= 0 else f"S{abs(lat_north):02d}"
+            ew = f"E{abs(lon_west):03d}" if lon_west >= 0 else f"W{abs(lon_west):03d}"
+            tile_ids.append(f"{ns}{ew}")
+    return tile_ids
+
+
+def etopo_15s_tile_candidates(tile_id: str, args: argparse.Namespace) -> list[dict]:
+    candidates = [{
+        "tileId": tile_id,
+        "fileName": f"ETOPO_2022_v1_15s_{tile_id}_bed.tif",
+        "baseUrl": ETOPO_15S_BED_GTIF_BASE_URL,
+        "sourceKey": "etopo2022_15s_bed",
+        "sourceVariant": "bedrock elevation",
+        "patchKind": "bed",
+    }]
+    if is_non_ice_region(args.south, args.north):
+        candidates.append({
+            "tileId": tile_id,
+            "fileName": f"ETOPO_2022_v1_15s_{tile_id}_surface.tif",
+            "baseUrl": ETOPO_15S_SURFACE_GTIF_BASE_URL,
+            "sourceKey": "etopo2022_15s_surface_non_ice_fallback",
+            "sourceVariant": "surface elevation, non-ice fallback",
+            "patchKind": "surface",
+        })
+    for candidate in candidates:
+        candidate["url"] = f"{candidate['baseUrl']}/{candidate['fileName']}"
+        candidate["path"] = RAW_ROOT / "etopo2022" / "15s_tiles" / candidate["fileName"]
+    return candidates
+
+
+def is_non_ice_region(south: float, north: float) -> bool:
+    return float(north) < 60 and float(south) > -60
+
+
+def verify_15s_patch_or_raise(args: argparse.Namespace, resolution, columns: int, rows: int) -> None:
+    width_degrees = abs(float(args.east) - float(args.west))
+    height_degrees = abs(float(args.north) - float(args.south))
+    expected_columns = round(width_degrees * 3600 / 15)
+    expected_rows = round(height_degrees * 3600 / 15)
+    arc_seconds = float(resolution.arc_seconds)
+    if abs(arc_seconds - 15) > 0.1 or abs(columns - expected_columns) > 2 or abs(rows - expected_rows) > 2:
+        raise RuntimeError(
+            "BLOCKED_15S_PATCH_NOT_VERIFIED "
+            f"actualArcSeconds={arc_seconds} columns={columns} rows={rows} "
+            f"expectedColumns~={expected_columns} expectedRows~={expected_rows}"
+        )
+
+
+def source_metadata_from_path(source: Path | None, override: dict | None = None) -> dict:
+    if override is not None:
+        return override
+    name = source.name if source is not None else ""
+    if "15s" in name and "surface" in name:
+        return {
+            "sourceKey": "etopo2022_15s_surface_non_ice_fallback",
+            "sourceVariant": "surface elevation, non-ice fallback",
+            "patchKind": "surface",
+        }
+    if "15s" in name:
+        return {
+            "sourceKey": "etopo2022_15s_bed",
+            "sourceVariant": "bedrock elevation",
+            "patchKind": "bed",
+        }
+    return {
+        "sourceKey": "etopo2022_60s_bed",
+        "sourceVariant": "bedrock elevation",
+        "patchKind": "bed",
+    }
 
 
 def stream_download(requests, url: str, target: Path) -> None:
@@ -263,14 +359,17 @@ def stream_download(requests, url: str, target: Path) -> None:
     shutil.move(str(part), str(target))
 
 
-def source_summary(source: Path, output: Path, bounds, columns: int, rows: int, resolution=None, role: str = "overview") -> dict:
+def source_summary(source: Path, output: Path, bounds, columns: int, rows: int, resolution=None, role: str = "overview", source_kind: dict | None = None) -> dict:
     actual_resolution = resolution or infer_arc_second_resolution(1 / 60, 1 / 60)
+    source_kind = source_metadata_from_path(source, source_kind)
     return {
         "sourceDataset": {
             "name": "ETOPO_2022",
             "provider": "NOAA NCEI",
             "version": "v1",
             "sourceResolution": actual_resolution.source_resolution,
+            "sourceKey": source_kind["sourceKey"],
+            "sourceVariant": source_kind["sourceVariant"],
             "verticalUnits": "meters relative to sea level",
             "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
             "citation": ETOPO_CITATION,
@@ -278,6 +377,8 @@ def source_summary(source: Path, output: Path, bounds, columns: int, rows: int, 
         },
         "role": role,
         "sourceResolution": actual_resolution.source_resolution,
+        "sourceKey": source_kind["sourceKey"],
+        "sourceVariant": source_kind["sourceVariant"],
         "actualRasterResolutionArcSeconds": actual_resolution.arc_seconds,
         "degreeResolution": {
             "longitudeDegrees": actual_resolution.longitude_degrees,

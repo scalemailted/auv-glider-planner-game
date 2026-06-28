@@ -4,6 +4,8 @@
   "fixtureId": "monterey_canyon",
   "role": "lowResolutionReferencePatch",
   "sourceResolution": "60 arc-second",
+  "sourceKey": "etopo2022_60s_bed",
+  "sourceVariant": "bedrock elevation",
   "actualRasterResolutionArcSeconds": 60.0,
   "degreeResolution": {
     "longitudeDegrees": 0.016666666666666666,
@@ -14,6 +16,8 @@
     "provider": "NOAA NCEI",
     "version": "v1",
     "sourceResolution": "60 arc-second",
+    "sourceKey": "etopo2022_60s_bed",
+    "sourceVariant": "bedrock elevation",
     "verticalUnits": "meters relative to sea level",
     "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
     "citation": "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 Global Relief Model. NOAA National Centers for Environmental Information. https://doi.org/10.25921/fd45-gt74",
@@ -26723,6 +26727,8 @@
     "preprocessor": "anchor-reference-bathy-preprocessor-v1",
     "sourceFileName": "monterey_canyon.etopo2022_60s_bed.patch.tif",
     "sourceFileDigest": "sha256:52d01530b5fd4ddce9134ed8b81886bf666172b1e8f46aa9445e336435908c34",
+    "sourceKey": "etopo2022_60s_bed",
+    "sourceVariant": "bedrock elevation",
     "sourceResolution": "60 arc-second",
     "actualRasterResolutionArcSeconds": 60.0,
     "degreeResolution": {
@@ -26734,5 +26740,5 @@
     "localAbsolutePathsIncluded": false,
     "hiddenTruthExposed": false
   },
-  "rasterDigest": "sha256:0b92744b5b89fda7d16b17ef1c05cb39a03d47959a5d1dbdc34b4cc0f2fa0e99"
+  "rasterDigest": "sha256:333ec1dd9bea8ab4bab1781c24743941d7fe2afe29a177b039d974d19153c7ee"
 }

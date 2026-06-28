@@ -1324,6 +1324,7 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         ${metricHtml('Provider', atlas.sourceDataset?.provider)}
         ${metricHtml('Version', atlas.sourceDataset?.version)}
         ${metricHtml('Resolution', atlas.sourceDataset?.sourceResolution)}
+        ${metricHtml('Source variant', atlas.sourceDataset?.sourceVariant)}
         ${metricHtml('Actual arc-sec', atlas.sourceDataset?.actualRasterResolutionArcSeconds ?? manifest.overview?.actualRasterResolutionArcSeconds)}
         ${metricHtml('Units', atlas.sourceDataset?.verticalUnits)}
         ${metricHtml('Frame', atlas.sourceDataset?.horizontalCoordinateFrame)}
@@ -1402,6 +1403,7 @@ function referenceFixtureSelectorHtml(manifest = {}, atlas = {}) {
       ${metricHtml('Fixture Count', fixtures.length)}
       ${metricHtml('Fixture Role', fixtures[0]?.role ?? 'n/a')}
       ${metricHtml('Source Resolution', fixtures[0]?.sourceResolution ?? 'n/a')}
+      ${metricHtml('Source Variant', fixtures[0]?.sourceVariant ?? 'n/a')}
       ${metricHtml('Actual Arc-Seconds', fixtures[0]?.actualRasterResolutionArcSeconds ?? 'n/a')}
       ${metricHtml('Raster Shape', fixtures[0]?.columns && fixtures[0]?.rows ? `${fixtures[0].columns} x ${fixtures[0].rows}` : 'n/a')}
       ${metricHtml('Overview Digest', shortDigest(manifest?.overview?.digest))}
@@ -1416,7 +1418,8 @@ function referenceFixtureAvailabilityMessage(session = {}) {
   if (!fixtures.length) return 'Reference bathymetry data is not available yet.';
   const missionReady = fixtures.find((fixture) => fixture.role === 'missionReadyPatch');
   if (missionReady) {
-    return `Reference fixture available: ${missionReady.sourceDataset ?? 'reference dataset'} ${missionReady.sourceResolution ?? '15 arc-second'} ${missionReady.label ?? missionReady.fixtureId} mission-ready patch.`;
+    const fallbackCount = fixtures.filter((fixture) => fixture.role === 'lowResolutionReferencePatch').length;
+    return `Reference fixture available: ${missionReady.sourceDataset ?? 'reference dataset'} ${missionReady.sourceResolution ?? '15 arc-second'} ${missionReady.label ?? missionReady.fixtureId} mission-ready patch is preferred. ${fallbackCount} low-resolution fallback fixture${fallbackCount === 1 ? '' : 's'} remain available.`;
   }
   const fixture = fixtures[0];
   return `Reference fixture available: ${fixture.sourceDataset ?? 'reference dataset'} ${fixture.sourceResolution ?? 'unknown-resolution'} ${fixture.label ?? fixture.fixtureId} low-resolution reference patch. High-resolution 15 arc-second mission-ready patch pending.`;

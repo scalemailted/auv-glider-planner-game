@@ -141,6 +141,8 @@ export function compactReferenceBathymetryManifest(input = null) {
       sourceDataset: fixture.sourceDataset,
       provider: fixture.provider,
       sourceResolution: fixture.sourceResolution,
+      sourceKey: fixture.sourceKey,
+      sourceVariant: fixture.sourceVariant,
       actualRasterResolutionArcSeconds: fixture.actualRasterResolutionArcSeconds,
       columns: fixture.columns,
       rows: fixture.rows,
@@ -176,9 +178,7 @@ export function createReferenceBathymetryAtlas(options = {}) {
   const availableFixtureCount = referenceFixtures.filter((fixture) => fixture?.rasterArtifact?.artifactType === REFERENCE_BATHYMETRY_RASTER_TYPE).length;
   const referenceDataAvailable = options.referenceDataAvailable === true
     || (manifest.fixtureStatus === REFERENCE_DATA_AVAILABLE && availableFixtureCount > 0);
-  const primaryFixture = referenceFixtures.find((fixture) => fixture?.rasterArtifact?.artifactType === REFERENCE_BATHYMETRY_RASTER_TYPE)
-    ?? referenceFixtures[0]
-    ?? null;
+  const primaryFixture = selectPrimaryReferenceFixture(referenceFixtures);
   const sourceDataset = normalizeSourceDataset(
     options.sourceDataset
       ?? overviewRasterArtifact?.sourceDataset
@@ -187,6 +187,8 @@ export function createReferenceBathymetryAtlas(options = {}) {
         name: primaryFixture?.rasterArtifact?.sourceDataset?.name ?? primaryFixture?.sourceDataset ?? manifest.overview?.sourceDataset,
         provider: primaryFixture?.rasterArtifact?.sourceDataset?.provider ?? primaryFixture?.provider ?? manifest.overview?.provider,
         sourceResolution: primaryFixture?.rasterArtifact?.sourceResolution ?? primaryFixture?.sourceResolution ?? manifest.overview?.sourceResolution,
+        sourceKey: primaryFixture?.rasterArtifact?.sourceKey ?? primaryFixture?.sourceKey ?? manifest.overview?.sourceKey,
+        sourceVariant: primaryFixture?.rasterArtifact?.sourceVariant ?? primaryFixture?.sourceVariant ?? manifest.overview?.sourceVariant,
         actualRasterResolutionArcSeconds: primaryFixture?.rasterArtifact?.actualRasterResolutionArcSeconds ?? primaryFixture?.actualRasterResolutionArcSeconds ?? manifest.overview?.actualRasterResolutionArcSeconds
       },
     referenceDataAvailable
@@ -764,6 +766,8 @@ function normalizeSourceDataset(input = {}, referenceDataAvailable = false) {
       provider: String(sourceInput.provider ?? 'User-provided local artifact'),
       citation: String(sourceInput.citation ?? 'Public bathymetry/topography fixture supplied outside runtime.'),
       sourceResolution: String(sourceInput.sourceResolution ?? 'preprocessed fixture resolution'),
+      sourceKey: sourceInput.sourceKey ?? null,
+      sourceVariant: sourceInput.sourceVariant ?? null,
       actualRasterResolutionArcSeconds: finiteOrNull(sourceInput.actualRasterResolutionArcSeconds),
       verticalUnits: String(sourceInput.verticalUnits ?? 'meters relative to sea level'),
       horizontalCoordinateFrame: String(sourceInput.horizontalCoordinateFrame ?? 'EPSG:4326 lon/lat'),
@@ -792,6 +796,8 @@ function normalizeManifestOverview(input = {}) {
     sourceDataset: input.sourceDataset ?? 'UNKNOWN_REFERENCE_DATASET',
     provider: input.provider ?? null,
     sourceResolution: input.sourceResolution ?? input.resolution ?? null,
+    sourceKey: input.sourceKey ?? null,
+    sourceVariant: input.sourceVariant ?? null,
     actualRasterResolutionArcSeconds: finiteOrNull(input.actualRasterResolutionArcSeconds),
     columns: clampInteger(input.columns ?? 0, 0, 20000),
     rows: clampInteger(input.rows ?? 0, 0, 20000),
@@ -815,6 +821,8 @@ function normalizeManifestFixture(input = {}) {
     sourceDataset: input.sourceDataset ?? 'UNKNOWN_REFERENCE_DATASET',
     provider: input.provider ?? null,
     sourceResolution: input.sourceResolution ?? input.resolution ?? null,
+    sourceKey: input.sourceKey ?? null,
+    sourceVariant: input.sourceVariant ?? null,
     actualRasterResolutionArcSeconds: finiteOrNull(input.actualRasterResolutionArcSeconds),
     columns: clampInteger(input.columns ?? input.grid?.columns ?? 0, 0, 20000),
     rows: clampInteger(input.rows ?? input.grid?.rows ?? 0, 0, 20000),
@@ -829,7 +837,25 @@ function normalizeManifestFixture(input = {}) {
 function normalizeReferenceFixtures(input = []) {
   return (Array.isArray(input) ? input : [])
     .map(normalizeManifestFixture)
-    .filter((fixture) => fixture.fixtureId);
+    .filter((fixture) => fixture.fixtureId)
+    .sort(referenceFixtureSortKey);
+}
+
+function selectPrimaryReferenceFixture(fixtures = []) {
+  return [...(fixtures ?? [])].sort(referenceFixtureSortKey)
+    .find((fixture) => fixture?.rasterArtifact?.artifactType === REFERENCE_BATHYMETRY_RASTER_TYPE)
+    ?? [...(fixtures ?? [])].sort(referenceFixtureSortKey)[0]
+    ?? null;
+}
+
+function referenceFixtureSortKey(a = {}, b = {}) {
+  const roleA = a.role === 'missionReadyPatch' ? 0 : 1;
+  const roleB = b.role === 'missionReadyPatch' ? 0 : 1;
+  if (roleA !== roleB) return roleA - roleB;
+  const resA = Number(a.actualRasterResolutionArcSeconds ?? 9999);
+  const resB = Number(b.actualRasterResolutionArcSeconds ?? 9999);
+  if (resA !== resB) return resA - resB;
+  return String(a.fixtureId ?? '').localeCompare(String(b.fixtureId ?? ''));
 }
 
 function normalizeReferenceRasterArtifact(input = null) {
@@ -845,6 +871,8 @@ function normalizeReferenceRasterArtifact(input = null) {
     fixtureId: String(input.fixtureId ?? input.id ?? 'reference-bathymetry-raster'),
     role: String(input.role ?? 'lowResolutionReferencePatch'),
     sourceResolution: input.sourceResolution ?? input.sourceDataset?.sourceResolution ?? null,
+    sourceKey: input.sourceKey ?? input.sourceDataset?.sourceKey ?? input.provenance?.sourceKey ?? null,
+    sourceVariant: input.sourceVariant ?? input.sourceDataset?.sourceVariant ?? input.provenance?.sourceVariant ?? null,
     actualRasterResolutionArcSeconds: finiteOrNull(input.actualRasterResolutionArcSeconds ?? input.sourceDataset?.actualRasterResolutionArcSeconds),
     degreeResolution: input.degreeResolution ?? input.provenance?.degreeResolution ?? null,
     sourceDataset: normalizeSourceDataset(input.sourceDataset, true),

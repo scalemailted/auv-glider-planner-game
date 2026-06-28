@@ -23,6 +23,8 @@ if (manifest.fixtureStatus === 'AVAILABLE') {
 assert.ok(Array.isArray(manifest.fixtures), 'manifest fixtures array exists');
 
 const reports = [];
+let missionReadyPatchCount = 0;
+let lowResolutionPatchCount = 0;
 for (const fixture of manifest.fixtures) {
   assert.ok(fixture.fixtureId, 'fixtureId is required');
   assert.ok(fixture.label, `${fixture.fixtureId} label is required`);
@@ -30,6 +32,8 @@ for (const fixture of manifest.fixtures) {
   assert.ok(fixture.sourceDataset, `${fixture.fixtureId} sourceDataset is required`);
   assert.ok(fixture.provider, `${fixture.fixtureId} provider is required`);
   assert.ok(fixture.sourceResolution, `${fixture.fixtureId} sourceResolution is required`);
+  assert.ok(fixture.sourceKey, `${fixture.fixtureId} sourceKey is required`);
+  assert.ok(fixture.sourceVariant, `${fixture.fixtureId} sourceVariant is required`);
   assert.ok(Number.isFinite(Number(fixture.actualRasterResolutionArcSeconds)), `${fixture.fixtureId} actualRasterResolutionArcSeconds is required`);
   assert.ok(Number.isFinite(Number(fixture.columns)) && Number(fixture.columns) > 0, `${fixture.fixtureId} columns are required`);
   assert.ok(Number.isFinite(Number(fixture.rows)) && Number(fixture.rows) > 0, `${fixture.fixtureId} rows are required`);
@@ -43,6 +47,8 @@ for (const fixture of manifest.fixtures) {
   assert.equal(artifact.provenance?.hiddenTruthExposed, false, `${fixture.fixtureId} artifact does not expose hidden truth`);
   assert.equal(artifact.role, fixture.role, `${fixture.fixtureId} role matches artifact`);
   assert.equal(String(artifact.sourceResolution), String(fixture.sourceResolution), `${fixture.fixtureId} sourceResolution matches artifact`);
+  assert.equal(String(artifact.sourceKey), String(fixture.sourceKey), `${fixture.fixtureId} sourceKey matches artifact`);
+  assert.equal(String(artifact.sourceVariant), String(fixture.sourceVariant), `${fixture.fixtureId} sourceVariant matches artifact`);
   assert.equal(Number(artifact.actualRasterResolutionArcSeconds), Number(fixture.actualRasterResolutionArcSeconds), `${fixture.fixtureId} actual resolution matches artifact`);
   assert.equal(Number(artifact.grid?.columns), Number(fixture.columns), `${fixture.fixtureId} columns match artifact`);
   assert.equal(Number(artifact.grid?.rows), Number(fixture.rows), `${fixture.fixtureId} rows match artifact`);
@@ -57,6 +63,16 @@ for (const fixture of manifest.fixtures) {
     actualArcSeconds <= 15.1 ? 'missionReadyPatch' : 'lowResolutionReferencePatch',
     `${fixture.fixtureId} role matches actual resolution`
   );
+  if (fixture.role === 'missionReadyPatch') {
+    missionReadyPatchCount += 1;
+    assert.ok(Math.abs(actualArcSeconds - 15) <= 0.1, `${fixture.fixtureId} missionReadyPatch must be true 15 arc-second`);
+    assert.ok(Math.abs(Number(fixture.columns) - 360) <= 2, `${fixture.fixtureId} missionReadyPatch should be about 360 columns for Monterey bbox`);
+    assert.ok(Math.abs(Number(fixture.rows) - 288) <= 2, `${fixture.fixtureId} missionReadyPatch should be about 288 rows for Monterey bbox`);
+    assert.ok(fixture.tags.includes('mission-ready'), `${fixture.fixtureId} missionReadyPatch tag is required`);
+  }
+  if (fixture.role === 'lowResolutionReferencePatch') {
+    lowResolutionPatchCount += 1;
+  }
 
   const artifactText = JSON.stringify(artifact);
   assert.doesNotMatch(artifactText, /"hiddenTruthExposed"\s*:\s*true/, `${fixture.fixtureId} artifact text has no hiddenTruth true`);
@@ -67,6 +83,8 @@ for (const fixture of manifest.fixtures) {
     fixtureId: fixture.fixtureId,
     role: fixture.role,
     sourceResolution: fixture.sourceResolution,
+    sourceKey: fixture.sourceKey,
+    sourceVariant: fixture.sourceVariant,
     actualRasterResolutionArcSeconds: actualArcSeconds,
     columns: fixture.columns,
     rows: fixture.rows,
@@ -74,9 +92,16 @@ for (const fixture of manifest.fixtures) {
   });
 }
 
+if (manifest.fixtureStatus === 'AVAILABLE') {
+  assert.ok(missionReadyPatchCount >= 1, 'AVAILABLE manifest must include a missionReadyPatch after BATHY-DATA-R1.2');
+  assert.ok(lowResolutionPatchCount >= 1, 'AVAILABLE manifest must preserve the lowResolutionReferencePatch fallback');
+}
+
 if (manifest.overview) {
   assert.equal(manifest.overview.role, 'overview', 'overview role is overview');
   assert.ok(manifest.overview.sourceResolution, 'overview sourceResolution is required');
+  assert.ok(manifest.overview.sourceKey, 'overview sourceKey is required');
+  assert.ok(manifest.overview.sourceVariant, 'overview sourceVariant is required');
   assert.ok(Number.isFinite(Number(manifest.overview.actualRasterResolutionArcSeconds)), 'overview actual resolution is required');
   assert.ok(Number.isFinite(Number(manifest.overview.columns)) && Number(manifest.overview.columns) > 0, 'overview columns are required');
   assert.ok(Number.isFinite(Number(manifest.overview.rows)) && Number(manifest.overview.rows) > 0, 'overview rows are required');
@@ -101,4 +126,3 @@ function assertResolutionString(value, actualArcSeconds, label) {
   const claimed = Number(match[1]);
   assert.ok(Math.abs(claimed - actualArcSeconds) <= 0.1, `${label} claims ${claimed}s but actual is ${actualArcSeconds}s`);
 }
-

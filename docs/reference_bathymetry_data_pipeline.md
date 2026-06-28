@@ -23,17 +23,33 @@ npm.cmd run audit:reference-bathy
 
 ## Current Checked-In State
 
-The checked-in manifest currently reports `AVAILABLE` with one `lowResolutionReferencePatch`:
+The checked-in manifest currently reports `AVAILABLE` with two Monterey Canyon fixtures:
 
-- fixture: `monterey_canyon`
+- fixture: `monterey_canyon_15s`
+- role: `missionReadyPatch`
 - source dataset: ETOPO 2022
 - provider: NOAA NCEI
+- source key: `etopo2022_15s_surface_non_ice_fallback`
+- source variant: surface elevation, non-ice fallback
+- source resolution: 15 arc-second
+- actual raster resolution: 15 arc-second
+- shape: 360 columns x 288 rows
+- bounds: west -123.0, east -121.5, south 36.0, north 37.2
+
+The preserved fallback fixture is:
+
+- fixture: `monterey_canyon`
+- role: `lowResolutionReferencePatch`
+- source dataset: ETOPO 2022
+- provider: NOAA NCEI
+- source key: `etopo2022_60s_bed`
+- source variant: bedrock elevation
 - source resolution: 60 arc-second
 - actual raster resolution: 60 arc-second
 - shape: 90 columns x 72 rows
 - bounds: west -123.0, east -121.5, south 36.0, north 37.2
 
-This is intentionally not labeled as a 15 arc-second mission-ready patch. A true 15 arc-second Monterey Canyon patch should be approximately 360 x 288 cells for the same bounding box and remains pending until a suitable source tile or extract is staged.
+Environment Studio prefers the 15 arc-second `missionReadyPatch` when present and keeps the 60 arc-second fixture available as a low-resolution fallback.
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 

@@ -69,6 +69,8 @@ def main() -> int:
             "sourceDataset": artifact["sourceDataset"]["name"],
             "provider": artifact["sourceDataset"]["provider"],
             "sourceResolution": artifact["sourceResolution"],
+            "sourceKey": artifact["sourceKey"],
+            "sourceVariant": artifact["sourceVariant"],
             "actualRasterResolutionArcSeconds": artifact["actualRasterResolutionArcSeconds"],
             "columns": artifact["grid"]["columns"],
             "rows": artifact["grid"]["rows"],
@@ -78,6 +80,7 @@ def main() -> int:
             "tags": infer_tags(artifact),
         })
 
+    fixtures.sort(key=fixture_sort_key)
     overview = fixtures[0] if fixtures else None
     manifest = {
         "artifactType": "anchor.reference-bathymetry-manifest",
@@ -90,6 +93,8 @@ def main() -> int:
             "sourceDataset": overview["sourceDataset"],
             "provider": overview["provider"],
             "sourceResolution": overview["sourceResolution"],
+            "sourceKey": overview["sourceKey"],
+            "sourceVariant": overview["sourceVariant"],
             "actualRasterResolutionArcSeconds": overview["actualRasterResolutionArcSeconds"],
             "columns": overview["columns"],
             "rows": overview["rows"],
@@ -165,13 +170,16 @@ def build_fixture_artifact(rasterio, numpy, source: Path, max_width: int, max_he
     wet = [[float(value) < 0.0 for value in row] for row in elevation_list]
     land = [[not cell for cell in row] for row in wet]
     summaries = summarize(elevation_list, depth, wet)
-    fixture_id = fixture_id_from_source(source)
+    source_kind = source_metadata_from_path(source)
+    fixture_id = fixture_id_from_source(source, resolution.arc_seconds)
     artifact = {
         "artifactType": "anchor.reference-bathymetry-raster",
         "artifactVersion": "1.0.0",
         "fixtureId": fixture_id,
         "role": role,
         "sourceResolution": resolution.source_resolution,
+        "sourceKey": source_kind["sourceKey"],
+        "sourceVariant": source_kind["sourceVariant"],
         "actualRasterResolutionArcSeconds": resolution.arc_seconds,
         "degreeResolution": {
             "longitudeDegrees": resolution.longitude_degrees,
@@ -182,6 +190,8 @@ def build_fixture_artifact(rasterio, numpy, source: Path, max_width: int, max_he
             "provider": "NOAA NCEI",
             "version": "v1",
             "sourceResolution": resolution.source_resolution,
+            "sourceKey": source_kind["sourceKey"],
+            "sourceVariant": source_kind["sourceVariant"],
             "verticalUnits": "meters relative to sea level",
             "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
             "citation": ETOPO_CITATION,
@@ -205,6 +215,8 @@ def build_fixture_artifact(rasterio, numpy, source: Path, max_width: int, max_he
             "preprocessor": PREPROCESSOR_VERSION,
             "sourceFileName": source.name,
             "sourceFileDigest": digest_file(source),
+            "sourceKey": source_kind["sourceKey"],
+            "sourceVariant": source_kind["sourceVariant"],
             "sourceResolution": resolution.source_resolution,
             "actualRasterResolutionArcSeconds": resolution.arc_seconds,
             "degreeResolution": {
@@ -317,7 +329,17 @@ def infer_tags(artifact: dict) -> list[str]:
         tags.append("basin")
     if summaries.get("landFraction", 0) > 0.02 and summaries.get("oceanFraction", 0) > 0.1:
         tags.append("coastal")
+    if "monterey_canyon" in str(artifact.get("fixtureId", "")) or "canyon" in str(artifact.get("provenance", {}).get("sourceFileName", "")).lower():
+        tags.append("canyon")
+    if artifact.get("role") == "missionReadyPatch":
+        tags.append("mission-ready")
     return tags
+
+
+def fixture_sort_key(fixture: dict) -> tuple:
+    role_rank = 0 if fixture.get("role") == "missionReadyPatch" else 1
+    resolution = float(fixture.get("actualRasterResolutionArcSeconds") or 9999)
+    return (role_rank, resolution, str(fixture.get("fixtureId") or ""))
 
 
 def with_digest(value: dict, digest_key: str) -> dict:
@@ -355,12 +377,32 @@ def require_module(name: str, install_hint: str):
         return None
 
 
-def fixture_id_from_source(path: Path) -> str:
+def fixture_id_from_source(path: Path, arc_seconds: float | None = None) -> str:
     text = path.stem
-    for suffix in (".etopo2022_15s_bed.patch", ".etopo2022_30s_bed.patch", ".etopo2022_60s_bed.patch"):
+    for suffix in (".etopo2022_15s_surface.patch", ".etopo2022_15s_bed.patch", ".etopo2022_30s_bed.patch", ".etopo2022_60s_bed.patch"):
         text = text.replace(suffix, "")
     safe = "".join(ch.lower() if ch.isalnum() else "_" for ch in text).strip("_")
+    if arc_seconds is not None and float(arc_seconds) <= 15.1 and not safe.endswith("_15s"):
+        safe = f"{safe}_15s"
     return safe or "reference_bathymetry_patch"
+
+
+def source_metadata_from_path(source: Path) -> dict:
+    name = source.name
+    if "15s" in name and "surface" in name:
+        return {
+            "sourceKey": "etopo2022_15s_surface_non_ice_fallback",
+            "sourceVariant": "surface elevation, non-ice fallback",
+        }
+    if "15s" in name:
+        return {
+            "sourceKey": "etopo2022_15s_bed",
+            "sourceVariant": "bedrock elevation",
+        }
+    return {
+        "sourceKey": "etopo2022_60s_bed",
+        "sourceVariant": "bedrock elevation",
+    }
 
 
 def label_from_id(value: str) -> str:
