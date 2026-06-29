@@ -10,9 +10,10 @@
   "sourceKey": "etopo2022_60s_bed_global_overview",
   "sourceVariant": "bedrock elevation overview",
   "actualRasterResolutionArcSeconds": 60.0,
+  "previewActualRasterResolutionArcSeconds": 316.40625,
   "verticalUnits": "meters relative to sea level",
   "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
-  "citation": "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 15 Arc-Second Global Relief Model. https://doi.org/10.25921/fd45-gt74",
+  "citation": "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 Global Relief Model. NOAA National Centers for Environmental Information. https://doi.org/10.25921/fd45-gt74",
   "licenseOrTermsNote": "See source provider terms.",
   "bounds": {
     "westLon": -180,
@@ -24,34 +25,63 @@
     "columns": 4096,
     "rows": 2048
   },
-  "previewPath": null,
-  "previewKind": "metadataDrivenCanvas",
+  "previewPath": "assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-raster.json",
+  "previewKind": "compactRasterJson",
+  "previewResolution": {
+    "columns": 683,
+    "rows": 342
+  },
+  "previewRasterDigest": "sha256:44486b1db75ed28f52f103c443894960665b450ad4a7dc29b17db8886cbfe4a4",
   "colorRamp": [
-    { "label": "land", "color": "#536f40" },
-    { "label": "shelf", "color": "#4bbdb8" },
-    { "label": "slope", "color": "#184b8a" },
-    { "label": "deep", "color": "#061a4a" }
+    {
+      "label": "land",
+      "color": "#536f40"
+    },
+    {
+      "label": "shelf",
+      "color": "#4bbdb8"
+    },
+    {
+      "label": "slope",
+      "color": "#184b8a"
+    },
+    {
+      "label": "deep",
+      "color": "#061a4a"
+    }
   ],
   "elevationSummary": {
-    "status": "NOT_INCLUDED_IN_APP_ARTIFACT",
-    "summaryAvailableInSourceOverview": true,
-    "reason": "The compact browser overview stores provenance and display metadata only. Mission bathymetry extraction uses staged regional patch artifacts."
+    "minElevationMeters": -8702.057617,
+    "maxElevationMeters": 5673.126465,
+    "minDepthMeters": 0.00838,
+    "maxDepthMeters": 8702.057617,
+    "meanDepthMeters": 3234.109705,
+    "landFraction": 0.289088,
+    "oceanFraction": 0.710912,
+    "wetConnectedFraction": 1.0,
+    "slopeStats": {
+      "min": 0.000116,
+      "mean": 207.564199,
+      "max": 6015.506958,
+      "finite": true
+    },
+    "shelfFraction": 0.094268,
+    "basinFraction": 0.766475
   },
   "depthSummary": {
-    "status": "NOT_INCLUDED_IN_APP_ARTIFACT",
-    "summaryAvailableInSourceOverview": true,
-    "reason": "The overview is for atlas selection and patch availability, not mission-resolution bathymetry."
+    "minDepthMeters": 0.00838,
+    "maxDepthMeters": 8702.057617,
+    "meanDepthMeters": 3234.109705,
+    "oceanFraction": 0.710912
   },
   "landOceanSummary": {
-    "status": "NOT_INCLUDED_IN_APP_ARTIFACT",
-    "summaryAvailableInSourceOverview": true,
-    "reason": "The browser renders a deterministic atlas overview and uses staged fixture coverage for patch loading."
+    "landFraction": 0.289088,
+    "oceanFraction": 0.710912
   },
-  "sourceFileDigest": "sha256:a2cc72f8a4292dee928f439069457cdefc1fba319876807c626edce40258ba7a",
-  "sourceOverviewDigest": "sha256:9a460e923b7ca598ab87db90b57c9cb5345aa5f5ba040f0df1423d7a23564dd9",
+  "sourceFileDigest": "sha256:9a460e923b7ca598ab87db90b57c9cb5345aa5f5ba040f0df1423d7a23564dd9",
+  "sourceOverviewDigest": "sha256:44486b1db75ed28f52f103c443894960665b450ad4a7dc29b17db8886cbfe4a4",
   "localAbsolutePathsIncluded": false,
   "rawExternalDataPathIncluded": false,
-  "digest": "sha256:9a460e923b7ca598ab87db90b57c9cb5345aa5f5ba040f0df1423d7a23564dd9",
   "claimBoundary": {
     "overviewForSelectionOnly": true,
     "missionResolutionBathymetry": false,
@@ -62,5 +92,6 @@
     "operationalOceanForecast": false,
     "calibratedForecastSystem": false,
     "hiddenTruthExposed": false
-  }
+  },
+  "digest": "sha256:9e85af126e892254bdfd9860ed2215d9c99f75c7f0a012bcc90ca6d567afea79"
 }

@@ -77,6 +77,9 @@ import {
   syntheticGlobeViewportVisualMetrics
 } from '../../../core/editor/SyntheticGlobeWorld.js';
 import {
+  referenceAtlasNormalizedToLonLat,
+  referenceAtlasPatchOverlays,
+  referenceAtlasViewport,
   referenceBathymetryLayerColor,
   referenceFixtureAtLonLat
 } from '../../../core/editor/ReferenceBathymetryAtlas.js';
@@ -126,6 +129,10 @@ export class EnvironmentStudioScene extends PhaserScene {
       const overviewArtifact = manifest.overview?.overviewPath
         ? await fetchJsonIfAvailable(manifest.overview.overviewPath)
         : null;
+      const overviewRasterPath = overviewArtifact?.previewPath ?? overviewArtifact?.rasterPath ?? manifest.overview?.previewPath ?? manifest.overview?.rasterPath;
+      const overviewRasterArtifact = overviewRasterPath
+        ? await fetchJsonIfAvailable(overviewRasterPath)
+        : null;
       if (manifest.fixtureStatus === 'AVAILABLE' && Array.isArray(manifest.fixtures)) {
         for (const fixture of manifest.fixtures) {
           if (!fixture?.rasterPath) continue;
@@ -135,7 +142,8 @@ export class EnvironmentStudioScene extends PhaserScene {
       }
       this.session = setEnvironmentStudioReferenceBathymetryManifest(this.session, manifest, {
         referenceFixtures: fixtureArtifacts,
-        overviewArtifact
+        overviewArtifact,
+        overviewRasterArtifact
       });
       this.referenceManifestLoaded = true;
       if (this.session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true) {
@@ -521,7 +529,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   resetReferenceView() {
-    this.session = setEnvironmentStudioWorldView(this.session, { panX: 0, panY: 0, rotationYawDegrees: -22, rotationPitchDegrees: 8, zoom: 1 });
+    this.session = setEnvironmentStudioWorldView(this.session, { panX: 0, panY: 0, rotationYawDegrees: 0, rotationPitchDegrees: 0, zoom: 1 });
     this.statusMessage = 'Reference atlas view reset.';
     this.lastError = null;
     this.render();
@@ -540,6 +548,32 @@ export class EnvironmentStudioScene extends PhaserScene {
     if (action === 'reset') return this.resetReferenceView();
     this.session = setEnvironmentStudioWorldView(this.session, patch);
     this.statusMessage = 'Reference atlas view updated.';
+    this.lastError = null;
+    this.render();
+  }
+
+  focusSelectedReferencePatch() {
+    const selectedBounds = this.session.selectedReferenceWindow?.bounds;
+    const fallbackFixture = (this.session.referenceAtlas?.referenceFixtures ?? this.session.referenceBathymetryManifest?.fixtures ?? [])
+      .find((fixture) => fixture.role === 'missionReadyPatch')
+      ?? (this.session.referenceAtlas?.referenceFixtures ?? this.session.referenceBathymetryManifest?.fixtures ?? [])[0];
+    const bounds = selectedBounds ?? fallbackFixture?.bounds;
+    if (!bounds) {
+      this.statusMessage = 'No reference patch is available to focus.';
+      this.lastError = null;
+      this.render();
+      return;
+    }
+    const centerLon = (Number(bounds.westLon) + Number(bounds.eastLon)) / 2;
+    const centerLat = (Number(bounds.southLat) + Number(bounds.northLat)) / 2;
+    this.session = setEnvironmentStudioWorldView(this.session, {
+      panX: clampNumber(centerLon / 180, -1, 1),
+      panY: clampNumber(-centerLat / 90, -1, 1),
+      rotationYawDegrees: 0,
+      rotationPitchDegrees: 0,
+      zoom: 5
+    });
+    this.statusMessage = `Focused atlas view on ${fallbackFixture?.fixtureId ?? 'selected reference patch'}.`;
     this.lastError = null;
     this.render();
   }
@@ -1496,6 +1530,7 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         <button type="button" data-env-reference-view-action="zoom-in">Zoom In</button>
         <button type="button" data-env-reference-view-action="zoom-out">Zoom Out</button>
         <button type="button" data-env-reference-view-action="reset">Reset</button>
+        <button type="button" data-action="env-reference-focus-patch" ${disabledAttr}>Focus Patch</button>
       </div>
       <div class="environment-studio-camera-row" aria-label="Reference layer controls">
         ${REFERENCE_BATHYMETRY_LAYER_OPTIONS.map((layer) => `<button type="button" class="${layer.id === session.referenceLayer ? 'active' : ''}" data-env-reference-layer="${escapeAttr(layer.id)}">${escapeHtml(layer.label)}</button>`).join('')}
@@ -1609,6 +1644,7 @@ function bindEnvironmentStudioReferenceAtlasControls(scene, root) {
   });
   root?.querySelector?.('[data-action="env-reference-draw-boundary"]')?.addEventListener('click', () => scene.toggleReferenceBoundaryDrawing());
   root?.querySelector?.('[data-action="env-reference-select-boundary"]')?.addEventListener('click', () => scene.selectReferenceWindowFromControls());
+  root?.querySelector?.('[data-action="env-reference-focus-patch"]')?.addEventListener('click', () => scene.focusSelectedReferencePatch());
   root?.querySelector?.('[data-action="env-reference-clear-boundary"]')?.addEventListener('click', () => scene.clearReferenceWindow());
   root?.querySelector?.('[data-env-reference-fixture-selector]')?.addEventListener('change', (event) => scene.selectReferenceFixture(event.target.value));
   root?.querySelectorAll?.('[data-env-reference-window-action]')?.forEach((button) => {
@@ -1786,7 +1822,7 @@ function referenceAtlasPreviewHtml(session = {}, project = {}) {
             <div><span>Coordinates</span><strong data-env-reference-coordinate>click map</strong></div>
           </div>
           <div class="environment-studio-reference-map-shell">
-            <canvas width="900" height="480" data-env-reference-bathymetry-map aria-label="Reference bathymetry map"></canvas>
+            <canvas width="900" height="450" data-env-reference-bathymetry-map aria-label="Reference bathymetry map"></canvas>
           </div>
           <div class="environment-studio-camera-row" aria-label="Reference map controls">
             <button type="button" data-env-reference-view-action="left">Pan Left</button>
@@ -1796,6 +1832,7 @@ function referenceAtlasPreviewHtml(session = {}, project = {}) {
             <button type="button" data-env-reference-view-action="zoom-in">Zoom In</button>
             <button type="button" data-env-reference-view-action="zoom-out">Zoom Out</button>
             <button type="button" data-env-reference-view-action="reset">Reset</button>
+            <button type="button" data-action="env-reference-focus-patch">Focus Patch</button>
           </div>
           <div class="environment-studio-depth-ramp" aria-label="Reference atlas legend">
             <span style="background:#536f40">land</span>
@@ -1822,6 +1859,7 @@ function bindReferenceBathymetryPreview(scene, root) {
   root?.querySelectorAll?.('[data-env-reference-view-action]')?.forEach((button) => {
     button.addEventListener('click', () => scene.adjustReferenceView(button.getAttribute('data-env-reference-view-action')));
   });
+  root?.querySelector?.('[data-action="env-reference-focus-patch"]')?.addEventListener('click', () => scene.focusSelectedReferencePatch());
   canvas?.addEventListener?.('mousemove', (event) => {
     const lonLat = referenceCanvasLonLat(canvas, scene.session, event);
     const label = root.querySelector('[data-env-reference-coordinate]');
@@ -1881,18 +1919,15 @@ function drawReferenceGridOverlay(context, session = {}, width = 1, height = 1) 
 }
 
 function drawReferenceFixtureCoverageOverlay(context, session = {}, width = 1, height = 1) {
-  const overlays = session.referenceAtlas?.fixtureCoverageOverlays ?? [];
+  const overlays = referenceAtlasPatchOverlays(session.referenceAtlas, session.worldView, { width, height });
   if (!Array.isArray(overlays) || overlays.length === 0) return;
   context.save();
   for (const overlay of overlays) {
-    const bounds = overlay.bounds;
-    if (!bounds) continue;
-    const nw = referenceLonLatToCanvas(session, bounds.westLon, bounds.northLat, width, height);
-    const se = referenceLonLatToCanvas(session, bounds.eastLon, bounds.southLat, width, height);
-    const x = Math.min(nw.x, se.x);
-    const y = Math.min(nw.y, se.y);
-    const rectWidth = Math.abs(se.x - nw.x);
-    const rectHeight = Math.abs(se.y - nw.y);
+    if (!overlay.visible) continue;
+    const x = overlay.screenBounds.x;
+    const y = overlay.screenBounds.y;
+    const rectWidth = overlay.screenBounds.width;
+    const rectHeight = overlay.screenBounds.height;
     if (rectWidth <= 0 || rectHeight <= 0) continue;
     const missionReady = overlay.role === 'missionReadyPatch';
     context.strokeStyle = missionReady ? '#f4b446' : '#5bacd3';
@@ -1936,28 +1971,20 @@ function referenceCanvasLonLat(canvas, session = {}, event = {}) {
 }
 
 function referenceViewportLonLat(session = {}, nx = 0.5, ny = 0.5) {
-  const view = session.worldView ?? {};
-  const zoom = Math.max(0.75, Math.min(5, Number(view.zoom ?? 1)));
-  const lonSpan = 360 / zoom;
-  const latSpan = 180 / zoom;
-  const centerLon = clampNumber(Number(view.panX ?? 0) * 180, -180 + lonSpan / 2, 180 - lonSpan / 2);
-  const centerLat = clampNumber(-Number(view.panY ?? 0) * 90, -90 + latSpan / 2, 90 - latSpan / 2);
-  return {
-    lon: clampNumber(centerLon - lonSpan / 2 + clampNumber(nx, 0, 1) * lonSpan, -180, 180),
-    lat: clampNumber(centerLat + latSpan / 2 - clampNumber(ny, 0, 1) * latSpan, -90, 90)
-  };
+  const viewport = referenceAtlasViewport(session.worldView, session.referenceAtlas);
+  return referenceAtlasNormalizedToLonLat(clampNumber(nx, 0, 1), clampNumber(ny, 0, 1), {
+    westLon: viewport.lonWest,
+    eastLon: viewport.lonEast,
+    southLat: viewport.latSouth,
+    northLat: viewport.latNorth
+  });
 }
 
 function referenceLonLatToCanvas(session = {}, lon = 0, lat = 0, width = 1, height = 1) {
-  const view = session.worldView ?? {};
-  const zoom = Math.max(0.75, Math.min(5, Number(view.zoom ?? 1)));
-  const lonSpan = 360 / zoom;
-  const latSpan = 180 / zoom;
-  const centerLon = clampNumber(Number(view.panX ?? 0) * 180, -180 + lonSpan / 2, 180 - lonSpan / 2);
-  const centerLat = clampNumber(-Number(view.panY ?? 0) * 90, -90 + latSpan / 2, 90 - latSpan / 2);
+  const viewport = referenceAtlasViewport(session.worldView, session.referenceAtlas);
   return {
-    x: ((Number(lon) - (centerLon - lonSpan / 2)) / lonSpan) * width,
-    y: (((centerLat + latSpan / 2) - Number(lat)) / latSpan) * height
+    x: ((Number(lon) - viewport.lonWest) / Math.max(0.000001, viewport.lonEast - viewport.lonWest)) * width,
+    y: ((viewport.latNorth - Number(lat)) / Math.max(0.000001, viewport.latNorth - viewport.latSouth)) * height
   };
 }
 

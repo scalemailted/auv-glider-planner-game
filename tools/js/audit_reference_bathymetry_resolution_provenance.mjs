@@ -108,6 +108,9 @@ if (manifest.overview) {
   assert.ok(Number.isFinite(Number(manifest.overview.displayResolution?.columns)) && Number(manifest.overview.displayResolution.columns) > 0, 'overview display columns are required');
   assert.ok(Number.isFinite(Number(manifest.overview.displayResolution?.rows)) && Number(manifest.overview.displayResolution.rows) > 0, 'overview display rows are required');
   assert.ok(manifest.overview.overviewPath, 'overview overviewPath is required');
+  assert.ok(manifest.overview.previewPath, 'overview previewPath is required');
+  assert.equal(manifest.overview.previewKind, 'compactRasterJson', 'overview previewKind is compact raster JSON');
+  assert.ok(Number.isFinite(Number(manifest.overview.previewActualRasterResolutionArcSeconds)), 'overview preview actual resolution is required');
   assert.equal(manifest.overview.bounds?.westLon, -180, 'overview westLon is global');
   assert.equal(manifest.overview.bounds?.eastLon, 180, 'overview eastLon is global');
   assert.equal(manifest.overview.bounds?.southLat, -90, 'overview southLat is global');
@@ -122,6 +125,17 @@ if (manifest.overview) {
   assert.equal(overview.claimBoundary?.hiddenTruthExposed, false, 'overview has no hidden truth');
   assert.equal(overview.claimBoundary?.missionResolutionBathymetry, false, 'overview is not mission-resolution bathymetry');
   assert.doesNotMatch(overviewText, /external_data|[A-Z]:\\\\|\/Users\//, 'overview does not expose raw/local paths');
+  const previewPath = path.resolve(ROOT, overview.previewPath.replaceAll('/', path.sep));
+  const previewText = await fs.readFile(previewPath, 'utf8');
+  const preview = JSON.parse(previewText);
+  assert.equal(preview.artifactType, 'anchor.reference-bathymetry-raster', 'overview preview artifact type');
+  assert.equal(preview.role, 'globalOverviewPreview', 'overview preview role');
+  assert.equal(preview.bounds?.westLon, -180, 'overview preview westLon is global');
+  assert.equal(preview.bounds?.eastLon, 180, 'overview preview eastLon is global');
+  assert.equal(preview.bounds?.southLat, -90, 'overview preview southLat is global');
+  assert.equal(preview.bounds?.northLat, 90, 'overview preview northLat is global');
+  assert.equal(preview.provenance?.hiddenTruthExposed, false, 'overview preview has no hidden truth');
+  assert.doesNotMatch(previewText, /external_data|[A-Z]:\\\\|\/Users\//, 'overview preview does not expose raw/local paths');
 }
 
 console.log('audit_reference_bathymetry_resolution_provenance: ok', {

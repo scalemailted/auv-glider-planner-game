@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const REF_ATLAS_OWNER_PACKAGE = 'artifacts/owner-review/ref-atlas-ux-r1-2/qa-summary.json';
 
 function readJson(relativePath) {
   return JSON.parse(readFileSync(path.join(root, relativePath), 'utf8').replace(/^\uFEFF/, ''));
@@ -27,6 +28,7 @@ assert.equal(manifest.overview?.bounds?.westLon, -180);
 assert.equal(manifest.overview?.bounds?.eastLon, 180);
 assert.equal(manifest.overview?.bounds?.southLat, -90);
 assert.equal(manifest.overview?.bounds?.northLat, 90);
+assert.equal(manifest.overview?.previewKind, 'compactRasterJson');
 assert.equal(missionReady?.role, 'missionReadyPatch');
 assert.equal(Number(missionReady?.actualRasterResolutionArcSeconds), 15);
 assert.equal(lowResolution?.role, 'lowResolutionReferencePatch');
@@ -40,7 +42,7 @@ for (const relativePath of [
   'tools/js/audit_reference_environment_public_safety.mjs',
   'docs/alpha_reference_environment_retest_protocol.md',
   'alpha/reference-environment-retest-feedback-template.json',
-  'artifacts/owner-review/ref-atlas-ux-r1/qa-summary.json'
+  REF_ATLAS_OWNER_PACKAGE
 ]) {
   assertExists(relativePath);
 }
@@ -54,7 +56,7 @@ assert.ok(Object.hasOwn(feedbackTemplate.clarity, 'globalOverviewVsMissionPatchC
 assert.ok(Object.hasOwn(feedbackTemplate.clarity, 'offlinePreprocessingClear'), 'feedback template must ask about non-staged regions needing preprocessing');
 assert.ok(Object.hasOwn(feedbackTemplate.usability, 'patchRequestExportClear'), 'feedback template must ask about patch request export');
 
-const ownerSummary = readJson('artifacts/owner-review/ref-atlas-ux-r1/qa-summary.json');
+const ownerSummary = readJson(REF_ATLAS_OWNER_PACKAGE);
 assert.match(ownerSummary.status, /^PASS/);
 assert.equal(ownerSummary.defaultStage, 'globalAtlasSelector');
 assert.equal(ownerSummary.overviewIsGlobal, true);
@@ -75,7 +77,7 @@ assert.equal(ownerSummary.failureCount, 0);
 assert.ok(Array.isArray(ownerSummary.screenshots) && ownerSummary.screenshots.length >= 10, 'ref atlas owner package must include at least 10 screenshots');
 
 const artifactText = [
-  readText('artifacts/owner-review/ref-atlas-ux-r1/qa-summary.json')
+  readText(REF_ATLAS_OWNER_PACKAGE)
 ].join('\n');
 assert.ok(!/external_data[\\/]/i.test(artifactText), 'owner artifacts must not expose raw external_data paths');
 assert.ok(!/T_hiddenTruth|rawOracleTensor|oracleState/.test(artifactText), 'owner artifacts must not expose hidden truth markers');

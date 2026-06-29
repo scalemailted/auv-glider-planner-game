@@ -12,13 +12,20 @@
     "sourceKey": "etopo2022_60s_bed_global_overview",
     "sourceVariant": "bedrock elevation overview",
     "actualRasterResolutionArcSeconds": 60.0,
+    "previewActualRasterResolutionArcSeconds": 316.40625,
     "displayResolution": {
       "columns": 4096,
       "rows": 2048
     },
+    "previewResolution": {
+      "columns": 683,
+      "rows": 342
+    },
     "overviewPath": "assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-overview.json",
-    "previewPath": null,
-    "digest": "sha256:9a460e923b7ca598ab87db90b57c9cb5345aa5f5ba040f0df1423d7a23564dd9",
+    "previewPath": "assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-raster.json",
+    "previewKind": "compactRasterJson",
+    "previewRasterDigest": "sha256:44486b1db75ed28f52f103c443894960665b450ad4a7dc29b17db8886cbfe4a4",
+    "digest": "sha256:9e85af126e892254bdfd9860ed2215d9c99f75c7f0a012bcc90ca6d567afea79",
     "bounds": {
       "westLon": -180,
       "eastLon": 180,
@@ -110,5 +117,5 @@
     "operationalOceanForecast": false,
     "hiddenTruthExposed": false
   },
-  "manifestDigest": "fnv1a32:3884ab88"
+  "manifestDigest": "sha256:c5436230e5405843f9884824aa4f2e2b9cf99e334d09e0fa7fdd7b918b8144dc"
 }

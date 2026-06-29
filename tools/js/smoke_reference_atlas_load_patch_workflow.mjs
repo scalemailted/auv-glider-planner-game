@@ -14,6 +14,7 @@ import {
 const ROOT = process.cwd();
 const manifest = await readJson('assets/reference_bathymetry/manifest.json');
 const overviewArtifact = await readJson(manifest.overview.overviewPath);
+const overviewRasterArtifact = await readJson(overviewArtifact.previewPath ?? manifest.overview.previewPath);
 const missionReady = manifest.fixtures.find((entry) => entry.fixtureId === 'monterey_canyon_15s')
   ?? manifest.fixtures.find((entry) => entry.role === 'missionReadyPatch');
 assert.ok(missionReady, 'mission-ready Monterey fixture is available');
@@ -26,6 +27,7 @@ let session = createEnvironmentStudioSession({
   seed: 'ref-atlas-ux-r1-load-workflow',
   referenceBathymetryManifest: manifest,
   overviewArtifact,
+  overviewRasterArtifact,
   referenceFixtures
 });
 assert.equal(session.studioStage, 'globalAtlasSelector', 'starts at global atlas selector');

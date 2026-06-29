@@ -15,6 +15,7 @@ import {
 const ROOT = process.cwd();
 const manifest = await readJson('assets/reference_bathymetry/manifest.json');
 const overviewArtifact = await readJson(manifest.overview.overviewPath);
+const overviewRasterArtifact = await readJson(overviewArtifact.previewPath ?? manifest.overview.previewPath);
 const referenceFixtures = await Promise.all(manifest.fixtures.map(async (fixture) => ({
   ...fixture,
   rasterArtifact: await readJson(fixture.rasterPath)
@@ -22,6 +23,7 @@ const referenceFixtures = await Promise.all(manifest.fixtures.map(async (fixture
 const atlas = createReferenceBathymetryAtlas({
   manifest,
   overviewArtifact,
+  overviewRasterArtifact,
   referenceFixtures
 });
 const unstagedBounds = {
@@ -50,6 +52,7 @@ assert.match(request.auditCommand, /audit:reference-bathy/, 'audit command recor
 let session = createEnvironmentStudioSession({
   referenceBathymetryManifest: manifest,
   overviewArtifact,
+  overviewRasterArtifact,
   referenceFixtures
 });
 session = selectEnvironmentStudioReferenceWindow(session, unstagedBounds);

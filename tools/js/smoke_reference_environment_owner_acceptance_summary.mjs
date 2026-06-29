@@ -3,19 +3,19 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const ownerReviewDir = path.resolve(root, process.env.ANCHOR_ENV_COMPOSE_OWNER_REVIEW_DIR ?? process.env.ANCHOR_E2E_OWNER_REVIEW_DIR ?? 'artifacts/owner-review/ref-atlas-ux-r1');
+const ownerReviewDir = path.resolve(root, process.env.ANCHOR_ENV_COMPOSE_OWNER_REVIEW_DIR ?? process.env.ANCHOR_E2E_OWNER_REVIEW_DIR ?? 'artifacts/owner-review/ref-atlas-ux-r1-2');
 const summaryPath = path.join(ownerReviewDir, 'qa-summary.json');
 
 const requiredScreenshots = [
-  '01-global-atlas-default.png',
-  '02-global-atlas-zoomed.png',
-  '03-mission-ready-patch-overlay.png',
-  '04-selected-atlas-region.png',
-  '05-patch-request-not-staged.png',
+  '01-global-atlas-default-full-world.png',
+  '02-global-atlas-reset-view.png',
+  '03-global-atlas-land-ocean-visible.png',
+  '04-monterey-overlay-full-world.png',
+  '05-monterey-overlay-focused.png',
   '06-monterey-patch-loaded.png',
-  '07-regional-bathymetry-generated.png',
-  '08-fields-generated.png',
-  '09-environment-composed.png',
+  '07-nonstaged-bbox-patch-request.png',
+  '08-regional-bathymetry-generated.png',
+  '09-fields-generated.png',
   '10-planning-launch-ready.png'
 ];
 
@@ -26,14 +26,25 @@ const requiredFields = [
   'phase',
   'defaultStage',
   'overviewDigest',
+  'overviewPath',
+  'overviewAspectRatio',
   'overviewBounds',
   'overviewIsGlobal',
   'defaultViewIsRegionalPatch',
+  'defaultViewport',
+  'resetViewport',
+  'centerLonAtReset',
+  'centerLatAtReset',
+  'lonSpanAtReset',
+  'latSpanAtReset',
+  'pageScrollbarsInMapArea',
   'fixtureStatus',
   'missionReadyPatchCount',
   'lowResolutionPatchCount',
   'patchCoverageOverlayCount',
+  'montereyOverlay',
   'selectedRegionAvailability',
+  'patchRequestExported',
   'matchedFixtureId',
   'loadedFixtureId',
   'loadedFixtureRole',
@@ -74,16 +85,25 @@ for (const screenshot of requiredScreenshots) {
 }
 
 assert.ok(['PASS', 'PASS_WITH_NON_BLOCKING_WARNINGS'].includes(summary.status), `invalid owner-review status ${summary.status}`);
-assert.equal(summary.phase, 'REF-ATLAS-UX-R1.1');
+assert.equal(summary.phase, 'REF-ATLAS-UX-R1.2');
 assert.equal(summary.defaultStage, 'globalAtlasSelector');
 assert.equal(summary.overviewIsGlobal, true);
 assert.equal(summary.defaultViewIsRegionalPatch, false);
+assert.ok(Math.abs(Number(summary.overviewAspectRatio) - 2) < 0.01, 'overview aspect ratio must be 2:1');
 assert.deepEqual(summary.overviewBounds, { westLon: -180, eastLon: 180, southLat: -90, northLat: 90 });
+assert.ok(summary.defaultViewport?.lonSpan >= 300, 'default viewport must cover global longitude span');
+assert.ok(summary.resetViewport?.latSpan >= 140, 'reset viewport must cover global latitude span');
+assert.ok(Math.abs(Number(summary.centerLonAtReset)) <= 1, 'reset center lon near zero');
+assert.ok(Math.abs(Number(summary.centerLatAtReset)) <= 1, 'reset center lat near zero');
+assert.equal(summary.pageScrollbarsInMapArea, false);
 assert.equal(summary.fixtureStatus, 'AVAILABLE');
 assert.ok(Number(summary.missionReadyPatchCount) >= 1);
 assert.ok(Number(summary.lowResolutionPatchCount) >= 1);
 assert.ok(Number(summary.patchCoverageOverlayCount) >= 1);
+assert.equal(summary.montereyOverlay?.visible, true, 'Monterey overlay must be visible');
+assert.equal(summary.montereyOverlay?.selectable, true, 'Monterey overlay must be selectable');
 assert.equal(summary.selectedRegionAvailability, 'missionReadyPatchAvailable');
+assert.equal(summary.patchRequestExported, true);
 assert.equal(summary.loadedFixtureId, 'monterey_canyon_15s');
 assert.equal(summary.loadedFixtureRole, 'missionReadyPatch');
 assert.equal(summary.referenceFixtureId, 'monterey_canyon_15s');

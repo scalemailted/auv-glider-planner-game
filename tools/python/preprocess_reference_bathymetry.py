@@ -22,6 +22,9 @@ RAW_ROOT = ROOT / "external_data" / "reference_bathymetry"
 ASSET_ROOT = ROOT / "assets" / "reference_bathymetry"
 MANIFEST_PATH = ASSET_ROOT / "manifest.json"
 PREPROCESSOR_VERSION = "anchor-reference-bathy-preprocessor-v1"
+GLOBAL_OVERVIEW_ID = "etopo2022_global_overview_60s"
+GLOBAL_OVERVIEW_SOURCE = RAW_ROOT / "etopo2022" / "overview" / "ETOPO_2022_60s_overview_4096px.tif"
+GLOBAL_OVERVIEW_SUMMARY = RAW_ROOT / "etopo2022" / "overview" / "ETOPO_2022_60s_overview_4096px.summary.json"
 ETOPO_CITATION = (
     "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 "
     "Global Relief Model. NOAA National Centers for Environmental Information. "
@@ -34,6 +37,9 @@ def main() -> int:
     parser.add_argument("--input", type=Path, action="append", default=[], help="GeoTIFF patch to preprocess. Defaults to external_data/reference_bathymetry/patches/*.tif.")
     parser.add_argument("--max-width", type=int, default=513, help="Maximum fixture columns after decimation.")
     parser.add_argument("--max-height", type=int, default=513, help="Maximum fixture rows after decimation.")
+    parser.add_argument("--overview-input", type=Path, default=GLOBAL_OVERVIEW_SOURCE, help="Global overview GeoTIFF used for browser atlas preview.")
+    parser.add_argument("--overview-max-width", type=int, default=720, help="Maximum overview preview columns after decimation.")
+    parser.add_argument("--overview-max-height", type=int, default=360, help="Maximum overview preview rows after decimation.")
     args = parser.parse_args()
 
     inputs = [path for path in args.input if path.exists()]
@@ -81,28 +87,19 @@ def main() -> int:
         })
 
     fixtures.sort(key=fixture_sort_key)
-    overview = fixtures[0] if fixtures else None
+    overview_artifact = build_global_overview_artifact(
+        rasterio,
+        numpy,
+        args.overview_input,
+        args.overview_max_width,
+        args.overview_max_height,
+    ) if args.overview_input.exists() else None
+    overview = compact_global_overview_manifest(overview_artifact) if overview_artifact else fallback_overview_manifest(fixtures)
     manifest = {
         "artifactType": "anchor.reference-bathymetry-manifest",
         "artifactVersion": "1.0.0",
         "fixtureStatus": "AVAILABLE",
-        "overview": {
-            "fixtureId": overview["fixtureId"],
-            "label": "Reference Bathymetry Overview",
-            "role": "overview",
-            "sourceDataset": overview["sourceDataset"],
-            "provider": overview["provider"],
-            "sourceResolution": overview["sourceResolution"],
-            "sourceKey": overview["sourceKey"],
-            "sourceVariant": overview["sourceVariant"],
-            "actualRasterResolutionArcSeconds": overview["actualRasterResolutionArcSeconds"],
-            "columns": overview["columns"],
-            "rows": overview["rows"],
-            "resolution": overview["sourceResolution"],
-            "rasterPath": overview["rasterPath"],
-            "digest": overview["digest"],
-            "bounds": overview["bounds"],
-        },
+        "overview": overview,
         "fixtures": fixtures,
         "instructions": available_instructions(fixtures),
         "provenance": {
@@ -127,6 +124,8 @@ def main() -> int:
         "status": "AVAILABLE",
         "manifestPath": rel(MANIFEST_PATH),
         "fixtureCount": len(fixtures),
+        "overviewId": overview.get("overviewId") or overview.get("fixtureId"),
+        "overviewPreviewPath": overview.get("previewPath"),
         "manifestDigest": manifest["manifestDigest"],
     }, indent=2))
     return 0
@@ -232,6 +231,179 @@ def build_fixture_artifact(rasterio, numpy, source: Path, max_width: int, max_he
     return with_digest(artifact, "rasterDigest")
 
 
+def build_global_overview_artifact(rasterio, numpy, source: Path, max_width: int, max_height: int) -> dict:
+    raster = build_overview_raster_artifact(rasterio, numpy, source, max_width, max_height)
+    raster_path = ASSET_ROOT / f"{GLOBAL_OVERVIEW_ID}.reference-bathymetry-raster.json"
+    write_compact_json(raster_path, raster)
+    summary = read_json_if_exists(GLOBAL_OVERVIEW_SUMMARY)
+    display_resolution = summary.get("displayResolution") or summary.get("grid") or {
+        "columns": 4096,
+        "rows": 2048,
+    }
+    artifact = {
+        "artifactType": "anchor.reference-bathymetry-overview",
+        "artifactVersion": "1.0.0",
+        "overviewId": GLOBAL_OVERVIEW_ID,
+        "label": "ETOPO 2022 Global 60s Overview",
+        "role": "globalOverview",
+        "sourceDataset": "ETOPO_2022",
+        "provider": "NOAA NCEI",
+        "sourceResolution": "60 arc-second",
+        "sourceKey": "etopo2022_60s_bed_global_overview",
+        "sourceVariant": "bedrock elevation overview",
+        "actualRasterResolutionArcSeconds": 60.0,
+        "previewActualRasterResolutionArcSeconds": raster["actualRasterResolutionArcSeconds"],
+        "verticalUnits": "meters relative to sea level",
+        "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
+        "citation": ETOPO_CITATION,
+        "licenseOrTermsNote": "See source provider terms.",
+        "bounds": raster["bounds"],
+        "displayResolution": {
+            "columns": int(display_resolution.get("columns") or 4096),
+            "rows": int(display_resolution.get("rows") or 2048),
+        },
+        "previewPath": rel(raster_path),
+        "previewKind": "compactRasterJson",
+        "previewResolution": {
+            "columns": raster["grid"]["columns"],
+            "rows": raster["grid"]["rows"],
+        },
+        "previewRasterDigest": raster["rasterDigest"],
+        "colorRamp": [
+            {"label": "land", "color": "#536f40"},
+            {"label": "shelf", "color": "#4bbdb8"},
+            {"label": "slope", "color": "#184b8a"},
+            {"label": "deep", "color": "#061a4a"},
+        ],
+        "elevationSummary": raster["summaries"],
+        "depthSummary": {
+            "minDepthMeters": raster["summaries"]["minDepthMeters"],
+            "maxDepthMeters": raster["summaries"]["maxDepthMeters"],
+            "meanDepthMeters": raster["summaries"]["meanDepthMeters"],
+            "oceanFraction": raster["summaries"]["oceanFraction"],
+        },
+        "landOceanSummary": {
+            "landFraction": raster["summaries"]["landFraction"],
+            "oceanFraction": raster["summaries"]["oceanFraction"],
+        },
+        "sourceFileDigest": raster["provenance"]["sourceFileDigest"],
+        "sourceOverviewDigest": raster["rasterDigest"],
+        "localAbsolutePathsIncluded": False,
+        "rawExternalDataPathIncluded": False,
+        "claimBoundary": {
+            "overviewForSelectionOnly": True,
+            "missionResolutionBathymetry": False,
+            "referenceBathymetryAvailable": True,
+            "currentField4DGenerated": False,
+            "scalarField4DGenerated": False,
+            "certifiedForNavigation": False,
+            "operationalOceanForecast": False,
+            "calibratedForecastSystem": False,
+            "hiddenTruthExposed": False,
+        },
+    }
+    overview_path = ASSET_ROOT / f"{GLOBAL_OVERVIEW_ID}.reference-bathymetry-overview.json"
+    artifact = with_digest(artifact, "digest")
+    write_json(overview_path, artifact)
+    return artifact
+
+
+def build_overview_raster_artifact(rasterio, numpy, source: Path, max_width: int, max_height: int) -> dict:
+    with rasterio.open(source) as dataset:
+        resolution = infer_arc_second_resolution(dataset.res[0], dataset.res[1])
+        width_factor = max(1, math.ceil(dataset.width / max(1, max_width)))
+        height_factor = max(1, math.ceil(dataset.height / max(1, max_height)))
+        factor = max(width_factor, height_factor)
+        rows = max(1, math.ceil(dataset.height / factor))
+        columns = max(1, math.ceil(dataset.width / factor))
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Setting the shape on a NumPy array has been deprecated.*",
+                category=DeprecationWarning,
+            )
+            elevation = dataset.read(
+                1,
+                out_shape=(rows, columns),
+                resampling=rasterio.enums.Resampling.average,
+            ).astype(float)
+        nodata = dataset.nodata
+        if nodata is not None:
+            elevation = numpy.where(elevation == nodata, numpy.nan, elevation)
+        elevation = numpy.where(numpy.isfinite(elevation), elevation, 0.0)
+        bounds = {
+            "westLon": -180,
+            "eastLon": 180,
+            "southLat": -90,
+            "northLat": 90,
+        }
+
+    lon_axis = [round(bounds["westLon"] + (bounds["eastLon"] - bounds["westLon"]) * x / max(1, columns - 1), 8) for x in range(columns)]
+    lat_axis = [round(bounds["northLat"] - (bounds["northLat"] - bounds["southLat"]) * y / max(1, rows - 1), 8) for y in range(rows)]
+    elevation_list = [[round_float(value) for value in row] for row in elevation.tolist()]
+    depth = [[round_float(max(0.0, -float(value))) for value in row] for row in elevation_list]
+    wet = [[float(value) < 0.0 for value in row] for row in elevation_list]
+    land = [[not cell for cell in row] for row in wet]
+    return with_digest({
+        "artifactType": "anchor.reference-bathymetry-raster",
+        "artifactVersion": "1.0.0",
+        "fixtureId": GLOBAL_OVERVIEW_ID,
+        "role": "globalOverviewPreview",
+        "sourceResolution": "60 arc-second",
+        "sourceKey": "etopo2022_60s_bed_global_overview",
+        "sourceVariant": "bedrock elevation overview",
+        "actualRasterResolutionArcSeconds": resolution.arc_seconds,
+        "degreeResolution": {
+            "longitudeDegrees": resolution.longitude_degrees,
+            "latitudeDegrees": resolution.latitude_degrees,
+        },
+        "sourceDataset": {
+            "name": "ETOPO_2022",
+            "provider": "NOAA NCEI",
+            "version": "v1",
+            "sourceResolution": "60 arc-second",
+            "sourceKey": "etopo2022_60s_bed_global_overview",
+            "sourceVariant": "bedrock elevation overview",
+            "verticalUnits": "meters relative to sea level",
+            "horizontalCoordinateFrame": "EPSG:4326 lon/lat",
+            "citation": ETOPO_CITATION,
+            "licenseOrTermsNote": "See source provider terms",
+        },
+        "bounds": bounds,
+        "grid": {
+            "columns": columns,
+            "rows": rows,
+            "lonAxis": lon_axis,
+            "latAxis": lat_axis,
+            "elevationMeters": elevation_list,
+        },
+        "derived": {
+            "depthMetersPositiveDown": depth,
+            "wetMask": wet,
+            "landMask": land,
+        },
+        "summaries": summarize(elevation_list, depth, wet),
+        "provenance": {
+            "preprocessor": PREPROCESSOR_VERSION,
+            "sourceFileName": source.name,
+            "sourceFileDigest": digest_file(source),
+            "sourceKey": "etopo2022_60s_bed_global_overview",
+            "sourceVariant": "bedrock elevation overview",
+            "sourceResolution": "60 arc-second",
+            "previewSourceResolution": resolution.source_resolution,
+            "actualRasterResolutionArcSeconds": resolution.arc_seconds,
+            "degreeResolution": {
+                "longitudeDegrees": resolution.longitude_degrees,
+                "latitudeDegrees": resolution.latitude_degrees,
+            },
+            "role": "globalOverviewPreview",
+            "claimBoundary": "reference bathymetry overview for atlas selection; not mission-resolution or navigation data",
+            "localAbsolutePathsIncluded": False,
+            "hiddenTruthExposed": False,
+        },
+    }, "rasterDigest")
+
+
 def blocked_manifest() -> dict:
     return {
         "artifactType": "anchor.reference-bathymetry-manifest",
@@ -277,9 +449,61 @@ def available_instructions(fixtures: list[dict]) -> dict:
         "downloadCommand": "npm.cmd run download:reference-bathy",
         "preprocessCommand": "npm.cmd run preprocess:reference-bathy",
         "auditCommand": "npm.cmd run audit:reference-bathy",
-        "rawDataDirectory": "external_data/reference_bathymetry/",
         "artifactDirectory": "assets/reference_bathymetry/",
         "note": "The browser app does not download NOAA or GEBCO data at runtime.",
+    }
+
+
+def compact_global_overview_manifest(artifact: dict) -> dict:
+    return {
+        "overviewId": artifact["overviewId"],
+        "label": artifact["label"],
+        "role": artifact["role"],
+        "sourceDataset": artifact["sourceDataset"],
+        "provider": artifact["provider"],
+        "sourceResolution": artifact["sourceResolution"],
+        "sourceKey": artifact["sourceKey"],
+        "sourceVariant": artifact["sourceVariant"],
+        "actualRasterResolutionArcSeconds": artifact["actualRasterResolutionArcSeconds"],
+        "previewActualRasterResolutionArcSeconds": artifact.get("previewActualRasterResolutionArcSeconds"),
+        "displayResolution": artifact["displayResolution"],
+        "previewResolution": artifact["previewResolution"],
+        "overviewPath": f"assets/reference_bathymetry/{GLOBAL_OVERVIEW_ID}.reference-bathymetry-overview.json",
+        "previewPath": artifact["previewPath"],
+        "previewKind": artifact["previewKind"],
+        "previewRasterDigest": artifact["previewRasterDigest"],
+        "digest": artifact["digest"],
+        "bounds": artifact["bounds"],
+    }
+
+
+def fallback_overview_manifest(fixtures: list[dict]) -> dict:
+    overview = fixtures[0] if fixtures else {}
+    return {
+        "overviewId": "reference_bathymetry_fixture_overview",
+        "fixtureId": overview.get("fixtureId"),
+        "label": "Reference Bathymetry Overview",
+        "role": "globalOverview",
+        "sourceDataset": overview.get("sourceDataset", "ETOPO_2022"),
+        "provider": overview.get("provider", "NOAA NCEI"),
+        "sourceResolution": overview.get("sourceResolution", "preprocessed fixture resolution"),
+        "sourceKey": overview.get("sourceKey"),
+        "sourceVariant": overview.get("sourceVariant"),
+        "actualRasterResolutionArcSeconds": overview.get("actualRasterResolutionArcSeconds"),
+        "displayResolution": {
+            "columns": overview.get("columns", 0),
+            "rows": overview.get("rows", 0),
+        },
+        "overviewPath": overview.get("rasterPath"),
+        "previewPath": overview.get("rasterPath"),
+        "previewKind": "regionalFixtureFallback",
+        "digest": overview.get("digest"),
+        "bounds": {
+            "westLon": -180,
+            "eastLon": 180,
+            "southLat": -90,
+            "northLat": 90,
+        },
     }
 
 
@@ -365,6 +589,17 @@ def digest_file(path: Path) -> str:
 def write_json(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=False) + "\n", encoding="utf-8", newline="\n")
+
+
+def write_compact_json(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, sort_keys=False, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
+
+
+def read_json_if_exists(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def require_module(name: str, install_hint: str):

@@ -37,6 +37,12 @@ export const REFERENCE_BATHYMETRY_LAYER_OPTIONS = Object.freeze([
 ]);
 
 const DEFAULT_PREVIEW_RESOLUTION = Object.freeze({ width: 180, height: 90 });
+export const GLOBAL_REFERENCE_ATLAS_BOUNDS = Object.freeze({
+  westLon: -180,
+  eastLon: 180,
+  southLat: -90,
+  northLat: 90
+});
 const DEFAULT_REFERENCE_BOUNDS = Object.freeze({
   westLon: -124.4,
   eastLon: -121.7,
@@ -373,6 +379,110 @@ export function referenceFixtureCoverageOverlays(atlasOrFixtures = []) {
     coverageKind: fixture.role === 'missionReadyPatch' ? 'missionReadyPatch' : 'lowResolutionReferencePatch',
     hiddenTruthExposed: false
   }));
+}
+
+export function referenceAtlasViewport(viewInput = {}, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
+  const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
+  const worldLonSpan = Math.max(0.000001, bounds.eastLon - bounds.westLon);
+  const worldLatSpan = Math.max(0.000001, bounds.northLat - bounds.southLat);
+  const zoom = clampNumber(viewInput.zoom ?? 1, 1, 32);
+  const lonSpan = worldLonSpan / zoom;
+  const latSpan = worldLatSpan / zoom;
+  const requestedCenterLon = Number.isFinite(Number(viewInput.centerLon))
+    ? Number(viewInput.centerLon)
+    : Number(viewInput.panX ?? 0) * (worldLonSpan / 2);
+  const requestedCenterLat = Number.isFinite(Number(viewInput.centerLat))
+    ? Number(viewInput.centerLat)
+    : -Number(viewInput.panY ?? 0) * (worldLatSpan / 2);
+  const centerLon = clampNumber(
+    requestedCenterLon,
+    bounds.westLon + lonSpan / 2,
+    bounds.eastLon - lonSpan / 2
+  );
+  const centerLat = clampNumber(
+    requestedCenterLat,
+    bounds.southLat + latSpan / 2,
+    bounds.northLat - latSpan / 2
+  );
+  const lonWest = centerLon - lonSpan / 2;
+  const lonEast = centerLon + lonSpan / 2;
+  const latSouth = centerLat - latSpan / 2;
+  const latNorth = centerLat + latSpan / 2;
+  return {
+    lonWest: round(lonWest),
+    lonEast: round(lonEast),
+    latSouth: round(latSouth),
+    latNorth: round(latNorth),
+    centerLon: round(centerLon),
+    centerLat: round(centerLat),
+    lonSpan: round(lonSpan),
+    latSpan: round(latSpan),
+    zoom: round(zoom),
+    worldFractionVisible: round((lonSpan / worldLonSpan) * (latSpan / worldLatSpan)),
+    bounds
+  };
+}
+
+export function referenceAtlasLonLatToNormalized(lon = 0, lat = 0, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
+  const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
+  return {
+    x: round((Number(lon) - bounds.westLon) / Math.max(0.000001, bounds.eastLon - bounds.westLon)),
+    y: round((bounds.northLat - Number(lat)) / Math.max(0.000001, bounds.northLat - bounds.southLat))
+  };
+}
+
+export function referenceAtlasNormalizedToLonLat(x = 0.5, y = 0.5, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
+  const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
+  const nx = clampNumber(x, 0, 1);
+  const ny = clampNumber(y, 0, 1);
+  return {
+    lon: round(bounds.westLon + nx * (bounds.eastLon - bounds.westLon)),
+    lat: round(bounds.northLat - ny * (bounds.northLat - bounds.southLat))
+  };
+}
+
+export function referenceAtlasBoundsToNormalized(boundsInput = DEFAULT_REFERENCE_BOUNDS, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
+  const bounds = normalizeLonLatBounds(boundsInput);
+  const nw = referenceAtlasLonLatToNormalized(bounds.westLon, bounds.northLat, atlasOrBounds);
+  const se = referenceAtlasLonLatToNormalized(bounds.eastLon, bounds.southLat, atlasOrBounds);
+  return {
+    x: round(Math.min(nw.x, se.x)),
+    y: round(Math.min(nw.y, se.y)),
+    width: round(Math.abs(se.x - nw.x)),
+    height: round(Math.abs(se.y - nw.y)),
+    westX: nw.x,
+    eastX: se.x,
+    northY: nw.y,
+    southY: se.y
+  };
+}
+
+export function referenceAtlasPatchOverlays(atlasInput = {}, viewInput = {}, canvasSize = {}) {
+  const atlas = normalizeReferenceBathymetryAtlas(atlasInput);
+  const viewport = referenceAtlasViewport(viewInput, atlas);
+  const width = positive(canvasSize.width, 900);
+  const height = positive(canvasSize.height, 450);
+  return referenceFixtureCoverageOverlays(atlas).map((overlay) => {
+    const normalizedBounds = referenceAtlasBoundsToNormalized(overlay.bounds, atlas);
+    const nw = referenceAtlasLonLatToViewportPoint(overlay.bounds.westLon, overlay.bounds.northLat, viewport, width, height);
+    const se = referenceAtlasLonLatToViewportPoint(overlay.bounds.eastLon, overlay.bounds.southLat, viewport, width, height);
+    const x = Math.min(nw.x, se.x);
+    const y = Math.min(nw.y, se.y);
+    const rectWidth = Math.abs(se.x - nw.x);
+    const rectHeight = Math.abs(se.y - nw.y);
+    return {
+      ...overlay,
+      normalizedBounds,
+      screenBounds: {
+        x: round(x),
+        y: round(y),
+        width: round(rectWidth),
+        height: round(rectHeight)
+      },
+      visible: x + rectWidth >= 0 && x <= width && y + rectHeight >= 0 && y <= height,
+      selectable: overlay.role === 'missionReadyPatch' || overlay.role === 'lowResolutionReferencePatch'
+    };
+  });
 }
 
 export function referenceFixtureAtLonLat(atlasInput = {}, lon = 0, lat = 0) {
@@ -761,14 +871,27 @@ function sampleReferenceWindowStats(atlas = {}, bounds = DEFAULT_REFERENCE_BOUND
 }
 
 function summarizeElevationRaster(raster = []) {
-  const values = raster.flat().map(Number).filter(Number.isFinite);
-  const ocean = values.filter((value) => value < 0);
-  const land = values.filter((value) => value >= 0);
+  let count = 0;
+  let oceanCount = 0;
+  let landCount = 0;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const row of raster) {
+    for (const value of row ?? []) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) continue;
+      count += 1;
+      if (number < min) min = number;
+      if (number > max) max = number;
+      if (number < 0) oceanCount += 1;
+      else landCount += 1;
+    }
+  }
   return {
-    elevationMinMeters: values.length ? round(Math.min(...values)) : 0,
-    elevationMaxMeters: values.length ? round(Math.max(...values)) : 0,
-    oceanFraction: round(values.length ? ocean.length / values.length : 0),
-    landFraction: round(values.length ? land.length / values.length : 0)
+    elevationMinMeters: count ? round(min) : 0,
+    elevationMaxMeters: count ? round(max) : 0,
+    oceanFraction: round(count ? oceanCount / count : 0),
+    landFraction: round(count ? landCount / count : 0)
   };
 }
 
@@ -969,9 +1092,16 @@ function normalizeManifestOverview(input = {}) {
       columns,
       rows
     },
+    previewResolution: input.previewResolution ? {
+      columns: clampInteger(input.previewResolution.columns, 0, 20000),
+      rows: clampInteger(input.previewResolution.rows, 0, 20000)
+    } : null,
     resolution: input.resolution ?? null,
     overviewPath: input.overviewPath ?? input.path ?? null,
     previewPath: input.previewPath ?? null,
+    previewKind: input.previewKind ?? null,
+    previewRasterDigest: input.previewRasterDigest ?? null,
+    previewActualRasterResolutionArcSeconds: finiteOrNull(input.previewActualRasterResolutionArcSeconds),
     rasterPath: input.rasterPath ?? null,
     digest: input.digest ?? null,
     bounds: input.bounds ? normalizeLonLatBounds(input.bounds) : {
@@ -1087,6 +1217,12 @@ function normalizeReferenceOverviewArtifact(input = null) {
     },
     previewPath: input.previewPath ?? null,
     previewKind: input.previewKind ?? 'metadataDrivenCanvas',
+    previewResolution: input.previewResolution ? {
+      columns: clampInteger(input.previewResolution.columns, 0, 20000),
+      rows: clampInteger(input.previewResolution.rows, 0, 20000)
+    } : null,
+    previewRasterDigest: input.previewRasterDigest ?? null,
+    previewActualRasterResolutionArcSeconds: finiteOrNull(input.previewActualRasterResolutionArcSeconds),
     colorRamp: Array.isArray(input.colorRamp) ? input.colorRamp.map((entry) => ({ ...entry })) : [],
     elevationSummary: input.elevationSummary ?? null,
     depthSummary: input.depthSummary ?? null,
@@ -1184,6 +1320,18 @@ function isWorldScaleBounds(bounds = null) {
     && Number(bounds.eastLon) >= 179
     && Number(bounds.southLat) <= -89
     && Number(bounds.northLat) >= 89;
+}
+
+function referenceAtlasBoundsFromInput(input = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
+  const bounds = input?.overviewBounds ?? input?.overviewArtifact?.bounds ?? input?.manifest?.overview?.bounds ?? input?.bounds ?? input;
+  return normalizeLonLatBounds(bounds ?? GLOBAL_REFERENCE_ATLAS_BOUNDS);
+}
+
+function referenceAtlasLonLatToViewportPoint(lon = 0, lat = 0, viewport = referenceAtlasViewport(), width = 1, height = 1) {
+  return {
+    x: round(((Number(lon) - viewport.lonWest) / Math.max(0.000001, viewport.lonEast - viewport.lonWest)) * width),
+    y: round(((viewport.latNorth - Number(lat)) / Math.max(0.000001, viewport.latNorth - viewport.latSouth)) * height)
+  };
 }
 
 function sampleReferenceRasterArtifact(artifact = null, lon = 0, lat = 0) {

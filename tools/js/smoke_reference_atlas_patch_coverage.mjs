@@ -13,9 +13,11 @@ import {
 const ROOT = process.cwd();
 const manifest = await readJson('assets/reference_bathymetry/manifest.json');
 const overviewArtifact = await readJson(manifest.overview.overviewPath);
+const overviewRasterArtifact = await readJson(overviewArtifact.previewPath ?? manifest.overview.previewPath);
 const atlas = createReferenceBathymetryAtlas({
   manifest,
   overviewArtifact,
+  overviewRasterArtifact,
   referenceFixtures: manifest.fixtures
 });
 const overlays = referenceFixtureCoverageOverlays(atlas);
@@ -54,6 +56,7 @@ const metrics = referenceBathymetryVisualMetrics(atlas);
 assert.equal(metrics.defaultStage, 'globalAtlasSelector', 'metrics default stage');
 assert.equal(metrics.overviewIsGlobal, true, 'metrics overview global');
 assert.equal(metrics.defaultViewIsRegionalPatch, false, 'metrics default is not regional');
+assert.equal(atlas.overviewRasterArtifact.role, 'globalOverviewPreview', 'atlas uses overview raster artifact');
 assert.ok(metrics.patchCoverageOverlays.length >= 2, 'metrics expose patch overlays');
 assert.equal(metrics.hiddenTruthExposed, false, 'metrics expose no hidden truth');
 

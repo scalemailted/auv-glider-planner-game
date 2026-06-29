@@ -88,13 +88,15 @@ assert.equal(session.dependencyGraph.nodes.hotspots.state, 'REQUIRES_REGENERATIO
 assert.equal(session.dependencyGraph.nodes.startsDropZones.state, 'NEEDS_VALIDATION');
 
 const project = buildEnvironmentStudioProject(session);
+const sessionPatchDigest = session.selectedReferenceWindow?.patchDigest;
+assert.ok(sessionPatchDigest, 'session reference workflow selected a patch digest');
 assert.equal(project.sourceMode, 'referenceBathymetryAtlas');
 assert.equal(project.referenceAtlas.sourceDataset.name, 'ETOPO_2022_TEST_FIXTURE');
-assert.equal(project.selectedReferenceWindow.patchDigest, window.patchDigest);
-assert.equal(project.selectedPatchDigest, window.patchDigest);
+assert.equal(project.selectedReferenceWindow.patchDigest, sessionPatchDigest);
+assert.equal(project.selectedPatchDigest, sessionPatchDigest);
 assert.equal(project.bathymetryBuilderResult.type, 'anchor.reference-patch-bathymetry-builder-summary');
-assert.equal(project.bathymetryBuilderResult.patchDigest, window.patchDigest);
-assert.equal(project.flowGenerationInputs.patchDigest, window.patchDigest);
+assert.equal(project.bathymetryBuilderResult.patchDigest, sessionPatchDigest);
+assert.equal(project.flowGenerationInputs.patchDigest, sessionPatchDigest);
 assert.equal(project.provenance.hiddenTruthExposed, false);
 assert.equal(project.provenance.operationalForecast, false);
 assert.equal(project.provenance.certifiedForNavigation, false);

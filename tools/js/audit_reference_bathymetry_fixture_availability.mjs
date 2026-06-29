@@ -55,6 +55,18 @@ assert.equal(overviewArtifact.claimBoundary?.hiddenTruthExposed, false, 'overvie
 assert.equal(overviewArtifact.claimBoundary?.missionResolutionBathymetry, false, 'overview is not mission-resolution bathymetry');
 assert.equal(overviewArtifact.localAbsolutePathsIncluded, false, 'overview has no local paths');
 assert.equal(overviewArtifact.rawExternalDataPathIncluded, false, 'overview has no raw external path');
+assert.equal(overviewArtifact.previewKind, 'compactRasterJson', 'overview uses compact raster JSON');
+assert.ok(overviewArtifact.previewPath, 'overview has preview raster path');
+const overviewRasterPath = resolveRuntimeAsset(overviewArtifact.previewPath);
+await assertReadable(overviewRasterPath, 'overview preview raster path exists');
+const overviewRasterArtifact = JSON.parse(await fs.readFile(overviewRasterPath, 'utf8'));
+assert.equal(overviewRasterArtifact.artifactType, REFERENCE_BATHYMETRY_RASTER_TYPE, 'overview preview raster type');
+assert.equal(overviewRasterArtifact.role, 'globalOverviewPreview', 'overview preview raster role');
+assert.equal(overviewRasterArtifact.bounds?.westLon, -180, 'overview preview west');
+assert.equal(overviewRasterArtifact.bounds?.eastLon, 180, 'overview preview east');
+assert.equal(overviewRasterArtifact.bounds?.southLat, -90, 'overview preview south');
+assert.equal(overviewRasterArtifact.bounds?.northLat, 90, 'overview preview north');
+assert.equal(overviewRasterArtifact.provenance?.hiddenTruthExposed, false, 'overview preview has no hidden truth');
 const fixtureReports = [];
 for (const fixture of manifest.fixtures) {
   assert.ok(fixture.fixtureId, 'fixture has id');

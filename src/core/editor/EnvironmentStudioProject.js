@@ -104,6 +104,8 @@ import {
   normalizeReferenceBathymetryManifest,
   normalizeReferenceBathymetryAtlas,
   normalizeReferenceBathymetryWindow,
+  referenceAtlasPatchOverlays,
+  referenceAtlasViewport,
   referenceFixtureAvailabilityForBounds,
   referenceFixtureCoverageOverlays,
   referenceBathymetryVisualMetrics
@@ -126,6 +128,8 @@ export {
   compactReferenceBathymetryManifest,
   referenceFixtureAvailabilityForBounds,
   referenceFixtureCoverageOverlays,
+  referenceAtlasPatchOverlays,
+  referenceAtlasViewport,
   referenceBathymetryVisualMetrics,
   syntheticGlobeViewportVisualMetrics
 };
@@ -2228,7 +2232,8 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
   const failures = session.validationReport?.errors ?? [];
   const warnings = session.validationReport?.warnings ?? [];
   const atlasMetrics = referenceBathymetryVisualMetrics(session.referenceAtlas, session.selectedReferenceWindow);
-  const fixtureOverlays = referenceFixtureCoverageOverlays(session.referenceAtlas);
+  const atlasViewport = referenceAtlasViewport(session.worldView, session.referenceAtlas);
+  const fixtureOverlays = referenceAtlasPatchOverlays(session.referenceAtlas, session.worldView, { width: 900, height: 450 });
   const selectedAvailability = session.selectedReferenceAvailability
     ?? (session.selectedReferenceWindow ? referenceFixtureAvailabilityForBounds(session.referenceAtlas, session.selectedReferenceWindow.bounds) : null);
   return {
@@ -2245,7 +2250,7 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     globalOverviewBounds: atlasMetrics.globalOverviewBounds,
     overviewIsGlobal: atlasMetrics.overviewIsGlobal,
     defaultViewIsRegionalPatch: false,
-    atlasViewport: session.worldView,
+    atlasViewport,
     selectedAtlasBounds: session.selectedReferenceWindow?.bounds ?? null,
     selectedRegionAvailability: selectedAvailability?.status ?? null,
     matchedFixtureId: selectedAvailability?.matchedFixtureId ?? null,
@@ -2255,6 +2260,7 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     missionReadyPatchCount: fixtureOverlays.filter((entry) => entry.role === 'missionReadyPatch').length,
     lowResolutionPatchCount: fixtureOverlays.filter((entry) => entry.role === 'lowResolutionReferencePatch').length,
     patchCoverageOverlays: fixtureOverlays,
+    patchOverlays: fixtureOverlays,
     referencePatchRequest: session.referencePatchRequest ?? null,
     defaultSourceMode: 'referenceBathymetryAtlas',
     proceduralSandboxDefault: false,
@@ -2408,7 +2414,7 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
   const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
   const project = buildEnvironmentStudioProject(session);
   const atlasMetrics = referenceBathymetryVisualMetrics(session.referenceAtlas, session.selectedReferenceWindow);
-  const fixtureOverlays = referenceFixtureCoverageOverlays(session.referenceAtlas);
+  const fixtureOverlays = referenceAtlasPatchOverlays(session.referenceAtlas, session.worldView, { width: 900, height: 450 });
   return {
     projectId: project.projectId,
     label: project.label,
@@ -2433,9 +2439,11 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     overviewStatus: atlasMetrics.overviewStatus,
     overviewIsGlobal: atlasMetrics.overviewIsGlobal,
     globalOverviewBounds: atlasMetrics.globalOverviewBounds,
+    atlasViewport: referenceAtlasViewport(session.worldView, session.referenceAtlas),
     missionReadyPatchCount: fixtureOverlays.filter((entry) => entry.role === 'missionReadyPatch').length,
     lowResolutionPatchCount: fixtureOverlays.filter((entry) => entry.role === 'lowResolutionReferencePatch').length,
     patchCoverageOverlays: fixtureOverlays,
+    patchOverlays: fixtureOverlays,
     selectedRegionAvailability: session.selectedReferenceAvailability?.status ?? null,
     matchedFixtureId: session.selectedReferenceAvailability?.matchedFixtureId ?? null,
     matchedFixtureRole: session.selectedReferenceAvailability?.matchedFixtureRole ?? null,

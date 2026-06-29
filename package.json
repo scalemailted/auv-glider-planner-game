@@ -20,7 +20,7 @@
     "smoke:pages": "node tools/js/smoke_github_pages_static_host.mjs",
     "download:reference-bathy": "python tools/python/download_reference_bathymetry.py overview --resolution 60s --preview-width 4096",
     "preprocess:reference-bathy": "python tools/python/preprocess_reference_bathymetry.py",
-    "audit:reference-bathy": "node tools/js/audit_reference_bathymetry_fixture_availability.mjs && node tools/js/audit_reference_bathymetry_resolution_provenance.mjs && node tools/js/audit_reference_atlas_global_overview_default.mjs && node tools/js/smoke_reference_atlas_patch_coverage.mjs && node tools/js/smoke_reference_atlas_patch_request.mjs && node tools/js/smoke_reference_atlas_load_patch_workflow.mjs",
+    "audit:reference-bathy": "node tools/js/audit_reference_bathymetry_fixture_availability.mjs && node tools/js/audit_reference_bathymetry_resolution_provenance.mjs && node tools/js/audit_reference_atlas_global_overview_default.mjs && node tools/js/smoke_reference_atlas_coordinate_mapping.mjs && node tools/js/audit_reference_atlas_visual_acceptance.mjs && node tools/js/smoke_reference_atlas_patch_coverage.mjs && node tools/js/smoke_reference_atlas_patch_request.mjs && node tools/js/smoke_reference_atlas_load_patch_workflow.mjs",
     "verify:alpha-reference-env-retest": "node tools/js/audit_alpha_reference_environment_retest_readiness.mjs",
     "test:e2e:focused": "node ./node_modules/@playwright/test/cli.js test tests/e2e/mission_planning.spec.js --grep \"Three Mission Interaction Performance Invariants|Three Sampling Target and Dive Planning Headed Workflow\" --reporter=line",
     "test:e2e:groups": "node tools/js/run_playwright_groups.mjs --profile=full",

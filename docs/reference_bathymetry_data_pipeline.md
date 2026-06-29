@@ -14,7 +14,7 @@ npm.cmd run audit:reference-bathy
 
 `download:reference-bathy` stages ETOPO 2022 source data under `external_data/reference_bathymetry/`.
 
-`preprocess:reference-bathy` converts staged GeoTIFF patches into `anchor.reference-bathymetry-raster` JSON artifacts, writes compact overview metadata when available, and updates `assets/reference_bathymetry/manifest.json`.
+`preprocess:reference-bathy` converts staged GeoTIFF patches into `anchor.reference-bathymetry-raster` JSON artifacts, writes a compact global overview raster when available, and updates `assets/reference_bathymetry/manifest.json`.
 
 `audit:reference-bathy` verifies either:
 
@@ -23,7 +23,7 @@ npm.cmd run audit:reference-bathy
 
 ## Current Checked-In State
 
-The checked-in manifest currently reports `AVAILABLE` with a metadata-only global overview and two Monterey Canyon fixtures. The overview is:
+The checked-in manifest currently reports `AVAILABLE` with a compact global overview raster and two Monterey Canyon fixtures. The overview is:
 
 - overview: `etopo2022_global_overview_60s`
 - role: `globalOverview`
@@ -32,8 +32,10 @@ The checked-in manifest currently reports `AVAILABLE` with a metadata-only globa
 - source resolution: 60 arc-second
 - bounds: west -180, east 180, south -90, north 90
 - path: `assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-overview.json`
+- preview path: `assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-raster.json`
+- preview kind: `compactRasterJson`
 
-The overview is for atlas selection and patch coverage display. It is not mission-resolution bathymetry and does not contain raw source data or hidden truth.
+The global atlas overview is a low-resolution selection layer. It is not mission-resolution bathymetry. Mission-ready environments use staged high-resolution regional patches such as the ETOPO 2022 15 arc-second Monterey Canyon fixture. It does not contain raw source paths or hidden truth.
 
 The two Monterey Canyon fixtures are:
 

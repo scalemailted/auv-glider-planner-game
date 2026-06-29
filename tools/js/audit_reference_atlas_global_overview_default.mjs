@@ -11,6 +11,7 @@ import {
 const ROOT = process.cwd();
 const manifest = await readJson('assets/reference_bathymetry/manifest.json');
 const overviewArtifact = await readJson(manifest.overview.overviewPath);
+const overviewRasterArtifact = await readJson(overviewArtifact.previewPath ?? manifest.overview.previewPath);
 const referenceFixtures = await Promise.all(manifest.fixtures.map(async (fixture) => ({
   ...fixture,
   rasterArtifact: await readJson(fixture.rasterPath)
@@ -24,12 +25,21 @@ assert.equal(manifest.overview.bounds.southLat, -90, 'global overview southLat')
 assert.equal(manifest.overview.bounds.northLat, 90, 'global overview northLat');
 assert.equal(overviewArtifact.artifactType, 'anchor.reference-bathymetry-overview', 'overview artifact type');
 assert.equal(overviewArtifact.role, 'globalOverview', 'overview artifact role');
+assert.equal(overviewArtifact.previewKind, 'compactRasterJson', 'overview uses compact raster preview');
+assert.equal(overviewRasterArtifact.artifactType, 'anchor.reference-bathymetry-raster', 'overview raster artifact type');
+assert.equal(overviewRasterArtifact.role, 'globalOverviewPreview', 'overview raster role');
+assert.equal(overviewRasterArtifact.bounds.westLon, -180, 'overview raster westLon');
+assert.equal(overviewRasterArtifact.bounds.eastLon, 180, 'overview raster eastLon');
+assert.equal(overviewRasterArtifact.bounds.southLat, -90, 'overview raster southLat');
+assert.equal(overviewRasterArtifact.bounds.northLat, 90, 'overview raster northLat');
+assert.equal(overviewRasterArtifact.provenance?.hiddenTruthExposed, false, 'overview raster has no hidden truth');
 assert.equal(overviewArtifact.claimBoundary?.missionResolutionBathymetry, false, 'overview is not mission-resolution bathymetry');
 assert.equal(overviewArtifact.claimBoundary?.hiddenTruthExposed, false, 'overview has no hidden truth');
 
 const session = createEnvironmentStudioSession({
   referenceBathymetryManifest: manifest,
   overviewArtifact,
+  overviewRasterArtifact,
   referenceFixtures
 });
 const summary = environmentStudioSessionSummary(session);
@@ -42,12 +52,19 @@ assert.equal(summary.defaultStage, 'globalAtlasSelector', 'summary default stage
 assert.equal(debug.defaultStage, 'globalAtlasSelector', 'debug default stage');
 assert.equal(debug.defaultViewIsRegionalPatch, false, 'default view is not a regional patch');
 assert.equal(debug.overviewIsGlobal, true, 'debug overview is global');
+assert.equal(debug.atlasViewport.lonWest, -180, 'default atlas viewport west');
+assert.equal(debug.atlasViewport.lonEast, 180, 'default atlas viewport east');
+assert.equal(debug.atlasViewport.latSouth, -90, 'default atlas viewport south');
+assert.equal(debug.atlasViewport.latNorth, 90, 'default atlas viewport north');
+assert.ok(debug.atlasViewport.lonSpan >= 300, 'default atlas viewport shows near-full longitude span');
+assert.ok(debug.atlasViewport.latSpan >= 140, 'default atlas viewport shows near-full latitude span');
 assert.equal(debug.rawExternalDataPathExposed, false, 'debug does not expose raw paths');
 assert.equal(debug.hiddenTruthExposed, false, 'debug does not expose hidden truth');
 assert.ok(debug.missionReadyPatchCount >= 1, 'at least one mission-ready patch');
 assert.ok(debug.lowResolutionPatchCount >= 1, 'at least one low-resolution patch');
+assert.ok(debug.patchOverlays?.some((entry) => entry.fixtureId === 'monterey_canyon_15s' && entry.visible && entry.selectable), 'debug exposes selectable Monterey overlay');
 
-const publicText = canonicalJsonStringify({ manifest, overviewArtifact, summary, debug });
+const publicText = canonicalJsonStringify({ manifest, overviewArtifact, overviewRasterArtifact, summary, debug });
 assert.doesNotMatch(publicText, /external_data|[A-Z]:\\\\|\/Users\//, 'public atlas metadata does not expose raw/local paths');
 assert.doesNotMatch(publicText, /"hiddenTruthExposed"\s*:\s*true/, 'public atlas metadata does not expose hidden truth');
 assert.doesNotMatch(publicText, /"operationalOceanForecast"\s*:\s*true|"calibratedForecastSystem"\s*:\s*true/, 'public atlas metadata does not claim calibrated forecast');
