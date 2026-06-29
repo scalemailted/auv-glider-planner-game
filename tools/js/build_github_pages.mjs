@@ -7,6 +7,7 @@ const root = process.cwd();
 const out = path.join(root, '_site');
 const copyRoots = [
   'index.html',
+  'assets',
   'css',
   'src',
   'vendor',
@@ -106,7 +107,7 @@ for (const entry of copyRoots) {
 }
 await copyPublicDocs();
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
-for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'alpha/release-manifest.json', 'alpha/scenario-catalog.json', 'alpha/feedback-ledger.json', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json', 'schemas/classical-planner-benchmark-bundle.schema.json', 'schemas/alpha-release-manifest.schema.json', 'schemas/alpha-diagnostic-bundle.schema.json', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'tools/python/notebooks/anchor_external_solver_template.ipynb', 'tools/python/anchor_benchmark/bundle.py', 'tests/fixtures/colab_benchmark/manifest.json', 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json']) {
+for (const required of ['index.html', 'assets/reference_bathymetry/tile-library-manifest.json', 'assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-overview.json', 'assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-raster.json', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'alpha/release-manifest.json', 'alpha/scenario-catalog.json', 'alpha/feedback-ledger.json', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json', 'schemas/classical-planner-benchmark-bundle.schema.json', 'schemas/alpha-release-manifest.schema.json', 'schemas/alpha-diagnostic-bundle.schema.json', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'tools/python/notebooks/anchor_external_solver_template.ipynb', 'tools/python/anchor_benchmark/bundle.py', 'tests/fixtures/colab_benchmark/manifest.json', 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
 }
 const siteIndex = await readFile(path.join(out, 'index.html'), 'utf8');

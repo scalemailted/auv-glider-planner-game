@@ -36,9 +36,15 @@ node tools/js/audit_reference_tile_library_static_assets.mjs
 node tools/js/smoke_reference_tile_library_loader.mjs
 node tools/js/smoke_reference_bathymetry_mesh_lod.mjs
 node tools/js/smoke_reference_tile_library_atlas_coverage.mjs
+node tools/js/audit_reference_tile_library_alpha_readiness.mjs
+npm.cmd run build:pages
+node tools/js/audit_reference_tile_library_pages_delivery.mjs
+npm.cmd run smoke:pages
 ```
 
 `tools/reference_bathymetry/curated_regions.json` records curated operational regions. `download_reference_bathymetry_tiles.py` resolves ETOPO 2022 15 arc-second source tiles and downloads selected raw GeoTIFFs only into ignored `external_data/reference_bathymetry/`. `preprocess_reference_tile_library.py` creates staged browser artifacts under `assets/reference_bathymetry/tiles/<regionId>/` and registers them in `assets/reference_bathymetry/tile-library-manifest.json`.
+
+REF-TILE-LIB-R1A.1 adds readiness checks, not new data. `audit_reference_tile_library_alpha_readiness.mjs` opens Environment Studio in a browser, verifies hosted Monterey tile loading, exports a benchmark bundle, verifies Gulf requestOnly / multi-tile request behavior, and writes the owner-review package at `artifacts/owner-review/ref-tile-lib-r1a/`. `audit_reference_tile_library_pages_delivery.mjs` runs after `npm.cmd run build:pages` and verifies `_site` delivers the tile-library manifest, staged Monterey tile assets, mesh LODs, global overview artifacts, and loader files without raw `.tif`, `.tiff`, `.nc`, `.zip`, `external_data`, local absolute paths, hidden truth, or runtime NOAA/GEBCO URLs.
 
 ## Current Checked-In State
 
@@ -58,7 +64,7 @@ The global overview is a selection layer, not mission-resolution bathymetry. Mis
 
 The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. Oversized selections can be exported as patch requests, but they are not generated live in Alpha.
 
-The static tile library currently registers two staged Monterey tile sets and one Gulf request-only entry. `monterey_canyon_15s` is the mission-ready tile set; `monterey_canyon` is a low-resolution fallback tile set. `gulf_segment_15s` remains request-only until the owner runs the offline download and preprocessing commands. The browser loader ignores request-only regions when choosing staged mission patches.
+The static tile library currently registers two staged Monterey tile sets and one Gulf request-only entry. `monterey_canyon_15s` is the mission-ready tile set; `monterey_canyon` is a low-resolution fallback tile set. `gulf_segment_15s` remains request-only until the owner runs the offline download and preprocessing commands. The browser loader ignores request-only regions when choosing staged mission patches. The Pages build copies `assets/reference_bathymetry/` so hosted Alpha testers receive the same staged tile library as local static serving.
 
 The two Monterey Canyon fixtures are:
 
@@ -105,7 +111,7 @@ public reference bathymetry patch
 
 The generated currents, scalars, hotspots, and hazard candidates are deterministic synthetic benchmark fields conditioned by the selected reference bathymetry, wet/land mask, coastline/open-boundary metadata, depth axis, and time axis. They are not operational forecast products, HYCOM, Marine Copernicus, calibrated ecological products, or hidden truth. Launch validation checks candidate starts/drop zones, public hazards, package-backed artifact digests, and public-safety boundaries before a generated shell opens in Planning. Launch messages are classified; non-blocking warnings can allow launch, but blocking warnings and failures prevent launch. The public benchmark bundle exports only planner-visible forecast/public fields.
 
-The reference-derived Monterey Canyon path is ready for human alpha retest. Retest evidence lives in ignored local owner-review artifacts, while tester instructions and the feedback template are tracked in `docs/alpha_reference_environment_retest_protocol.md` and `alpha/reference-environment-retest-feedback-template.json`.
+The reference-derived Monterey Canyon path is ready for human alpha retest. Retest evidence lives in ignored local owner-review artifacts, including `artifacts/owner-review/ref-tile-lib-r1a/qa-summary.json` for the static tile-library workflow, while tester instructions and the feedback template are tracked in `docs/alpha_reference_environment_retest_protocol.md` and `alpha/reference-environment-retest-feedback-template.json`.
 
 For REF-ATLAS-INTERACT-R1.4, large valid operational windows such as Gulf-scale selections are not rejected as tiny browser patches. The browser records the selected `OperationalWindow`, reports a separate `GenerationBudget` with `MULTI_TILE_REQUIRED`, and exports `anchor.reference-bathymetry-multitile-patch-request` JSON containing typed bounds, approximate size, tile bounds, suggested fixture prefix, offline download/preprocess commands, claim-boundary flags, and a request digest. The artifact is still a request only: it does not include raw external paths, hidden truth, generated currents, generated scalar fields, or an operational forecast claim.
 

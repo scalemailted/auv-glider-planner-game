@@ -616,6 +616,41 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-028",
+      "title": "Run alpha retest on app-hosted static reference tile library workflow.",
+      "source": "alpha tester",
+      "status": "READY_FOR_ALPHA_RETEST",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Static Reference Tile Library",
+      "summary": "The static tile library pipeline is implemented. Human alpha retest should verify that users understand hosted staged bathymetry tiles, non-authoritative mesh LOD previews, raster/grid authority, Monterey mission-ready loading, and Gulf requestOnly/multi-tile export behavior.",
+      "decision": "Accepted for REF-TILE-LIB-R1A.1.",
+      "proposedPhase": "REF-TILE-LIB-R1A.1",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/ref-tile-lib-r1a/qa-summary.json",
+        "assets/reference_bathymetry/tile-library-manifest.json",
+        "tools/js/audit_reference_tile_library_alpha_readiness.mjs",
+        "tools/js/audit_reference_tile_library_pages_delivery.mjs",
+        "docs/alpha_reference_environment_retest_protocol.md",
+        "alpha/reference-environment-retest-feedback-template.json"
+      ],
+      "acceptanceCriteria": [
+        "Owner-review evidence proves the browser loads hosted reference bathymetry tile-library assets without NOAA/GEBCO runtime fetches.",
+        "Monterey 15 arc-second remains the mission-ready hosted tile set and exposes non-authoritative mesh LOD previews.",
+        "Raster/grid bathymetry remains the authoritative input for bathymetry sampling and environment generation.",
+        "Gulf-scale regions remain requestOnly and export multi-tile patch requests instead of pretending staged Gulf assets exist.",
+        "The retest protocol and feedback template ask testers about hosted tiles, mesh authority, raster authority, Monterey loading, Gulf requestOnly behavior, multi-tile request clarity, and Planning mission completion."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

@@ -20,10 +20,14 @@ node tools/js/audit_reference_tile_library_static_assets.mjs
 node tools/js/smoke_reference_tile_library_loader.mjs
 node tools/js/smoke_reference_bathymetry_mesh_lod.mjs
 node tools/js/smoke_reference_tile_library_atlas_coverage.mjs
+node tools/js/audit_reference_tile_library_alpha_readiness.mjs
+npm.cmd run build:pages
+node tools/js/audit_reference_tile_library_pages_delivery.mjs
+npm.cmd run smoke:pages
 npm.cmd run audit:reference-bathy
 ```
 
-ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The browser does not download NOAA/GEBCO data at runtime. External public bathymetry data is downloaded and preprocessed offline, then registered as staged ANCHOR tile artifacts. The raster/grid artifact remains authoritative for bathymetry sampling and environment generation. Derived low-poly meshes are visualization/inspection artifacts only.
+ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The browser does not download NOAA/GEBCO data at runtime. External public bathymetry data is downloaded and preprocessed offline, then registered as staged ANCHOR tile artifacts. The raster/grid artifact remains authoritative for bathymetry sampling and environment generation. Derived low-poly meshes are visualization/inspection artifacts only. The alpha-readiness audit writes `artifacts/owner-review/ref-tile-lib-r1a/qa-summary.json`; the Pages delivery audit requires `_site` to include the tile-library manifest, staged Monterey rasters, Monterey mesh LODs, global overview artifacts, and loader files without raw `.tif`, `.tiff`, `.nc`, `.zip`, `external_data`, hidden truth, local absolute paths, or runtime NOAA/GEBCO URLs.
 
 ## SCI-VALID-R2A Scientific Validation Checks
 
@@ -1416,7 +1420,9 @@ The FIELD-REGEN-R1 smokes assert reference-bathymetry-conditioned package-backed
 
 The ENV-COMPOSE-LAUNCH-R1/R1.1 smokes assert package-backed `EnvironmentArtifact` composition, launch validation over current/scalar/hazard/start public-readiness checks, classified launch warnings, Planning launch adapter compatibility with generated `anchor.level` and `anchor.mission` shells, public benchmark-bundle export, parity probes, digests, and public-safety scans. The path is public reference bathymetry patch -> bathymetry artifact -> deterministic synthetic bathymetry-conditioned fields -> package-backed environment artifact -> validated Planning launch -> public benchmark bundle. Non-blocking launch warnings may allow launch; blocking warnings and failures must prevent launch. It does not change mission simulation, official scoring, planner behavior, glider dynamics, benchmark fairness, or hidden-truth visibility.
 
-ALPHA-ENV-RETEST-R1 readiness is checked with `npm.cmd run verify:alpha-reference-env-retest`. It requires the stable ignored owner-review package at `artifacts/owner-review/env-compose-launch-r1-1/`, the tester protocol, the feedback template, `ALPHA-FB-020`, no hidden truth markers, and no raw `external_data` paths in the owner package summaries.
+ALPHA-ENV-RETEST-R1 readiness is checked with `npm.cmd run verify:alpha-reference-env-retest`. It requires the stable ignored owner-review package at `artifacts/owner-review/env-compose-launch-r1-1/`, the static tile-library owner package at `artifacts/owner-review/ref-tile-lib-r1a/`, the tester protocol, the feedback template, `ALPHA-FB-020`, `ALPHA-FB-028`, no hidden truth markers, and no raw `external_data` paths in the owner package summaries.
+
+REF-TILE-LIB-R1A.1 is a closure/readiness gate, not a feature phase. `node tools/js/audit_reference_tile_library_alpha_readiness.mjs` opens Environment Studio, verifies the tile library loaded, selects and loads the hosted Monterey 15s tile, confirms mesh LODs are visualization-only, generates bathymetry/fields/environment, validates Planning launch, exports a public benchmark bundle, verifies the browser did not request NOAA/GEBCO or `external_data`, selects the Gulf Segment, exports a multi-tile patch request, and writes the 12-screenshot owner package. `node tools/js/audit_reference_tile_library_pages_delivery.mjs` must run after `npm.cmd run build:pages`.
 
 The usefulness audit generates coastal shelf, semi-enclosed gulf, island chain, shelf break/canyon, river mouth, strait/sill, and open-ocean eddy windows. It allows explicit `WARN` results for hard cases but rejects hard failures, missing connected wet water, missing feature diversity, missing mission-suitability metadata, hidden-truth leakage, calibrated ocean claims, and operational forecast claims.
 

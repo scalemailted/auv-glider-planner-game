@@ -9,9 +9,15 @@
   "clarity": {
     "sourceProvenanceClear": null,
     "globalAtlasSelectorUnderstandable": null,
+    "hostedTileArtifactsClear": null,
+    "browserNoRuntimeNoaaGebcoDownloadClear": null,
+    "meshVisualizationNotAuthorityClear": null,
+    "rasterGridAuthorityClear": null,
     "montereyPatchOverlayDiscoverable": null,
     "globalOverviewVsMissionPatchClear": null,
     "offlinePreprocessingClear": null,
+    "gulfRequestOnlyBehaviorClear": null,
+    "multiTileRequestWorkflowClear": null,
     "claimBoundaryClear": null,
     "warningsClear": null,
     "planningLaunchClear": null,
@@ -19,9 +25,11 @@
   },
   "usability": {
     "environmentStudioEase": null,
+    "montereyHostedTileLoadingDiscoverable": null,
     "patchRequestExportClear": null,
     "regionalPatchWorkflowAfterLoadClear": null,
     "planningEase": null,
+    "planningMissionCompletion": null,
     "layerVisibility": null,
     "rightPanelUsefulness": null,
     "overallConfidence": null
