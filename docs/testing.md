@@ -8,6 +8,23 @@ python -m http.server 8000
 
 Playwright is optional and intended for development smoke testing.
 
+## Reference Bathymetry Tile-Library Checks
+
+Run these after changing reference-bathymetry manifests, tile-library preprocessing, Environment Studio atlas loading, or static asset safety:
+
+```bash
+python tools/python/download_reference_bathymetry_tiles.py dry-run --region monterey_canyon_15s
+python tools/python/download_reference_bathymetry_tiles.py dry-run --region gulf_segment_15s
+python tools/python/preprocess_reference_tile_library.py
+node tools/js/audit_reference_tile_library_static_assets.mjs
+node tools/js/smoke_reference_tile_library_loader.mjs
+node tools/js/smoke_reference_bathymetry_mesh_lod.mjs
+node tools/js/smoke_reference_tile_library_atlas_coverage.mjs
+npm.cmd run audit:reference-bathy
+```
+
+ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The browser does not download NOAA/GEBCO data at runtime. External public bathymetry data is downloaded and preprocessed offline, then registered as staged ANCHOR tile artifacts. The raster/grid artifact remains authoritative for bathymetry sampling and environment generation. Derived low-poly meshes are visualization/inspection artifacts only.
+
 ## SCI-VALID-R2A Scientific Validation Checks
 
 Run these after changing `packages/validation`, validation artifacts, scientific-validation schemas, the Methods & Validation route, or validation docs:
@@ -1408,6 +1425,8 @@ The focused Playwright workflows are `Global Atlas Visual Correctness`, `Atlas t
 REF-ATLAS-INTERACT-R1.2 adds the focused workflows `Boundary Budget Status and Patch Request` and `Monterey Patch Still Loads Under Budget Gate`. They generate `artifacts/owner-review/ref-atlas-budget-r1/` with screenshots for small OK, medium WARN, large BLOCKED, blocked patch-request export, Monterey budget, Monterey load, regional patch load, generation pipeline, and launch-ready states. `node tools/js/smoke_reference_atlas_boundary_budget.mjs`, `node tools/js/smoke_reference_atlas_generation_budget_gate.mjs`, and `node tools/js/audit_reference_atlas_budget_acceptance.mjs` cover the pure budget model, core live-generation gate, and owner-review package.
 
 REF-ATLAS-INTERACT-R1.3 adds the focused workflows `Large Operational Window Can Be Selected` and `Monterey Patch Still Loads`. They generate `artifacts/owner-review/ref-atlas-operational-window-r1/` with screenshots for default atlas, tiny-click expansion, regional window selection, Gulf-scale multi-tile budget, multi-tile patch-request export, Monterey selection/load, generation pipeline, and launch-ready states. `node tools/js/smoke_reference_atlas_operational_window_budget.mjs`, `node tools/js/smoke_reference_atlas_multitile_patch_request.mjs`, and `node tools/js/audit_reference_atlas_operational_window_acceptance.mjs` cover the operational-window/generation-budget split, multi-tile request artifact, and owner-review package.
+
+REF-ATLAS-INTERACT-R1.4 adds the focused workflows `Deep Zoom and Operational Window Editing` and `Typed Window and Monterey Patch Still Work`. They generate `artifacts/owner-review/ref-atlas-zoom-window-r1/` with screenshots for default atlas, deep Gulf zoom, Gulf preset selection, large operational-window budget, multi-tile request export, typed window editing, tiny-selection guidance, Monterey close zoom, Monterey load, generation pipeline, and launch-ready states. `node tools/js/smoke_reference_atlas_deep_zoom.mjs`, `node tools/js/smoke_reference_atlas_operational_window_editor.mjs`, `node tools/js/smoke_reference_atlas_large_region_presets.mjs`, and `node tools/js/audit_reference_atlas_zoom_window_acceptance.mjs` cover deep zoom, typed bounds/size editing, local/regional/fleet single patch requests, Gulf/basin multi-tile requests, and owner-review acceptance.
 
 Environment Studio tests must not change simulation, scoring, generated mission semantics, benchmark fairness, or Alpha Product Hub pillar count. The Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain. The active source mode is Reference Bathymetry Atlas backed by compact preprocessed artifacts under `assets/reference_bathymetry/`; raw NOAA/GEBCO data remains outside git under `external_data/reference_bathymetry/`, and the browser app does not download it at runtime. The checked-in primary fixture is ETOPO 2022 15 arc-second mission-ready reference bathymetry from the surface-elevation non-ice fallback tile, with a preserved 60 arc-second low-resolution fallback; neither fixture is calibrated survey data, certified navigation data, or an operational forecast. The procedural synthetic globe/world path is an experimental sandbox / compatibility path. FIELD-REGEN-R1 can explicitly generate deterministic synthetic benchmark currents, scalars, hotspots, and hazard candidates from the reference patch. ENV-COMPOSE-LAUNCH-R1 can compose the package-backed environment artifact, validate launch readiness, launch a generated shell into Planning, and export a public benchmark bundle, while Mission Workspace remains responsible for routes, dive profiles, execution, replanning, and scoring.
 

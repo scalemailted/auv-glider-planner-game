@@ -1,0 +1,28 @@
+[
+  {
+    "regionId": "monterey_canyon_15s",
+    "label": "Monterey Canyon 15s",
+    "sourceDataset": "ETOPO_2022",
+    "sourceVariant": "15s_surface_elevation",
+    "role": "missionReadyTileSet",
+    "bounds": {
+      "westLon": -123.0,
+      "eastLon": -121.5,
+      "southLat": 36.0,
+      "northLat": 37.2
+    }
+  },
+  {
+    "regionId": "gulf_segment_15s",
+    "label": "Gulf Segment 15s",
+    "sourceDataset": "ETOPO_2022",
+    "sourceVariant": "15s_surface_elevation",
+    "role": "requestOrStagedTileSet",
+    "bounds": {
+      "westLon": -94.0,
+      "eastLon": -84.0,
+      "southLat": 24.0,
+      "northLat": 30.0
+    }
+  }
+]

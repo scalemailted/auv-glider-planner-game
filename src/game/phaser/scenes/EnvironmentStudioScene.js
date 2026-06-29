@@ -78,18 +78,32 @@ import {
   syntheticGlobeViewportVisualMetrics
 } from '../../../core/editor/SyntheticGlobeWorld.js';
 import {
+  REFERENCE_ATLAS_FOCUS_ZOOM,
+  REFERENCE_ATLAS_MAX_ZOOM,
   referenceAtlasBoundsFromDrag,
   referenceAtlasNormalizedToLonLat,
   referenceAtlasPanView,
   referenceAtlasPatchOverlays,
   referenceAtlasViewport,
+  referenceAtlasViewForCenter,
   referenceAtlasZoomView,
   referenceFixtureAtLonLat
 } from '../../../core/editor/ReferenceBathymetryAtlas.js';
 import {
+  REFERENCE_BATHYMETRY_TILE_LIBRARY_MANIFEST_PATH,
+  loadReferenceTileLibrary,
+  referenceTileLibraryDebugState,
+  referenceTileLibraryFixtures
+} from '../../../core/editor/ReferenceBathymetryTileLibrary.js';
+import {
   REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE,
+  REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM,
   REFERENCE_ATLAS_MULTITILE_MESSAGE,
   REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS,
+  REFERENCE_ATLAS_RECOMMENDED_WINDOW_KM,
+  REFERENCE_ATLAS_TINY_SELECTION_MESSAGE,
+  estimateReferenceAtlasOperationalWindow,
+  referenceAtlasBoundsForKilometerWindow,
   referenceAtlasBoundsForOperationalPreset
 } from '../../../core/editor/ReferenceAtlasBoundaryBudget.js';
 
@@ -153,6 +167,58 @@ function referenceAtlasPerfDebugPayload(scene) {
   };
 }
 
+function mergeReferenceBathymetryManifestTileLibrary(manifest = {}, tileLibraryFixtures = [], tileLibrary = null) {
+  const byId = new Map();
+  for (const fixture of Array.isArray(manifest.fixtures) ? manifest.fixtures : []) {
+    if (fixture?.fixtureId) byId.set(fixture.fixtureId, fixture);
+  }
+  for (const fixture of Array.isArray(tileLibraryFixtures) ? tileLibraryFixtures : []) {
+    if (!fixture?.fixtureId) continue;
+    byId.set(fixture.fixtureId, {
+      ...(byId.get(fixture.fixtureId) ?? {}),
+      ...fixture
+    });
+  }
+  const fixtures = [...byId.values()].sort((a, b) => {
+    const roleA = a.role === 'missionReadyPatch' ? 0 : 1;
+    const roleB = b.role === 'missionReadyPatch' ? 0 : 1;
+    if (roleA !== roleB) return roleA - roleB;
+    return Number(a.actualRasterResolutionArcSeconds ?? 999999) - Number(b.actualRasterResolutionArcSeconds ?? 999999);
+  });
+  return {
+    ...manifest,
+    fixtureStatus: fixtures.length ? 'AVAILABLE' : manifest.fixtureStatus,
+    fixtures,
+    tileLibraryDigest: tileLibrary?.digest ?? null,
+    tileLibraryPath: tileLibrary ? REFERENCE_BATHYMETRY_TILE_LIBRARY_MANIFEST_PATH : null,
+    tileLibraryCoverageSummary: tileLibrary?.coverageSummary ?? null,
+    instructions: {
+      ...(manifest.instructions ?? {}),
+      tileLibraryManifest: tileLibrary ? REFERENCE_BATHYMETRY_TILE_LIBRARY_MANIFEST_PATH : null,
+      tileLibraryNote: tileLibrary
+        ? 'Browser loads staged ANCHOR tile-library assets only; public source data is downloaded offline.'
+        : manifest.instructions?.tileLibraryNote ?? null
+    }
+  };
+}
+
+function createDefaultOperationalWindowEditor() {
+  return {
+    mode: 'drawCustom',
+    centerLon: -122.25,
+    centerLat: 36.6,
+    widthKm: REFERENCE_ATLAS_RECOMMENDED_WINDOW_KM,
+    heightKm: REFERENCE_ATLAS_RECOMMENDED_WINDOW_KM,
+    westLon: null,
+    eastLon: null,
+    southLat: null,
+    northLat: null,
+    appliedFrom: null,
+    tinySelectionExpanded: false,
+    lastPreset: null
+  };
+}
+
 export class EnvironmentStudioScene extends PhaserScene {
   constructor() {
     super('EnvironmentStudioScene');
@@ -161,6 +227,9 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.statusMessage = 'Loading reference bathymetry manifest. Generation is blocked until a preprocessed public fixture is available.';
     this.lastError = null;
     this.referenceManifestLoaded = false;
+    this.referenceTileLibraryLoaded = false;
+    this.referenceTileLibrary = null;
+    this.referenceTileLibraryWarning = null;
     this.worldBoundaryDrawing = false;
     this.worldPointerState = null;
     this.worldTileCanvasCache = new Map();
@@ -173,6 +242,8 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.lastBlockedGenerationReason = null;
     this.lastPatchRequestType = null;
     this.lastPatchRequestDigest = null;
+    this.operationalWindowEditor = createDefaultOperationalWindowEditor();
+    this.lastReferenceMapPoint = null;
     this.referenceAtlasLoadStartedAt = globalThis.performance?.now?.() ?? Date.now();
     this.globeRendererContext = null;
     this.globeRegionSelectionMode = false;
@@ -201,25 +272,41 @@ export class EnvironmentStudioScene extends PhaserScene {
       const response = await fetch('assets/reference_bathymetry/manifest.json', { cache: 'no-store' });
       if (!response.ok) throw new Error(`Reference bathymetry manifest returned HTTP ${response.status}.`);
       const manifest = await response.json();
+      let tileLibrary = null;
+      let tileLibraryDebug = null;
+      try {
+        tileLibrary = await loadReferenceTileLibrary();
+        tileLibraryDebug = referenceTileLibraryDebugState(tileLibrary);
+        this.referenceTileLibraryLoaded = true;
+        this.referenceTileLibraryWarning = null;
+      } catch (tileError) {
+        this.referenceTileLibraryLoaded = false;
+        this.referenceTileLibraryWarning = `Reference tile library is not loaded: ${tileError?.message ?? String(tileError)}`;
+      }
+      this.referenceTileLibrary = tileLibrary;
+      const tileLibraryManifestFixtures = tileLibrary ? referenceTileLibraryFixtures(tileLibrary) : [];
+      const mergedManifest = mergeReferenceBathymetryManifestTileLibrary(manifest, tileLibraryManifestFixtures, tileLibrary);
       const fixtureArtifacts = [];
-      const overviewArtifact = manifest.overview?.overviewPath
-        ? await fetchJsonIfAvailable(manifest.overview.overviewPath)
+      const overviewArtifact = mergedManifest.overview?.overviewPath
+        ? await fetchJsonIfAvailable(mergedManifest.overview.overviewPath)
         : null;
-      const overviewRasterPath = overviewArtifact?.previewPath ?? overviewArtifact?.rasterPath ?? manifest.overview?.previewPath ?? manifest.overview?.rasterPath;
+      const overviewRasterPath = overviewArtifact?.previewPath ?? overviewArtifact?.rasterPath ?? mergedManifest.overview?.previewPath ?? mergedManifest.overview?.rasterPath;
       const overviewRasterArtifact = overviewRasterPath
         ? await fetchJsonIfAvailable(overviewRasterPath)
         : null;
-      if (manifest.fixtureStatus === 'AVAILABLE' && Array.isArray(manifest.fixtures)) {
-        for (const fixture of manifest.fixtures) {
+      if (mergedManifest.fixtureStatus === 'AVAILABLE' && Array.isArray(mergedManifest.fixtures)) {
+        for (const fixture of mergedManifest.fixtures) {
           if (!fixture?.rasterPath) continue;
           const artifact = await fetchJsonIfAvailable(fixture.rasterPath);
           if (artifact) fixtureArtifacts.push({ ...fixture, rasterArtifact: artifact });
         }
       }
-      this.session = setEnvironmentStudioReferenceBathymetryManifest(this.session, manifest, {
+      this.session = setEnvironmentStudioReferenceBathymetryManifest(this.session, mergedManifest, {
         referenceFixtures: fixtureArtifacts,
         overviewArtifact,
-        overviewRasterArtifact
+        overviewRasterArtifact,
+        referenceTileLibrary: tileLibrary,
+        referenceTileLibraryDebug: tileLibraryDebug
       });
       this.referenceManifestLoaded = true;
       if (this.session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true) {
@@ -624,8 +711,8 @@ export class EnvironmentStudioScene extends PhaserScene {
     if (action === 'right') patch.panX = Number(view.panX ?? 0) + panStep;
     if (action === 'up') patch.panY = Number(view.panY ?? 0) - panStep;
     if (action === 'down') patch.panY = Number(view.panY ?? 0) + panStep;
-    if (action === 'zoom-in') patch.zoom = Number(view.zoom ?? 1) + 0.25;
-    if (action === 'zoom-out') patch.zoom = Number(view.zoom ?? 1) - 0.25;
+    if (action === 'zoom-in') patch.zoom = clampNumber(Number(view.zoom ?? 1) * 1.32, 1, REFERENCE_ATLAS_MAX_ZOOM);
+    if (action === 'zoom-out') patch.zoom = clampNumber(Number(view.zoom ?? 1) / 1.32, 1, REFERENCE_ATLAS_MAX_ZOOM);
     if (action === 'reset') return this.resetReferenceView();
     this.session = setEnvironmentStudioWorldView(this.session, patch);
     this.statusMessage = 'Reference atlas view updated.';
@@ -647,13 +734,10 @@ export class EnvironmentStudioScene extends PhaserScene {
     }
     const centerLon = (Number(bounds.westLon) + Number(bounds.eastLon)) / 2;
     const centerLat = (Number(bounds.southLat) + Number(bounds.northLat)) / 2;
-    this.session = setEnvironmentStudioWorldView(this.session, {
-      panX: clampNumber(centerLon / 180, -1, 1),
-      panY: clampNumber(-centerLat / 90, -1, 1),
-      rotationYawDegrees: 0,
-      rotationPitchDegrees: 0,
-      zoom: 5
-    });
+    this.session = setEnvironmentStudioWorldView(
+      this.session,
+      referenceAtlasViewForCenter(centerLon, centerLat, REFERENCE_ATLAS_FOCUS_ZOOM, this.session.referenceAtlas)
+    );
     this.statusMessage = `Focused atlas view on ${fallbackFixture?.fixtureId ?? 'selected reference patch'}.`;
     this.lastError = null;
     this.render();
@@ -704,9 +788,10 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   referenceSelectionStatusMessage(availability = null, budget = null) {
     if (budget?.budgetStatus === 'MULTI_TILE_REQUIRED') {
-      return 'Selected large operational window. Multi-tile preprocessing is required before generation.';
+      return 'Selected valid large operational window. Multi-tile preprocessing is required before generation.';
     }
     if (budget?.budgetStatus === 'BLOCKED') return REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE;
+    if (budget?.budgetStatus === 'WARN') return 'Near or above live Alpha limit. Export patch request or reduce the window.';
     if (availability?.available) return `Selected atlas region matches ${availability.matchedFixtureRole}: ${availability.matchedFixtureId}.`;
     return 'Selected operational window is not staged. Export a patch request to preprocess it offline.';
   }
@@ -717,17 +802,125 @@ export class EnvironmentStudioScene extends PhaserScene {
     return availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
   }
 
+  syncOperationalWindowEditorFromBounds(boundsInput = null, options = {}) {
+    if (!boundsInput) {
+      this.operationalWindowEditor = {
+        ...this.operationalWindowEditor,
+        westLon: null,
+        eastLon: null,
+        southLat: null,
+        northLat: null,
+        appliedFrom: options.appliedFrom ?? this.operationalWindowEditor.appliedFrom ?? null,
+        tinySelectionExpanded: options.tinySelectionExpanded === true,
+        lastPreset: options.lastPreset ?? this.operationalWindowEditor.lastPreset ?? null
+      };
+      return;
+    }
+    const operational = estimateReferenceAtlasOperationalWindow(boundsInput, {
+      userIntent: options.lastPreset ?? this.operationalWindowEditor.lastPreset ?? options.mode ?? this.operationalWindowEditor.mode
+    });
+    this.operationalWindowEditor = {
+      mode: options.mode ?? (options.lastPreset === 'custom' ? 'drawCustom' : options.lastPreset) ?? this.operationalWindowEditor.mode ?? 'drawCustom',
+      centerLon: operational.centerLon,
+      centerLat: operational.centerLat,
+      widthKm: operational.widthKm,
+      heightKm: operational.heightKm,
+      westLon: operational.bounds.westLon,
+      eastLon: operational.bounds.eastLon,
+      southLat: operational.bounds.southLat,
+      northLat: operational.bounds.northLat,
+      appliedFrom: options.appliedFrom ?? 'selection',
+      tinySelectionExpanded: options.tinySelectionExpanded === true,
+      lastPreset: options.lastPreset ?? this.operationalWindowEditor.lastPreset ?? null
+    };
+  }
+
+  operationalWindowEditorDebugPayload() {
+    return { ...createDefaultOperationalWindowEditor(), ...(this.operationalWindowEditor ?? {}) };
+  }
+
+  readOperationalWindowEditorFromControls() {
+    const current = this.operationalWindowEditorDebugPayload();
+    return {
+      mode: this.readValue('env-reference-window-mode', current.mode),
+      centerLon: this.numberValue('env-reference-center-lon', current.centerLon),
+      centerLat: this.numberValue('env-reference-center-lat', current.centerLat),
+      widthKm: this.numberValue('env-reference-width-km', current.widthKm),
+      heightKm: this.numberValue('env-reference-height-km', current.heightKm),
+      westLon: this.numberValue('env-reference-west-lon', current.westLon),
+      eastLon: this.numberValue('env-reference-east-lon', current.eastLon),
+      southLat: this.numberValue('env-reference-south-lat', current.southLat),
+      northLat: this.numberValue('env-reference-north-lat', current.northLat)
+    };
+  }
+
+  applyOperationalWindowEditor(appliedFrom = 'typed') {
+    if (!this.referenceDataAvailable()) {
+      this.blockReferenceBathymetryAction('Operational window editor');
+      return;
+    }
+    const editor = this.readOperationalWindowEditorFromControls();
+    const hasTypedBounds = [editor.westLon, editor.eastLon, editor.southLat, editor.northLat].every(Number.isFinite)
+      && editor.eastLon > editor.westLon
+      && editor.northLat > editor.southLat;
+    const useTypedBounds = editor.mode === 'drawCustom' && hasTypedBounds;
+    const bounds = useTypedBounds
+      ? {
+          westLon: editor.westLon,
+          eastLon: editor.eastLon,
+          southLat: editor.southLat,
+          northLat: editor.northLat
+        }
+      : referenceAtlasBoundsForKilometerWindow(editor);
+    this.selectReferenceBounds(bounds, {
+      appliedFrom,
+      mode: editor.mode === 'custom' ? 'drawCustom' : editor.mode,
+      lastPreset: editor.mode === 'drawCustom' ? null : editor.mode
+    });
+  }
+
+  moveOperationalWindowToMapCenter() {
+    const viewport = referenceAtlasViewport(this.session.worldView, this.session.referenceAtlas);
+    const editor = this.operationalWindowEditorDebugPayload();
+    this.operationalWindowEditor = {
+      ...editor,
+      centerLon: viewport.centerLon,
+      centerLat: viewport.centerLat,
+      appliedFrom: 'mapCenter'
+    };
+    const bounds = referenceAtlasBoundsForKilometerWindow({
+      centerLon: viewport.centerLon,
+      centerLat: viewport.centerLat,
+      widthKm: editor.widthKm,
+      heightKm: editor.heightKm
+    });
+    this.selectReferenceBounds(bounds, {
+      appliedFrom: 'mapCenter',
+      mode: editor.mode,
+      lastPreset: editor.lastPreset
+    });
+  }
+
+  expandOperationalWindowToPreset(presetId = 'localPatch') {
+    const editor = this.operationalWindowEditorDebugPayload();
+    const viewport = referenceAtlasViewport(this.session.worldView, this.session.referenceAtlas);
+    const centerLon = Number.isFinite(Number(editor.centerLon)) ? editor.centerLon : viewport.centerLon;
+    const centerLat = Number.isFinite(Number(editor.centerLat)) ? editor.centerLat : viewport.centerLat;
+    this.selectReferenceOperationalPreset(presetId, { centerLon, centerLat });
+  }
+
   selectReferenceWindowAt(lon, lat) {
     if (!this.referenceDataAvailable()) {
       this.blockReferenceBathymetryAction('Reference patch selection');
       return;
     }
+    this.lastReferenceMapPoint = { lon: Number(lon), lat: Number(lat) };
     const fixtureAtPoint = referenceFixtureAtLonLat(this.session.referenceAtlas, lon, lat);
     if (fixtureAtPoint?.bounds && !this.referenceBoundaryDrawing) {
       this.selectReferenceFixture(fixtureAtPoint.fixtureId);
       return;
     }
-    const presetBounds = referenceAtlasBoundsForOperationalPreset({ lon, lat }, 'regionalSurvey');
+    const presetBounds = referenceAtlasBoundsForOperationalPreset({ lon, lat }, 'localPatch');
     this.session = selectEnvironmentStudioReferenceWindow(this.session, {
       ...presetBounds,
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
@@ -736,6 +929,12 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.referenceBoundaryDrawing = false;
     const availability = this.session.selectedReferenceAvailability;
     const budget = this.session.selectedReferenceBoundaryBudget;
+    this.syncOperationalWindowEditorFromBounds(this.session.selectedReferenceWindow?.bounds, {
+      appliedFrom: 'mapClick',
+      mode: 'localPatch',
+      lastPreset: 'localPatch',
+      tinySelectionExpanded: true
+    });
     this.statusMessage = this.referenceSelectionStatusMessage(availability, budget);
     this.lastError = this.referenceSelectionErrorMessage(availability, budget);
     this.render();
@@ -747,6 +946,12 @@ export class EnvironmentStudioScene extends PhaserScene {
       return;
     }
     if (presetId === 'custom') {
+      this.operationalWindowEditor = {
+        ...this.operationalWindowEditorDebugPayload(),
+        mode: 'drawCustom',
+        appliedFrom: 'mode',
+        lastPreset: 'custom'
+      };
       this.referenceBoundaryDrawing = true;
       this.statusMessage = 'Custom operational window mode enabled. Drag the atlas map to draw a lon/lat region.';
       this.lastError = null;
@@ -755,19 +960,20 @@ export class EnvironmentStudioScene extends PhaserScene {
     }
     const existing = this.session.selectedReferenceWindow?.bounds;
     const viewport = referenceAtlasViewport(this.session.worldView, this.session.referenceAtlas);
+    const mapPoint = this.lastReferenceMapPoint;
     const inferredCenterLon = existing
       ? (Number(existing.westLon) + Number(existing.eastLon)) / 2
-      : (viewport?.centerLon ?? -122.25);
+      : (Number.isFinite(Number(mapPoint?.lon)) ? mapPoint.lon : (viewport?.centerLon ?? -122.25));
     const inferredCenterLat = existing
       ? (Number(existing.southLat) + Number(existing.northLat)) / 2
-      : (viewport?.centerLat ?? 36.6);
+      : (Number.isFinite(Number(mapPoint?.lat)) ? mapPoint.lat : (viewport?.centerLat ?? 36.6));
     const centerLon = Number(centerInput.lon ?? centerInput.centerLon ?? inferredCenterLon);
     const centerLat = Number(centerInput.lat ?? centerInput.centerLat ?? inferredCenterLat);
     const bounds = referenceAtlasBoundsForOperationalPreset({ centerLon, centerLat }, presetId);
-    this.selectReferenceBounds(bounds);
+    this.selectReferenceBounds(bounds, { appliedFrom: 'preset', mode: presetId, lastPreset: presetId });
   }
 
-  selectReferenceBounds(boundsInput = {}) {
+  selectReferenceBounds(boundsInput = {}, options = {}) {
     if (!this.referenceDataAvailable()) {
       this.blockReferenceBathymetryAction('Reference patch selection');
       return;
@@ -778,6 +984,12 @@ export class EnvironmentStudioScene extends PhaserScene {
       southLat: Number(boundsInput.southLat),
       northLat: Number(boundsInput.northLat)
     };
+    const requestedOperationalWindow = estimateReferenceAtlasOperationalWindow(bounds, {
+      userIntent: options.lastPreset ?? options.mode ?? 'drawCustom'
+    });
+    const tinySelectionExpanded = requestedOperationalWindow.warnings?.includes(REFERENCE_ATLAS_TINY_SELECTION_MESSAGE)
+      || requestedOperationalWindow.widthKm < REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM
+      || requestedOperationalWindow.heightKm < REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM;
     this.session = selectEnvironmentStudioReferenceWindow(this.session, {
       ...bounds,
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
@@ -787,7 +999,15 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.referenceAtlasTransientBounds = null;
     const availability = this.session.selectedReferenceAvailability;
     const budget = this.session.selectedReferenceBoundaryBudget;
-    this.statusMessage = this.referenceSelectionStatusMessage(availability, budget);
+    this.syncOperationalWindowEditorFromBounds(this.session.selectedReferenceWindow?.bounds, {
+      appliedFrom: options.appliedFrom ?? 'selection',
+      mode: options.mode ?? this.operationalWindowEditor.mode,
+      lastPreset: options.lastPreset ?? this.operationalWindowEditor.lastPreset,
+      tinySelectionExpanded
+    });
+    this.statusMessage = tinySelectionExpanded
+      ? `${REFERENCE_ATLAS_TINY_SELECTION_MESSAGE} Expanded to Local Patch.`
+      : this.referenceSelectionStatusMessage(availability, budget);
     this.lastError = this.referenceSelectionErrorMessage(availability, budget);
     this.render();
   }
@@ -807,6 +1027,12 @@ export class EnvironmentStudioScene extends PhaserScene {
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
     }, { selectedReferenceFixtureId: fixture.fixtureId });
     this.referenceBoundaryDrawing = false;
+    this.syncOperationalWindowEditorFromBounds(this.session.selectedReferenceWindow?.bounds, {
+      appliedFrom: 'fixture',
+      mode: 'drawCustom',
+      lastPreset: null,
+      tinySelectionExpanded: false
+    });
     this.statusMessage = fixture.role === 'lowResolutionReferencePatch'
       ? `Selected low-resolution fallback overlay: ${fixture.fixtureId}. Use only as a fallback; it is not a missionReadyPatch.`
       : `Selected ${fixture.role} overlay: ${fixture.fixtureId}.`;
@@ -881,6 +1107,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   clearReferenceWindow() {
     this.session = clearEnvironmentStudioReferenceWindow(this.session);
     this.referenceBoundaryDrawing = false;
+    this.syncOperationalWindowEditorFromBounds(null, { appliedFrom: 'clear' });
     this.statusMessage = 'Cleared selected reference bathymetry patch.';
     this.lastError = null;
     this.render();
@@ -933,6 +1160,12 @@ export class EnvironmentStudioScene extends PhaserScene {
       ...patch,
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
+    });
+    this.syncOperationalWindowEditorFromBounds(this.session.selectedReferenceWindow?.bounds, {
+      appliedFrom: `adjust:${action}`,
+      mode: this.operationalWindowEditor.mode,
+      lastPreset: this.operationalWindowEditor.lastPreset,
+      tinySelectionExpanded: false
     });
     this.statusMessage = this.referenceSelectionStatusMessage(this.session.selectedReferenceAvailability, this.session.selectedReferenceBoundaryBudget);
     this.lastError = this.referenceSelectionErrorMessage(this.session.selectedReferenceAvailability, this.session.selectedReferenceBoundaryBudget);
@@ -1619,12 +1852,18 @@ export class EnvironmentStudioScene extends PhaserScene {
       routeActive: Boolean(active),
       boundaryBudget: debug.boundaryBudget ?? this.session.selectedReferenceBoundaryBudget ?? null,
       operationalWindow: debug.operationalWindow ?? this.session.selectedReferenceOperationalWindow ?? this.session.selectedReferenceBoundaryBudget?.operationalWindow ?? null,
+      operationalWindowEditor: this.operationalWindowEditorDebugPayload(),
       generationBudget: debug.generationBudget ?? this.session.selectedReferenceGenerationBudget ?? this.session.selectedReferenceBoundaryBudget ?? null,
+      referenceAtlasMaxZoom: REFERENCE_ATLAS_MAX_ZOOM,
       lastPatchRequestType: this.lastPatchRequestType,
       lastPatchRequestDigest: this.lastPatchRequestDigest,
       oversizeGenerationBlockedCount: this.oversizeGenerationBlockedCount,
       lastBlockedGenerationReason: this.lastBlockedGenerationReason,
       referenceManifestLoaded: this.referenceManifestLoaded === true,
+      referenceTileLibraryLoaded: this.referenceTileLibraryLoaded === true,
+      referenceTileLibraryWarning: this.referenceTileLibraryWarning,
+      referenceTileLibrary: this.referenceTileLibrary ? referenceTileLibraryDebugState(this.referenceTileLibrary) : null,
+      referenceTileLibraryDigest: this.referenceTileLibrary?.digest ?? null,
       visualAcceptance: environmentStudioVisualAcceptanceMetrics(this.session),
       globeRendered: Boolean(active && this.globeRendererContext?.renderer),
       sphereVisible: Boolean(active && this.globeRendererContext?.sphere),
@@ -1710,11 +1949,33 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
   const exportRequestLabel = multiTileRequired ? 'Export Multi-Tile Patch Request' : 'Export Patch Request';
   const budgetStatusLabel = boundaryBudget?.budgetStatus ?? 'none selected';
   const budgetStatusMessage = boundaryBudget
-    ? (multiTileRequired ? REFERENCE_ATLAS_MULTITILE_MESSAGE : budgetBlocked ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE : boundaryBudget.recommendedAction ?? 'Region budget estimated.')
+    ? (multiTileRequired
+        ? REFERENCE_ATLAS_MULTITILE_MESSAGE
+        : budgetBlocked
+          ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
+          : boundaryBudget.budgetStatus === 'WARN'
+            ? 'Near or above live Alpha limit. Export patch request or reduce the window.'
+            : boundaryBudget.recommendedAction ?? 'Region budget estimated.')
     : '';
   const selectedBoundsLabel = selected
     ? `${formatNumber(bounds.westLon)} to ${formatNumber(bounds.eastLon)} lon, ${formatNumber(bounds.southLat)} to ${formatNumber(bounds.northLat)} lat`
     : 'draw or click an available patch';
+  const editor = scene.operationalWindowEditorDebugPayload();
+  const windowModeOptions = [
+    { id: 'drawCustom', label: 'Draw Custom' },
+    ...REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS
+      .filter((preset) => preset.id !== 'custom')
+      .map((preset) => ({
+        id: preset.id,
+        label: preset.label.replace(', about ', ' ')
+      }))
+  ];
+  const editorBounds = {
+    westLon: Number.isFinite(Number(editor.westLon)) ? Number(editor.westLon) : Number(bounds.westLon ?? -123),
+    eastLon: Number.isFinite(Number(editor.eastLon)) ? Number(editor.eastLon) : Number(bounds.eastLon ?? -121.5),
+    southLat: Number.isFinite(Number(editor.southLat)) ? Number(editor.southLat) : Number(bounds.southLat ?? 36),
+    northLat: Number.isFinite(Number(editor.northLat)) ? Number(editor.northLat) : Number(bounds.northLat ?? 37.2)
+  };
   return `
     <section class="console-header">
       <div class="console-kicker">Simulation Lab / Environment Studio</div>
@@ -1727,6 +1988,7 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
       <small>${escapeHtml(scene.statusMessage)}</small>
     </section>
     ${scene.lastError ? `<section class="console-section" data-keep-title="true"><h2>Warning</h2><div class="hud-muted">${escapeHtml(scene.lastError)}</div></section>` : ''}
+    ${scene.referenceTileLibraryWarning ? `<section class="console-section" data-keep-title="true"><h2>Tile Library</h2><div class="hud-muted">${escapeHtml(scene.referenceTileLibraryWarning)}</div></section>` : ''}
     <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-studio-stage="globalAtlasSelector">
       <h2>Bathymetry Source</h2>
       <label class="compact-field">
@@ -1744,6 +2006,11 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         ${metricHtml('Fixtures available', summary.referenceFixtureCount ?? atlas.fixtureCount ?? manifest.fixtures?.length ?? 0)}
         ${metricHtml('Mission-ready patches', summary.missionReadyPatchCount ?? 0)}
         ${metricHtml('Low-res fallbacks', summary.lowResolutionPatchCount ?? 0)}
+        ${metricHtml('Tile Library', shortDigest(summary.referenceTileLibraryDigest ?? session.referenceTileLibrary?.digest))}
+        ${metricHtml('Hosted tile sets', summary.referenceTileLibraryStagedTileSetCount ?? 0)}
+        ${metricHtml('Mission tile sets', summary.referenceTileLibraryMissionReadyTileSetCount ?? 0)}
+        ${metricHtml('Request-only regions', summary.referenceTileLibraryRequestOnlyTileSetCount ?? 0)}
+        ${metricHtml('Tile Library Safety', summary.referenceTileLibraryStaticAssetSafety?.ok === true ? 'ok' : scene.referenceTileLibraryLoaded ? 'warning' : 'not loaded')}
         ${metricHtml('Atlas Digest', shortDigest(atlas.atlasDigest))}
       </div>
     </section>
@@ -1771,7 +2038,42 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         <button type="button" data-action="env-reference-clear-boundary">Clear</button>
       </div>
       <div class="environment-studio-camera-row environment-studio-operational-preset-row" aria-label="Operational window presets">
-        ${REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS.map((preset) => `<button type="button" class="${operationalWindow?.userIntent === preset.id || operationalWindow?.scaleClass === preset.id ? 'active' : ''}" data-env-reference-window-preset="${escapeAttr(preset.id)}" ${disabledAttr}>${escapeHtml(preset.label)}</button>`).join('')}
+        ${REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS.map((preset) => `<button type="button" class="${editor.lastPreset === preset.id || operationalWindow?.userIntent === preset.id || operationalWindow?.scaleClass === preset.id || (preset.id === 'gulfSegment' && operationalWindow?.scaleClass === 'gulfScale') ? 'active' : ''}" data-env-reference-window-preset="${escapeAttr(preset.id)}" ${disabledAttr}>${escapeHtml(preset.label)}</button>`).join('')}
+      </div>
+      <div class="environment-studio-operational-window-editor" data-env-reference-operational-window-editor>
+        <label class="compact-field">
+          Window Mode
+          <select id="env-reference-window-mode" data-env-reference-window-mode ${disabledAttr}>
+            ${windowModeOptions.map((mode) => `<option value="${escapeAttr(mode.id)}" ${mode.id === editor.mode ? 'selected' : ''}>${escapeHtml(mode.label)}</option>`).join('')}
+          </select>
+        </label>
+        <div class="environment-studio-editor-grid">
+          ${numberInput('Center Lon', 'env-reference-center-lon', editor.centerLon, -180, 180, 0.01)}
+          ${numberInput('Center Lat', 'env-reference-center-lat', editor.centerLat, -90, 90, 0.01)}
+          ${numberInput('Width km', 'env-reference-width-km', editor.widthKm, REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM, 2000, 10)}
+          ${numberInput('Height km', 'env-reference-height-km', editor.heightKm, REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM, 1400, 10)}
+          ${numberInput('West Lon', 'env-reference-west-lon', editorBounds.westLon, -180, 180, 0.01)}
+          ${numberInput('East Lon', 'env-reference-east-lon', editorBounds.eastLon, -180, 180, 0.01)}
+          ${numberInput('South Lat', 'env-reference-south-lat', editorBounds.southLat, -90, 90, 0.01)}
+          ${numberInput('North Lat', 'env-reference-north-lat', editorBounds.northLat, -90, 90, 0.01)}
+        </div>
+        <div class="environment-studio-camera-row" aria-label="Operational window editor actions">
+          <button type="button" data-action="env-reference-apply-window" ${disabledAttr}>Apply Window</button>
+          <button type="button" data-action="env-reference-window-map-center" ${disabledAttr}>Move to Map Center</button>
+          <button type="button" data-action="env-reference-focus-patch" ${disabledAttr}>Focus Selected Region</button>
+          <button type="button" data-action="env-reference-clear-boundary">Clear Boundary</button>
+          <button type="button" data-action="env-reference-export-patch-request" ${canExportRequest ? '' : 'disabled'}>Export Patch/Multi-Tile Request</button>
+        </div>
+        ${editor.tinySelectionExpanded ? `
+          <div class="environment-studio-budget-status environment-studio-budget-status-warn" data-env-reference-tiny-selection-guidance>
+            <strong>${escapeHtml(REFERENCE_ATLAS_TINY_SELECTION_MESSAGE)}</strong>
+            <span>Minimum useful mission-planning window is ${REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM} x ${REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM} km. Recommended starting size is ${REFERENCE_ATLAS_RECOMMENDED_WINDOW_KM} x ${REFERENCE_ATLAS_RECOMMENDED_WINDOW_KM} km.</span>
+            <div class="environment-studio-camera-row">
+              <button type="button" data-action="env-reference-expand-local" ${disabledAttr}>Expand to Local Patch</button>
+              <button type="button" data-action="env-reference-expand-regional" ${disabledAttr}>Expand to Regional Survey</button>
+            </div>
+          </div>
+        ` : ''}
       </div>
       <div class="cell-inspector-metrics">
         ${metricHtml('Selected Bounds', selectedBoundsLabel)}
@@ -1782,6 +2084,8 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         ${metricHtml('Patch Availability', availability?.status ?? 'none selected')}
         ${metricHtml('Matching Fixture', availability?.matchedFixtureId ?? 'none')}
         ${metricHtml('Matching Role', availability?.matchedFixtureRole ?? 'n/a')}
+        ${metricHtml('Hosted Tile Set', availability?.matchedFixture?.tileLibraryTileSetId ?? availability?.matchedFixture?.tileSetId ?? 'n/a')}
+        ${metricHtml('3D Preview Mesh', availability?.matchedFixture?.meshLods?.length ? 'available' : 'n/a')}
         ${metricHtml('Selected Size', selected ? `${formatNumber(Math.abs(Number(bounds.eastLon) - Number(bounds.westLon)))} x ${formatNumber(Math.abs(Number(bounds.northLat) - Number(bounds.southLat)))} deg` : 'n/a')}
         ${metricHtml('Budget Status', budgetStatusLabel)}
         ${metricHtml('Live Generation', generationBudget?.generationAllowed === true ? 'enabled' : generationBudget ? 'disabled' : 'n/a')}
@@ -1892,17 +2196,42 @@ function bindEnvironmentStudioReferenceAtlasControls(scene, root) {
   });
   root?.querySelector?.('[data-action="env-reference-draw-boundary"]')?.addEventListener('click', () => scene.toggleReferenceBoundaryDrawing());
   root?.querySelector?.('[data-action="env-reference-select-boundary"]')?.addEventListener('click', () => scene.selectReferenceWindowFromControls());
-  root?.querySelector?.('[data-action="env-reference-focus-patch"]')?.addEventListener('click', () => scene.focusSelectedReferencePatch());
-  root?.querySelector?.('[data-action="env-reference-clear-boundary"]')?.addEventListener('click', () => scene.clearReferenceWindow());
+  root?.querySelectorAll?.('[data-action="env-reference-focus-patch"]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.focusSelectedReferencePatch());
+  });
+  root?.querySelectorAll?.('[data-action="env-reference-clear-boundary"]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.clearReferenceWindow());
+  });
   root?.querySelectorAll?.('[data-env-reference-window-preset]')?.forEach((button) => {
     button.addEventListener('click', () => scene.selectReferenceOperationalPreset(button.getAttribute('data-env-reference-window-preset')));
   });
+  root?.querySelector?.('[data-env-reference-window-mode]')?.addEventListener('change', (event) => {
+    const mode = event.target.value;
+    if (mode === 'drawCustom') scene.selectReferenceOperationalPreset('custom');
+    else scene.selectReferenceOperationalPreset(mode);
+  });
+  root?.querySelectorAll?.('#env-reference-center-lon, #env-reference-center-lat, #env-reference-width-km, #env-reference-height-km, #env-reference-west-lon, #env-reference-east-lon, #env-reference-south-lat, #env-reference-north-lat')?.forEach((input) => {
+    input.addEventListener('change', () => {
+      scene.operationalWindowEditor = {
+        ...scene.operationalWindowEditorDebugPayload(),
+        ...scene.readOperationalWindowEditorFromControls(),
+        appliedFrom: 'typed-draft',
+        tinySelectionExpanded: false
+      };
+    });
+  });
+  root?.querySelector?.('[data-action="env-reference-apply-window"]')?.addEventListener('click', () => scene.applyOperationalWindowEditor('typed'));
+  root?.querySelector?.('[data-action="env-reference-window-map-center"]')?.addEventListener('click', () => scene.moveOperationalWindowToMapCenter());
+  root?.querySelector?.('[data-action="env-reference-expand-local"]')?.addEventListener('click', () => scene.expandOperationalWindowToPreset('localPatch'));
+  root?.querySelector?.('[data-action="env-reference-expand-regional"]')?.addEventListener('click', () => scene.expandOperationalWindowToPreset('regionalSurvey'));
   root?.querySelector?.('[data-env-reference-fixture-selector]')?.addEventListener('change', (event) => scene.selectReferenceFixture(event.target.value));
   root?.querySelectorAll?.('[data-env-reference-window-action]')?.forEach((button) => {
     button.addEventListener('click', () => scene.adjustReferenceWindow(button.getAttribute('data-env-reference-window-action')));
   });
   root?.querySelector?.('[data-action="env-reference-load-patch"]')?.addEventListener('click', () => scene.loadSelectedReferencePatch());
-  root?.querySelector?.('[data-action="env-reference-export-patch-request"]')?.addEventListener('click', () => scene.exportReferencePatchRequest());
+  root?.querySelectorAll?.('[data-action="env-reference-export-patch-request"]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.exportReferencePatchRequest());
+  });
   root?.querySelector?.('[data-action="env-reference-generate-bathymetry"]')?.addEventListener('click', () => scene.generateReferenceBathymetry());
   root?.querySelector?.('[data-action="env-studio-export-project"]')?.addEventListener('click', () => scene.exportProject());
   root?.querySelector?.('[data-env-studio-import]')?.addEventListener('change', (event) => scene.importProject(event.target.files?.[0]));
@@ -1939,6 +2268,9 @@ function referenceAtlasRightPanelHtml(session = {}) {
           ${metricHtml('Fixture Count', atlas.fixtureCount ?? fixtures.length)}
           ${metricHtml('Mission-ready', missionReadyCount)}
           ${metricHtml('Low-res fallback', lowResCount)}
+          ${metricHtml('Hosted tile sets', session.referenceTileLibraryDebug?.stagedTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.stagedTileSetCount ?? 0)}
+          ${metricHtml('Request-only regions', session.referenceTileLibraryDebug?.requestOnlyTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.requestOnlyTileSetCount ?? 0)}
+          ${metricHtml('Tile Library', shortDigest(session.referenceTileLibrary?.digest))}
           ${metricHtml('Manifest Digest', shortDigest(manifest.manifestDigest))}
           ${metricHtml('Atlas Digest', shortDigest(atlas.atlasDigest))}
           ${metricHtml('Fixture Status', atlas.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE)}
@@ -1977,6 +2309,8 @@ function referenceAtlasRightPanelHtml(session = {}) {
           ${metricHtml('Dataset', loaded.sourceDataset)}
           ${metricHtml('Source resolution', loaded.sourceResolution)}
           ${metricHtml('Raster shape', loaded.columns && loaded.rows ? `${loaded.columns} x ${loaded.rows}` : 'n/a')}
+          ${metricHtml('Hosted Tile Set', loaded.tileLibraryTileSetId ?? loaded.tileSetId ?? 'legacy fixture')}
+          ${metricHtml('Preview Mesh', loaded.meshLods?.length ? 'available' : 'not registered')}
           ${budgetMetrics}
           ${metricHtml('Digest', shortDigest(loaded.digest))}
           ${metricHtml('Bathymetry', session.bathymetryArtifactDigest ? 'CURRENT' : 'NOT_GENERATED')}
@@ -2000,6 +2334,8 @@ function referenceAtlasRightPanelHtml(session = {}) {
         ${metricHtml('Availability', availability.status ?? 'notStaged')}
         ${metricHtml('Matching fixture', availability.matchedFixtureId ?? 'none')}
         ${metricHtml('Matching role', availability.matchedFixtureRole ?? 'n/a')}
+        ${metricHtml('Hosted Tile Set', availability.matchedFixture?.tileLibraryTileSetId ?? availability.matchedFixture?.tileSetId ?? 'n/a')}
+        ${metricHtml('Preview Mesh', availability.matchedFixture?.meshLods?.length ? 'available' : 'n/a')}
         ${metricHtml('Depth min / mean / max', `${formatNumber(stats.minDepthMeters)} / ${formatNumber(stats.meanDepthMeters)} / ${formatNumber(stats.maxDepthMeters)} m`)}
         ${metricHtml('Land / Ocean', `${formatNumber(stats.landFraction)} / ${formatNumber(stats.oceanFraction)}`)}
         ${metricHtml('Wet connectivity', formatNumber(stats.wetConnectedFraction))}
@@ -2165,6 +2501,7 @@ function bindReferenceBathymetryPreview(scene, root) {
     const lonLat = referenceCanvasLonLat(canvas, scene.session, event, {
       worldView: scene.referenceAtlasTransientView ?? scene.session.worldView
     });
+    scene.lastReferenceMapPoint = { lon: lonLat.lon, lat: lonLat.lat };
     if (coordinateLabel) coordinateLabel.textContent = `${formatNumber(lonLat.lon)} lon, ${formatNumber(lonLat.lat)} lat`;
     return lonLat;
   };
@@ -2272,7 +2609,7 @@ function bindReferenceBathymetryPreview(scene, root) {
       factor,
       scene.session.referenceAtlas,
       point,
-      { maxZoom: 5 }
+      { maxZoom: REFERENCE_ATLAS_MAX_ZOOM }
     );
     schedulePreviewDraw();
     if (binding.wheelCommitTimer != null) globalThis.clearTimeout?.(binding.wheelCommitTimer);
@@ -2377,6 +2714,8 @@ function drawReferenceFixtureCoverageOverlay(context, session = {}, width = 1, h
 function drawReferenceSelectionOverlay(context, session = {}, width = 1, height = 1, options = {}) {
   const bounds = options.bounds ?? session.selectedReferenceWindow?.bounds;
   if (!bounds) return;
+  const budget = session.selectedReferenceBoundaryBudget ?? session.selectedReferenceAvailability?.boundaryBudget ?? null;
+  const operationalWindow = session.selectedReferenceOperationalWindow ?? budget?.operationalWindow ?? null;
   const nw = referenceLonLatToCanvas(session, bounds.westLon, bounds.northLat, width, height);
   const se = referenceLonLatToCanvas(session, bounds.eastLon, bounds.southLat, width, height);
   const x = Math.min(nw.x, se.x);
@@ -2399,11 +2738,32 @@ function drawReferenceSelectionOverlay(context, session = {}, width = 1, height 
     [x, y],
     [x + rectWidth, y],
     [x, y + rectHeight],
-    [x + rectWidth, y + rectHeight]
+    [x + rectWidth, y + rectHeight],
+    [x + rectWidth / 2, y],
+    [x + rectWidth / 2, y + rectHeight],
+    [x, y + rectHeight / 2],
+    [x + rectWidth, y + rectHeight / 2]
   ]) {
     context.fillRect(point[0] - handleSize / 2, point[1] - handleSize / 2, handleSize, handleSize);
     context.strokeRect(point[0] - handleSize / 2, point[1] - handleSize / 2, handleSize, handleSize);
   }
+  const centerX = x + rectWidth / 2;
+  const centerY = y + rectHeight / 2;
+  context.beginPath();
+  context.arc(centerX, centerY, handleSize * 0.58, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  const label = `${operationalWindow?.scaleClass ?? 'selected'} / ${budget?.budgetStatus ?? 'budget pending'}`;
+  const labelX = clampNumber(x + 8, 6, Math.max(6, width - 230));
+  const labelY = clampNumber(y - 22, 18, Math.max(18, height - 12));
+  context.font = '12px sans-serif';
+  const labelWidth = Math.min(224, context.measureText(label).width + 18);
+  context.fillStyle = 'rgba(6, 14, 24, 0.82)';
+  context.fillRect(labelX - 6, labelY - 14, labelWidth, 20);
+  context.strokeStyle = 'rgba(248, 226, 108, 0.76)';
+  context.strokeRect(labelX - 6, labelY - 14, labelWidth, 20);
+  context.fillStyle = '#fff5a8';
+  context.fillText(label, labelX, labelY);
   context.restore();
 }
 
@@ -2444,8 +2804,9 @@ function referenceLonLatToCanvas(session = {}, lon = 0, lat = 0, width = 1, heig
 
 function referenceBoundaryDragOptions(scene) {
   return {
-    minLonSpanDegrees: scene?.numberValue?.('env-reference-window-width-deg', 2.7) ?? 2.7,
-    minLatSpanDegrees: scene?.numberValue?.('env-reference-window-height-deg', 1.8) ?? 1.8
+    minLonSpanDegrees: 0.05,
+    minLatSpanDegrees: 0.05,
+    minimumPresetId: 'localPatch'
   };
 }
 

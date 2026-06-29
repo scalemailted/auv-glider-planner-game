@@ -88,6 +88,7 @@ import {
 } from './SyntheticGlobeWorld.js';
 import {
   NO_REFERENCE_DATA_FIXTURE,
+  REFERENCE_ATLAS_MAX_ZOOM,
   REFERENCE_BATHYMETRY_LAYER_OPTIONS,
   REFERENCE_BATHYMETRY_BLOCKED_MESSAGE,
   REFERENCE_BATHYMETRY_MANIFEST_TYPE,
@@ -578,6 +579,8 @@ export function createEnvironmentStudioSession(options = {}) {
     sourceMode: normalizeSourceMode(options.sourceMode ?? (explicitWorldMode ? 'proceduralSyntheticSandbox' : 'referenceBathymetryAtlas')),
     studioStage: normalizeStudioStage(options.studioStage ?? (legacyAtlasMode ? 'atlasWindow' : explicitWorldMode ? 'worldMap' : 'globalAtlasSelector')),
     referenceBathymetryManifest,
+    referenceTileLibrary: options.referenceTileLibrary ?? null,
+    referenceTileLibraryDebug: options.referenceTileLibraryDebug ?? null,
     referenceAtlas,
     referenceLayer: referenceBathymetryLayerById(options.referenceLayer ?? 'topographyBathymetry').id,
     selectedReferenceFixtureId,
@@ -913,6 +916,8 @@ export function setEnvironmentStudioReferenceBathymetryManifest(sessionInput = {
     sourceMode: 'referenceBathymetryAtlas',
     studioStage: 'globalAtlasSelector',
     referenceBathymetryManifest,
+    referenceTileLibrary: options.referenceTileLibrary ?? session.referenceTileLibrary ?? null,
+    referenceTileLibraryDebug: options.referenceTileLibraryDebug ?? session.referenceTileLibraryDebug ?? null,
     referenceAtlas,
     selectedReferenceFixtureId: null,
     selectedReferenceWindow: referenceAtlas.sourceDataset?.referenceDataAvailable === true
@@ -1838,6 +1843,8 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     sourceMode: session.sourceMode,
     studioStage: session.studioStage,
     referenceBathymetryManifest: compactReferenceBathymetryManifest(session.referenceBathymetryManifest ?? session.referenceAtlas?.manifest),
+    referenceTileLibrary: compactReferenceTileLibrary(session.referenceTileLibrary),
+    referenceTileLibraryDebug: session.referenceTileLibraryDebug ?? null,
     referenceAtlas: compactReferenceBathymetryAtlas(session.referenceAtlas),
     referenceLayer: session.referenceLayer,
     selectedReferenceFixtureId: session.selectedReferenceFixtureId ?? null,
@@ -1919,6 +1926,60 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
   return withProjectDigest(projectBase, 'projectDigest');
 }
 
+function compactReferenceTileLibrary(library = null) {
+  if (!library || typeof library !== 'object') return null;
+  const tileSets = Array.isArray(library.tileSets) ? library.tileSets : [];
+  return {
+    artifactType: library.artifactType ?? 'anchor.reference-bathymetry-tile-library',
+    artifactVersion: library.artifactVersion ?? '1.0.0',
+    libraryVersion: library.libraryVersion ?? null,
+    digest: library.digest ?? null,
+    path: library.path ?? 'assets/reference_bathymetry/tile-library-manifest.json',
+    coverageSummary: library.coverageSummary ?? null,
+    tileSets: tileSets.map((tileSet) => ({
+      tileSetId: tileSet.tileSetId,
+      label: tileSet.label,
+      role: tileSet.role,
+      staged: tileSet.staged === true,
+      sourceDataset: tileSet.sourceDataset,
+      sourceVariant: tileSet.sourceVariant,
+      sourceResolution: tileSet.sourceResolution,
+      actualRasterResolutionArcSeconds: tileSet.actualRasterResolutionArcSeconds,
+      bounds: tileSet.bounds,
+      rasterTiles: tileSet.rasterTiles ? {
+        kind: tileSet.rasterTiles.kind,
+        path: tileSet.rasterTiles.path,
+        rows: tileSet.rasterTiles.rows,
+        columns: tileSet.rasterTiles.columns,
+        digest: tileSet.rasterTiles.digest
+      } : null,
+      meshLods: Array.isArray(tileSet.meshLods)
+        ? tileSet.meshLods.map((entry) => ({
+            lod: entry.lod,
+            path: entry.path,
+            digest: entry.digest,
+            meshRows: entry.meshRows,
+            meshColumns: entry.meshColumns,
+            vertexCount: entry.vertexCount,
+            triangleCount: entry.triangleCount,
+            isAuthoritativeForSimulation: entry.isAuthoritativeForSimulation === true
+          }))
+        : [],
+      coverageRole: tileSet.coverageRole,
+      recommendedUse: tileSet.recommendedUse,
+      artifactStatus: tileSet.artifactStatus,
+      digests: tileSet.digests ?? {},
+      hiddenTruthExposed: false,
+      externalRuntimeFetchRequired: false
+    })),
+    staticAssetSafety: library.staticAssetSafety ?? null,
+    hiddenTruthExposed: false,
+    localAbsolutePathsIncluded: false,
+    rawExternalDataPathsIncluded: false,
+    externalRuntimeFetchRequired: false
+  };
+}
+
 export function normalizeEnvironmentStudioProject(input = {}) {
   const source = input.projectType === ENVIRONMENT_STUDIO_PROJECT_TYPE ? input : (input.project ?? input);
   const session = createEnvironmentStudioSession({
@@ -1940,6 +2001,8 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     sourceMode: source.sourceMode,
     studioStage: source.studioStage,
     referenceBathymetryManifest: source.referenceBathymetryManifest ?? source.referenceManifest ?? source.referenceAtlas?.manifest,
+    referenceTileLibrary: source.referenceTileLibrary,
+    referenceTileLibraryDebug: source.referenceTileLibraryDebug,
     referenceAtlas: source.referenceAtlas ?? source.referenceBathymetryAtlas,
     referenceLayer: source.referenceLayer,
     selectedReferenceFixtureId: source.selectedReferenceFixtureId ?? source.selectedFixtureId,
@@ -2425,6 +2488,12 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     referenceDatasetName: session.referenceAtlas?.sourceDataset?.name ?? null,
     referenceDataAvailable: session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true,
     referenceFixtureStatus: session.referenceAtlas?.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE,
+    referenceTileLibraryDigest: session.referenceTileLibrary?.digest ?? null,
+    referenceTileLibraryTileSetCount: session.referenceTileLibrary?.tileSets?.length ?? 0,
+    referenceTileLibraryStagedTileSetCount: session.referenceTileLibraryDebug?.stagedTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.stagedTileSetCount ?? 0,
+    referenceTileLibraryRequestOnlyTileSetCount: session.referenceTileLibraryDebug?.requestOnlyTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.requestOnlyTileSetCount ?? 0,
+    referenceTileLibraryStaticAssetSafety: session.referenceTileLibraryDebug?.staticAssetSafety ?? session.referenceTileLibrary?.staticAssetSafety ?? null,
+    referenceTileLibraryExternalRuntimeFetchRequired: session.referenceTileLibrary?.externalRuntimeFetchRequired === true,
     referenceFixtureId: referenceFixtureIdForSession(session),
     referenceLayer: session.referenceLayer,
     selectedReferenceWindow: session.selectedReferenceWindow,
@@ -2606,6 +2675,12 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     referenceDatasetName: session.referenceAtlas?.sourceDataset?.name ?? null,
     referenceDataAvailable: session.referenceAtlas?.sourceDataset?.referenceDataAvailable === true,
     referenceFixtureStatus: session.referenceAtlas?.provenance?.fixtureStatus ?? NO_REFERENCE_DATA_FIXTURE,
+    referenceTileLibraryDigest: session.referenceTileLibrary?.digest ?? null,
+    referenceTileLibraryTileSetCount: session.referenceTileLibrary?.tileSets?.length ?? 0,
+    referenceTileLibraryStagedTileSetCount: session.referenceTileLibraryDebug?.stagedTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.stagedTileSetCount ?? 0,
+    referenceTileLibraryMissionReadyTileSetCount: session.referenceTileLibraryDebug?.missionReadyTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.missionReadyTileSetCount ?? 0,
+    referenceTileLibraryRequestOnlyTileSetCount: session.referenceTileLibraryDebug?.requestOnlyTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.requestOnlyTileSetCount ?? 0,
+    referenceTileLibraryStaticAssetSafety: session.referenceTileLibraryDebug?.staticAssetSafety ?? session.referenceTileLibrary?.staticAssetSafety ?? null,
     referenceLayer: session.referenceLayer,
     selectedPatchDigest: session.selectedReferenceWindow?.patchDigest ?? null,
     selectedPatchBounds: session.selectedReferenceWindow?.bounds ?? null,
@@ -3683,6 +3758,8 @@ function projectStateFromProject(project = {}) {
     sourceMode: project.sourceMode,
     studioStage: project.studioStage,
     referenceBathymetryManifest: project.referenceBathymetryManifest ?? project.referenceManifest ?? project.referenceAtlas?.manifest,
+    referenceTileLibrary: project.referenceTileLibrary,
+    referenceTileLibraryDebug: project.referenceTileLibraryDebug,
     referenceAtlas: project.referenceAtlas ?? project.referenceBathymetryAtlas,
     referenceLayer: project.referenceLayer,
     selectedReferenceFixtureId: project.selectedReferenceFixtureId ?? project.selectedFixtureId,
@@ -3834,6 +3911,8 @@ function normalizeSession(input = {}) {
     sourceMode: normalizeSourceMode(input.sourceMode ?? (explicitWorldMode ? 'proceduralSyntheticSandbox' : 'referenceBathymetryAtlas')),
     studioStage: normalizeStudioStage(input.studioStage ?? (input.tiles?.length ? 'regionalBathymetry' : legacyAtlasMode ? 'atlasWindow' : explicitWorldMode ? 'worldMap' : 'globalAtlasSelector')),
     referenceBathymetryManifest,
+    referenceTileLibrary: input.referenceTileLibrary ?? null,
+    referenceTileLibraryDebug: input.referenceTileLibraryDebug ?? null,
     referenceAtlas,
     referenceLayer: referenceBathymetryLayerById(input.referenceLayer ?? 'topographyBathymetry').id,
     selectedReferenceFixtureId,
@@ -4171,7 +4250,7 @@ function normalizeWorldView(input = {}) {
     panY: clampFinite(input.panY, -1, 1, DEFAULT_WORLD_VIEW.panY),
     rotationYawDegrees: clampFinite(input.rotationYawDegrees ?? input.yawDegrees, -180, 180, DEFAULT_WORLD_VIEW.rotationYawDegrees),
     rotationPitchDegrees: clampFinite(input.rotationPitchDegrees ?? input.pitchDegrees, -65, 65, DEFAULT_WORLD_VIEW.rotationPitchDegrees),
-    zoom: clampFinite(input.zoom, 0.75, 5, DEFAULT_WORLD_VIEW.zoom)
+    zoom: clampFinite(input.zoom, 0.75, REFERENCE_ATLAS_MAX_ZOOM, DEFAULT_WORLD_VIEW.zoom)
   };
 }
 

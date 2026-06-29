@@ -1,0 +1,87 @@
+{
+  "artifactType": "anchor.reference-bathymetry-tile-set",
+  "artifactVersion": "1.0.0",
+  "tileSetId": "monterey_canyon",
+  "label": "Monterey Canyon",
+  "role": "lowResolutionFallbackTileSet",
+  "staged": true,
+  "sourceDataset": "ETOPO_2022",
+  "provider": "NOAA NCEI",
+  "sourceVariant": "bedrock elevation",
+  "sourceResolution": "60 arc-second",
+  "actualRasterResolutionArcSeconds": 60.0,
+  "bounds": {
+    "westLon": -123.0,
+    "eastLon": -121.5,
+    "southLat": 36.0,
+    "northLat": 37.2
+  },
+  "rasterTiles": {
+    "kind": "singleRasterJson",
+    "path": "assets/reference_bathymetry/tiles/monterey_canyon/monterey_canyon.reference-bathymetry-raster.json",
+    "rows": 72,
+    "columns": 90,
+    "digest": "sha256:f19c402408569d73744e43f08a27981cf74398558122995ba206ff53265e0d81"
+  },
+  "meshLods": [
+    {
+      "lod": "coarse",
+      "path": "assets/reference_bathymetry/tiles/monterey_canyon/monterey_canyon.mesh-lod-coarse.json",
+      "digest": "sha256:7106da0661f412ba3a833c8dad7d8b209c0dbc63182ecd8b19cb67386257fdf8",
+      "meshRows": 48,
+      "meshColumns": 64,
+      "vertexCount": 3072,
+      "triangleCount": 5922,
+      "isAuthoritativeForSimulation": false
+    },
+    {
+      "lod": "medium",
+      "path": "assets/reference_bathymetry/tiles/monterey_canyon/monterey_canyon.mesh-lod-medium.json",
+      "digest": "sha256:0079e07062d3952af99a89d7132bab57644c3e84c652f614fbdc4160d38ecda2",
+      "meshRows": 72,
+      "meshColumns": 90,
+      "vertexCount": 6480,
+      "triangleCount": 12638,
+      "isAuthoritativeForSimulation": false
+    }
+  ],
+  "coverageRole": "stagedFallback",
+  "recommendedUse": "Lower-resolution staged fallback for preview and continuity.",
+  "budgetClass": "singlePatch",
+  "requiredSourceTiles": [],
+  "offlineCommands": null,
+  "digests": {
+    "raster": "sha256:f19c402408569d73744e43f08a27981cf74398558122995ba206ff53265e0d81",
+    "meshCoarse": "sha256:7106da0661f412ba3a833c8dad7d8b209c0dbc63182ecd8b19cb67386257fdf8",
+    "meshMedium": "sha256:0079e07062d3952af99a89d7132bab57644c3e84c652f614fbdc4160d38ecda2",
+    "metadata": "sha256:e8c70135ddab9aedcf2008a968ac18acf65496b2bffce1715cd2cc4bd1c5b289"
+  },
+  "tags": [
+    "app-hosted-tile-library",
+    "basin",
+    "canyon",
+    "coastal",
+    "reference-bathymetry",
+    "shelf",
+    "slope",
+    "static-reference-bathymetry"
+  ],
+  "artifactStatus": "STAGED",
+  "localAbsolutePathsIncluded": false,
+  "rawExternalDataPathsIncluded": false,
+  "externalRuntimeFetchRequired": false,
+  "hiddenTruthExposed": false,
+  "claimBoundary": {
+    "referenceBathymetryTileSet": true,
+    "rasterGridAuthoritativeForBathymetrySampling": true,
+    "derivedMeshLodsVisualizationOnly": true,
+    "browserDownloadsPublicSourceData": false,
+    "currentField4DGenerated": false,
+    "scalarField4DGenerated": false,
+    "certifiedForNavigation": false,
+    "operationalOceanForecast": false,
+    "hiddenTruthExposed": false
+  },
+  "metadataPath": "assets/reference_bathymetry/tiles/monterey_canyon/monterey_canyon.tile-set.json",
+  "digest": "sha256:e8c70135ddab9aedcf2008a968ac18acf65496b2bffce1715cd2cc4bd1c5b289"
+}

@@ -548,6 +548,74 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-025",
+      "title": "Reference atlas needs deep zoom and direct operational-window editing.",
+      "source": "alpha tester",
+      "status": "resolved",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Bathymetry Atlas",
+      "summary": "Alpha review found that the atlas could select large regions but still lacked enough close zoom and an obvious operational-window editor for center, size, and lon/lat bounds. Environment Studio now supports deep atlas zoom, visible typed operational-window editing, tiny-selection guidance, local/regional/fleet single patch requests, Gulf/basin multi-tile patch requests, and Monterey patch continuity evidence.",
+      "decision": "Accepted for REF-ATLAS-INTERACT-R1.4.",
+      "proposedPhase": "REF-ATLAS-INTERACT-R1.4",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/ref-atlas-zoom-window-r1/qa-summary.json",
+        "tools/js/smoke_reference_atlas_deep_zoom.mjs",
+        "tools/js/smoke_reference_atlas_operational_window_editor.mjs",
+        "tools/js/smoke_reference_atlas_large_region_presets.mjs",
+        "tools/js/audit_reference_atlas_zoom_window_acceptance.mjs"
+      ],
+      "acceptanceCriteria": [
+        "The atlas can zoom to at least 16x and reset to the full world view.",
+        "Operational windows can be edited by mode, center lon/lat, size in kilometers, and west/east/south/north bounds.",
+        "Tiny click or drag selections show mission-planning guidance and expand to a useful local or regional window.",
+        "Local, regional, and fleet survey windows export single patch requests, while Gulf and basin windows export multi-tile patch requests.",
+        "The Monterey mission-ready patch still focuses, loads, generates bathymetry and fields, composes an environment, and validates launch readiness without changing simulation or scoring."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-027",
+      "title": "Create scripted static ETOPO tile pipeline for app-hosted reference bathymetry.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "SCI",
+        "BENCH",
+        "UX",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Bathymetry Atlas",
+      "summary": "ANCHOR should not depend on live NOAA/GEBCO downloads during browser runtime. The app needs a scripted offline pipeline that downloads selected ETOPO 2022 15 arc-second source tiles, crops/validates them, generates app-ready raster and mesh LOD artifacts, and registers them in an app-hosted static tile library.",
+      "decision": "Accepted for REF-TILE-LIB-R1A.",
+      "proposedPhase": "REF-TILE-LIB-R1A",
+      "ownerNotes": "",
+      "evidence": [
+        "assets/reference_bathymetry/tile-library-manifest.json",
+        "tools/python/download_reference_bathymetry_tiles.py",
+        "tools/python/preprocess_reference_tile_library.py",
+        "tools/js/audit_reference_tile_library_static_assets.mjs",
+        "tools/js/smoke_reference_tile_library_loader.mjs"
+      ],
+      "acceptanceCriteria": [
+        "Raw ETOPO source tiles are resolved and downloaded by script for selected regions, not by browser runtime.",
+        "Raw source data remains ignored under external_data/reference_bathymetry/.",
+        "App-ready raster and non-authoritative mesh LOD artifacts are generated under assets/reference_bathymetry/.",
+        "The tile-library manifest registers staged Monterey tile sets and request-only Gulf coverage honestly.",
+        "Environment Studio loads staged ANCHOR static tile assets without NOAA/GEBCO runtime fetches, raw local paths, or hidden truth exposure."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

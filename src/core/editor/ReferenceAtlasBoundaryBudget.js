@@ -1,5 +1,7 @@
 export const REFERENCE_ATLAS_BOUNDARY_BUDGET_VERSION = 'reference-atlas-boundary-budget-r1-3';
 export const REFERENCE_ATLAS_OPERATIONAL_WINDOW_VERSION = 'reference-atlas-operational-window-r1';
+export const REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM = 50;
+export const REFERENCE_ATLAS_RECOMMENDED_WINDOW_KM = 100;
 
 export const REFERENCE_ATLAS_ALPHA_BUDGET = Object.freeze({
   okSourceCellsMax: 150000,
@@ -18,7 +20,7 @@ export const REFERENCE_ATLAS_ALPHA_BUDGET = Object.freeze({
 
 export const REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE = 'Region is too large for live browser generation in Alpha. Export a patch request or select a smaller window.';
 export const REFERENCE_ATLAS_MULTITILE_MESSAGE = 'Multi-tile preprocessing required. Live Alpha generation is disabled for this operational window.';
-export const REFERENCE_ATLAS_TINY_SELECTION_MESSAGE = 'Selected region is smaller than recommended for mission planning.';
+export const REFERENCE_ATLAS_TINY_SELECTION_MESSAGE = 'Selection is too small for mission planning.';
 
 const DEFAULT_BOUNDS = Object.freeze({
   westLon: -123,
@@ -194,6 +196,14 @@ export function referenceAtlasBoundsForOperationalPreset(centerInput = {}, prese
   const centerLat = finite(centerInput.lat ?? centerInput.centerLat, 36.6);
   const widthKm = positiveNumber(preset?.widthKm, 250);
   const heightKm = positiveNumber(preset?.heightKm, 200);
+  return referenceAtlasBoundsForKilometerWindow({ centerLon, centerLat, widthKm, heightKm });
+}
+
+export function referenceAtlasBoundsForKilometerWindow(windowInput = {}) {
+  const centerLon = finite(windowInput.lon ?? windowInput.centerLon, -122.25);
+  const centerLat = finite(windowInput.lat ?? windowInput.centerLat, 36.6);
+  const widthKm = positiveNumber(windowInput.widthKm, 250);
+  const heightKm = positiveNumber(windowInput.heightKm, 200);
   const lonSpan = widthKm / Math.max(0.000001, 111.32 * Math.max(0.05, Math.cos(centerLat * Math.PI / 180)));
   const latSpan = heightKm / 111.32;
   return boundsFromCenterSpan(centerLon, centerLat, lonSpan, latSpan);
@@ -295,13 +305,19 @@ function classifyOperationalScale({ widthKm = 0, heightKm = 0, areaKm2 = 0, vali
   const maxSide = Math.max(widthKm, heightKm);
   if (maxSide <= 160 && areaKm2 <= 26000) return 'localPatch';
   if (maxSide <= 360 && areaKm2 <= 90000) return 'regionalSurvey';
+  if (maxSide <= 650 && areaKm2 <= 260000) return 'fleetSurvey';
   if (widthKm <= 1050 && heightKm <= 730 && areaKm2 <= 780000) return 'gulfScale';
   return 'basinCampaign';
 }
 
 function tinySelection(bounds = {}) {
-  return Math.max(0, Number(bounds.eastLon) - Number(bounds.westLon)) < 0.2
-    || Math.max(0, Number(bounds.northLat) - Number(bounds.southLat)) < 0.2;
+  const widthDegrees = Math.max(0, Number(bounds.eastLon) - Number(bounds.westLon));
+  const heightDegrees = Math.max(0, Number(bounds.northLat) - Number(bounds.southLat));
+  const centerLat = (Number(bounds.southLat) + Number(bounds.northLat)) / 2;
+  const widthKm = widthDegrees * 111.32 * Math.max(0.05, Math.cos(centerLat * Math.PI / 180));
+  const heightKm = heightDegrees * 111.32;
+  return widthKm < REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM
+    || heightKm < REFERENCE_ATLAS_MIN_USEFUL_WINDOW_KM;
 }
 
 function boundsFromCenterSpan(centerLon = 0, centerLat = 0, lonSpan = 1, latSpan = 1) {

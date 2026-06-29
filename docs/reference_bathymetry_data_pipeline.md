@@ -4,6 +4,10 @@ ANCHOR uses preprocessed public bathymetry/topography references as the default 
 
 The browser app does not download NOAA or GEBCO data at runtime. Raw source files live under gitignored `external_data/reference_bathymetry/`. Compact ANCHOR reference artifacts live under `assets/reference_bathymetry/`.
 
+ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The browser does not download NOAA/GEBCO data at runtime. External public bathymetry data is downloaded and preprocessed offline, then registered as staged ANCHOR tile artifacts.
+
+The raster/grid artifact remains authoritative for bathymetry sampling and environment generation. Derived low-poly meshes are visualization/inspection artifacts only.
+
 ## Commands
 
 ```powershell
@@ -20,6 +24,21 @@ npm.cmd run audit:reference-bathy
 
 - `AVAILABLE`: manifest paths exist, raster artifacts parse, source metadata, role, rows/columns, actual arc-second resolution, and bounds are present, elevation/depth/masks are finite, filenames do not contradict actual resolution, and no hidden-truth/current/scalar claims are present.
 - `NO_REFERENCE_DATA_FIXTURE`: the blocked manifest is explicit, has no fake fixtures, and includes setup instructions.
+
+REF-TILE-LIB-R1A adds the static tile-library pipeline:
+
+```powershell
+python tools/python/download_reference_bathymetry_tiles.py dry-run --region monterey_canyon_15s
+python tools/python/download_reference_bathymetry_tiles.py dry-run --region gulf_segment_15s
+python tools/python/download_reference_bathymetry_tiles.py download --region gulf_segment_15s
+python tools/python/preprocess_reference_tile_library.py
+node tools/js/audit_reference_tile_library_static_assets.mjs
+node tools/js/smoke_reference_tile_library_loader.mjs
+node tools/js/smoke_reference_bathymetry_mesh_lod.mjs
+node tools/js/smoke_reference_tile_library_atlas_coverage.mjs
+```
+
+`tools/reference_bathymetry/curated_regions.json` records curated operational regions. `download_reference_bathymetry_tiles.py` resolves ETOPO 2022 15 arc-second source tiles and downloads selected raw GeoTIFFs only into ignored `external_data/reference_bathymetry/`. `preprocess_reference_tile_library.py` creates staged browser artifacts under `assets/reference_bathymetry/tiles/<regionId>/` and registers them in `assets/reference_bathymetry/tile-library-manifest.json`.
 
 ## Current Checked-In State
 
@@ -38,6 +57,8 @@ The checked-in manifest currently reports `AVAILABLE` with a compact global over
 The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the ETOPO 2022 15 arc-second Monterey Canyon fixture. It does not contain raw source paths or hidden truth.
 
 The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. Oversized selections can be exported as patch requests, but they are not generated live in Alpha.
+
+The static tile library currently registers two staged Monterey tile sets and one Gulf request-only entry. `monterey_canyon_15s` is the mission-ready tile set; `monterey_canyon` is a low-resolution fallback tile set. `gulf_segment_15s` remains request-only until the owner runs the offline download and preprocessing commands. The browser loader ignores request-only regions when choosing staged mission patches.
 
 The two Monterey Canyon fixtures are:
 
@@ -65,7 +86,7 @@ The preserved fallback fixture is:
 - shape: 90 columns x 72 rows
 - bounds: west -123.0, east -121.5, south 36.0, north 37.2
 
-Environment Studio opens to the Global Atlas Selector, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users load a staged patch into the Regional Patch Workspace before generating regional bathymetry. If a selected region is not staged or is too large for live Alpha generation, the browser exports an `anchor.reference-bathymetry-patch-request` with local commands and boundary-budget metadata instead of generating fake reference data.
+Environment Studio opens to the Global Atlas Selector, supports deep zoom and operational-window editing, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users load a staged patch into the Regional Patch Workspace before generating regional bathymetry. If a selected region is not staged or is too large for live Alpha generation, the browser exports an `anchor.reference-bathymetry-patch-request` or `anchor.reference-bathymetry-multitile-patch-request` with typed bounds, approximate size, local commands, and boundary-budget metadata instead of generating fake reference data.
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 
@@ -86,7 +107,7 @@ The generated currents, scalars, hotspots, and hazard candidates are determinist
 
 The reference-derived Monterey Canyon path is ready for human alpha retest. Retest evidence lives in ignored local owner-review artifacts, while tester instructions and the feedback template are tracked in `docs/alpha_reference_environment_retest_protocol.md` and `alpha/reference-environment-retest-feedback-template.json`.
 
-For REF-ATLAS-INTERACT-R1.3, large valid operational windows such as Gulf-scale selections are not rejected as tiny browser patches. The browser records the selected `OperationalWindow`, reports a separate `GenerationBudget` with `MULTI_TILE_REQUIRED`, and exports `anchor.reference-bathymetry-multitile-patch-request` JSON containing tile bounds, suggested fixture prefix, offline download/preprocess commands, claim-boundary flags, and a request digest. The artifact is still a request only: it does not include raw external paths, hidden truth, generated currents, generated scalar fields, or an operational forecast claim.
+For REF-ATLAS-INTERACT-R1.4, large valid operational windows such as Gulf-scale selections are not rejected as tiny browser patches. The browser records the selected `OperationalWindow`, reports a separate `GenerationBudget` with `MULTI_TILE_REQUIRED`, and exports `anchor.reference-bathymetry-multitile-patch-request` JSON containing typed bounds, approximate size, tile bounds, suggested fixture prefix, offline download/preprocess commands, claim-boundary flags, and a request digest. The artifact is still a request only: it does not include raw external paths, hidden truth, generated currents, generated scalar fields, or an operational forecast claim.
 
 ## Boundaries
 

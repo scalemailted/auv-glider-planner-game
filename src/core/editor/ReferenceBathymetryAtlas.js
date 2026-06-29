@@ -24,6 +24,8 @@ export const REFERENCE_BATHYMETRY_PATCH_REQUEST_TYPE = 'anchor.reference-bathyme
 export const REFERENCE_BATHYMETRY_MULTITILE_PATCH_REQUEST_TYPE = 'anchor.reference-bathymetry-multitile-patch-request';
 export const REFERENCE_BATHYMETRY_PATCH_REQUEST_VERSION = '1.0.0';
 export const REFERENCE_PATCH_BATHYMETRY_BUILDER_VERSION = 'real-bathy-r1-reference-patch-builder';
+export const REFERENCE_ATLAS_MAX_ZOOM = 32;
+export const REFERENCE_ATLAS_FOCUS_ZOOM = 20;
 export const NO_REFERENCE_DATA_FIXTURE = 'NO_REFERENCE_DATA_FIXTURE';
 export const REFERENCE_DATA_AVAILABLE = 'AVAILABLE';
 export const REFERENCE_BATHYMETRY_BLOCKED_MESSAGE = 'BLOCKED_WAITING_FOR_REFERENCE_BATHYMETRY_DOWNLOAD: run npm.cmd run download:reference-bathy and npm.cmd run preprocess:reference-bathy before generating reference-backed bathymetry.';
@@ -383,6 +385,13 @@ export function referenceFixtureCoverageOverlays(atlasOrFixtures = []) {
     actualRasterResolutionArcSeconds: fixture.actualRasterResolutionArcSeconds,
     bounds: fixture.bounds,
     digest: fixture.digest ?? fixture.rasterArtifact?.rasterDigest ?? null,
+    tileSetId: fixture.tileSetId ?? null,
+    tileLibraryTileSetId: fixture.tileLibraryTileSetId ?? fixture.tileSetId ?? null,
+    tileLibraryRole: fixture.tileLibraryRole ?? null,
+    coverageRole: fixture.coverageRole ?? null,
+    recommendedUse: fixture.recommendedUse ?? null,
+    meshLods: Array.isArray(fixture.meshLods) ? fixture.meshLods.map((entry) => ({ ...entry })) : [],
+    meshLodAvailable: Array.isArray(fixture.meshLods) && fixture.meshLods.length > 0,
     coverageKind: fixture.role === 'missionReadyPatch' ? 'missionReadyPatch' : 'lowResolutionReferencePatch',
     hiddenTruthExposed: false
   }));
@@ -392,7 +401,7 @@ export function referenceAtlasViewport(viewInput = {}, atlasOrBounds = GLOBAL_RE
   const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
   const worldLonSpan = Math.max(0.000001, bounds.eastLon - bounds.westLon);
   const worldLatSpan = Math.max(0.000001, bounds.northLat - bounds.southLat);
-  const zoom = clampNumber(viewInput.zoom ?? 1, 1, 32);
+  const zoom = clampNumber(viewInput.zoom ?? 1, 1, REFERENCE_ATLAS_MAX_ZOOM);
   const lonSpan = worldLonSpan / zoom;
   const latSpan = worldLatSpan / zoom;
   const requestedCenterLon = Number.isFinite(Number(viewInput.centerLon))
@@ -448,7 +457,7 @@ export function referenceAtlasZoomView(
   const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
   const viewport = referenceAtlasViewport(viewInput, bounds);
   const factor = Number.isFinite(Number(zoomFactor)) && Number(zoomFactor) > 0 ? Number(zoomFactor) : 1;
-  const maxZoom = clampNumber(options.maxZoom ?? 32, 1, 64);
+  const maxZoom = clampNumber(options.maxZoom ?? REFERENCE_ATLAS_MAX_ZOOM, 1, 64);
   const nextZoom = clampNumber(viewport.zoom * factor, 1, maxZoom);
   const focusX = clampNumber(focusPoint?.x ?? 0.5, 0, 1);
   const focusY = clampNumber(focusPoint?.y ?? 0.5, 0, 1);
@@ -627,6 +636,12 @@ export function createReferenceBathymetryPatchRequest(boundsInput = DEFAULT_REFE
     provider: atlas.sourceDataset?.provider ?? 'NOAA NCEI',
     requestedResolution,
     bounds,
+    typedBounds: bounds,
+    approximateSizeKm: {
+      widthKm: operationalWindow.widthKm,
+      heightKm: operationalWindow.heightKm,
+      areaKm2: operationalWindow.areaKm2
+    },
     operationalWindow,
     boundaryBudget,
     generationBudget: boundaryBudget,
@@ -680,6 +695,12 @@ export function createReferenceBathymetryMultiTilePatchRequest(boundsInput = DEF
     provider: atlas.sourceDataset?.provider ?? 'NOAA NCEI',
     requestedResolution,
     bounds,
+    typedBounds: bounds,
+    approximateSizeKm: {
+      widthKm: operationalWindow.widthKm,
+      heightKm: operationalWindow.heightKm,
+      areaKm2: operationalWindow.areaKm2
+    },
     operationalWindow,
     boundaryBudget: generationBudget,
     generationBudget,
@@ -1268,9 +1289,30 @@ function normalizeManifestFixture(input = {}) {
     bounds: input.bounds ? normalizeLonLatBounds(input.bounds) : normalizeLonLatBounds(DEFAULT_REFERENCE_BOUNDS),
     rasterPath: input.rasterPath ?? null,
     digest: input.digest ?? input.rasterDigest ?? null,
+    tileSetId: input.tileSetId ?? input.tileLibraryTileSetId ?? null,
+    tileLibraryTileSetId: input.tileLibraryTileSetId ?? input.tileSetId ?? null,
+    tileLibraryRole: input.tileLibraryRole ?? null,
+    coverageRole: input.coverageRole ?? null,
+    recommendedUse: input.recommendedUse ?? null,
+    meshLods: normalizeReferenceFixtureMeshLods(input.meshLods),
     tags: Array.isArray(input.tags) ? input.tags.map(String) : [],
     rasterArtifact: normalizeReferenceRasterArtifact(input.rasterArtifact ?? input.artifact ?? null)
   };
+}
+
+function normalizeReferenceFixtureMeshLods(input = []) {
+  return (Array.isArray(input) ? input : [])
+    .filter((entry) => entry && typeof entry === 'object')
+    .map((entry) => ({
+      lod: String(entry.lod ?? entry.id ?? 'coarse'),
+      path: entry.path ?? null,
+      digest: entry.digest ?? null,
+      meshRows: finiteOrNull(entry.meshRows),
+      meshColumns: finiteOrNull(entry.meshColumns),
+      vertexCount: finiteOrNull(entry.vertexCount),
+      triangleCount: finiteOrNull(entry.triangleCount),
+      isAuthoritativeForSimulation: entry.isAuthoritativeForSimulation === true ? true : false
+    }));
 }
 
 function normalizeReferenceFixtures(input = []) {
@@ -1303,6 +1345,12 @@ function compactReferenceFixture(fixture = {}) {
     rows: fixture.rows,
     bounds: fixture.bounds,
     digest: fixture.digest ?? fixture.rasterArtifact?.rasterDigest ?? null,
+    tileSetId: fixture.tileSetId ?? null,
+    tileLibraryTileSetId: fixture.tileLibraryTileSetId ?? fixture.tileSetId ?? null,
+    tileLibraryRole: fixture.tileLibraryRole ?? null,
+    coverageRole: fixture.coverageRole ?? null,
+    recommendedUse: fixture.recommendedUse ?? null,
+    meshLods: Array.isArray(fixture.meshLods) ? fixture.meshLods.map((entry) => ({ ...entry })) : [],
     tags: Array.isArray(fixture.tags) ? fixture.tags.slice() : [],
     hiddenTruthExposed: false
   };
@@ -1509,7 +1557,7 @@ function referenceAtlasBoundsFromInput(input = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
   return normalizeLonLatBounds(bounds ?? GLOBAL_REFERENCE_ATLAS_BOUNDS);
 }
 
-function referenceAtlasViewForCenter(centerLon = 0, centerLat = 0, zoom = 1, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
+export function referenceAtlasViewForCenter(centerLon = 0, centerLat = 0, zoom = 1, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
   const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
   const worldLonSpan = Math.max(0.000001, bounds.eastLon - bounds.westLon);
   const worldLatSpan = Math.max(0.000001, bounds.northLat - bounds.southLat);
