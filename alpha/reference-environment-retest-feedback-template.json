@@ -8,6 +8,10 @@
   "blockedAtStep": "",
   "clarity": {
     "sourceProvenanceClear": null,
+    "globalAtlasSelectorUnderstandable": null,
+    "montereyPatchOverlayDiscoverable": null,
+    "globalOverviewVsMissionPatchClear": null,
+    "offlinePreprocessingClear": null,
     "claimBoundaryClear": null,
     "warningsClear": null,
     "planningLaunchClear": null,
@@ -15,6 +19,8 @@
   },
   "usability": {
     "environmentStudioEase": null,
+    "patchRequestExportClear": null,
+    "regionalPatchWorkflowAfterLoadClear": null,
     "planningEase": null,
     "layerVisibility": null,
     "rightPanelUsefulness": null,

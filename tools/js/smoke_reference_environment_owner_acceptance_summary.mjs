@@ -8,14 +8,14 @@ const summaryPath = path.join(ownerReviewDir, 'qa-summary.json');
 
 const requiredScreenshots = [
   '01-global-atlas-default.png',
-  '02-patch-coverage-overlay.png',
-  '03-monterey-patch-selected.png',
-  '04-regional-patch-workspace.png',
-  '05-reference-bathymetry-generated.png',
-  '06-synthetic-fields-generated.png',
-  '07-environment-artifact-composed.png',
-  '08-launch-validation-report.png',
-  '09-planning-launch-warning-review.png',
+  '02-global-atlas-zoomed.png',
+  '03-mission-ready-patch-overlay.png',
+  '04-selected-atlas-region.png',
+  '05-patch-request-not-staged.png',
+  '06-monterey-patch-loaded.png',
+  '07-regional-bathymetry-generated.png',
+  '08-fields-generated.png',
+  '09-environment-composed.png',
   '10-planning-launch-ready.png'
 ];
 
@@ -25,12 +25,18 @@ const requiredFields = [
   'head',
   'phase',
   'defaultStage',
+  'overviewDigest',
+  'overviewBounds',
   'overviewIsGlobal',
   'defaultViewIsRegionalPatch',
+  'fixtureStatus',
   'missionReadyPatchCount',
+  'lowResolutionPatchCount',
   'patchCoverageOverlayCount',
+  'selectedRegionAvailability',
   'matchedFixtureId',
   'loadedFixtureId',
+  'loadedFixtureRole',
   'referenceFixtureId',
   'referenceFixtureDigest',
   'bathymetryArtifactDigest',
@@ -68,13 +74,18 @@ for (const screenshot of requiredScreenshots) {
 }
 
 assert.ok(['PASS', 'PASS_WITH_NON_BLOCKING_WARNINGS'].includes(summary.status), `invalid owner-review status ${summary.status}`);
-assert.equal(summary.phase, 'REF-ATLAS-UX-R1');
+assert.equal(summary.phase, 'REF-ATLAS-UX-R1.1');
 assert.equal(summary.defaultStage, 'globalAtlasSelector');
 assert.equal(summary.overviewIsGlobal, true);
 assert.equal(summary.defaultViewIsRegionalPatch, false);
+assert.deepEqual(summary.overviewBounds, { westLon: -180, eastLon: 180, southLat: -90, northLat: 90 });
+assert.equal(summary.fixtureStatus, 'AVAILABLE');
 assert.ok(Number(summary.missionReadyPatchCount) >= 1);
+assert.ok(Number(summary.lowResolutionPatchCount) >= 1);
 assert.ok(Number(summary.patchCoverageOverlayCount) >= 1);
+assert.equal(summary.selectedRegionAvailability, 'missionReadyPatchAvailable');
 assert.equal(summary.loadedFixtureId, 'monterey_canyon_15s');
+assert.equal(summary.loadedFixtureRole, 'missionReadyPatch');
 assert.equal(summary.referenceFixtureId, 'monterey_canyon_15s');
 assert.ok(String(summary.referenceFixtureDigest).startsWith('sha256:'), 'reference fixture digest must be SHA-256');
 for (const field of [
