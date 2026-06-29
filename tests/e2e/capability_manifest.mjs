@@ -202,6 +202,8 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Atlas Interaction Does Not Freeze": "tests/e2e/environment_studio_r1.spec.js",
   "Atlas Selection Still Reaches Planning": "tests/e2e/environment_studio_r1.spec.js",
   "Atlas to Monterey Patch to Environment": "tests/e2e/environment_studio_r1.spec.js",
+  "Boundary Budget Status and Patch Request": "tests/e2e/reference_atlas_budget_r1.spec.js",
+  "Monterey Patch Still Loads Under Budget Gate": "tests/e2e/reference_atlas_budget_r1.spec.js",
   "Reference Patch Generates Environment Fields": "tests/e2e/environment_studio_r1.spec.js",
   "Export / Import Generated Reference Environment": "tests/e2e/environment_studio_r1.spec.js",
   "Reference Environment Owner Walkthrough": "tests/e2e/environment_studio_r1.spec.js",
@@ -270,6 +272,8 @@ export const CAPABILITIES = Object.freeze([
   capability('ENVIRONMENT-STUDIO', 'Browser-side reference bathymetry authoring, validation, and project import/export', false, false, true, [
     'Global Atlas Visual Correctness',
     'Atlas Interaction Does Not Freeze',
+    'Boundary Budget Status and Patch Request',
+    'Monterey Patch Still Loads Under Budget Gate',
     'Atlas Selection Still Reaches Planning',
     'Atlas to Monterey Patch to Environment',
     'Reference Patch Generates Environment Fields',

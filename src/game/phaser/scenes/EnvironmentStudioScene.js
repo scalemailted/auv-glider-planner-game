@@ -85,10 +85,11 @@ import {
   referenceAtlasZoomView,
   referenceFixtureAtLonLat
 } from '../../../core/editor/ReferenceBathymetryAtlas.js';
+import { REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE } from '../../../core/editor/ReferenceAtlasBoundaryBudget.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
-export const ENVIRONMENT_STUDIO_SCENE_VERSION = 'environment-studio-scene-r1-1';
+export const ENVIRONMENT_STUDIO_SCENE_VERSION = 'environment-studio-scene-r1-2';
 
 function createReferenceAtlasPerfState() {
   return {
@@ -162,6 +163,8 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.referenceAtlasTransientView = null;
     this.referenceAtlasTransientBounds = null;
     this.referenceAtlasPerf = createReferenceAtlasPerfState();
+    this.oversizeGenerationBlockedCount = 0;
+    this.lastBlockedGenerationReason = null;
     this.referenceAtlasLoadStartedAt = globalThis.performance?.now?.() ?? Date.now();
     this.globeRendererContext = null;
     this.globeRegionSelectionMode = false;
@@ -674,6 +677,18 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.render();
   }
 
+  referenceBudgetAllowsGeneration(actionLabel = 'Reference generation') {
+    const budget = this.session.selectedReferenceBoundaryBudget ?? this.session.selectedReferenceAvailability?.boundaryBudget ?? null;
+    if (!budget || budget.budgetStatus !== 'BLOCKED') return true;
+    const reason = `${actionLabel} blocked: ${REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE}`;
+    this.oversizeGenerationBlockedCount += 1;
+    this.lastBlockedGenerationReason = reason;
+    this.statusMessage = `${actionLabel} blocked by Alpha region-size budget.`;
+    this.lastError = REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE;
+    this.render();
+    return false;
+  }
+
   selectReferenceWindowAt(lon, lat) {
     if (!this.referenceDataAvailable()) {
       this.blockReferenceBathymetryAction('Reference patch selection');
@@ -700,10 +715,15 @@ export class EnvironmentStudioScene extends PhaserScene {
     });
     this.referenceBoundaryDrawing = false;
     const availability = this.session.selectedReferenceAvailability;
-    this.statusMessage = availability?.available
+    const budget = this.session.selectedReferenceBoundaryBudget;
+    this.statusMessage = budget?.budgetStatus === 'BLOCKED'
+      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
+      : availability?.available
       ? `Selected atlas region matches ${availability.matchedFixtureRole}: ${availability.matchedFixtureId}.`
       : 'Selected atlas region is not staged. Export a patch request to preprocess it offline.';
-    this.lastError = availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
+    this.lastError = budget?.budgetStatus === 'BLOCKED'
+      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
+      : availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
     this.render();
   }
 
@@ -726,10 +746,15 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.referenceBoundaryDrawing = false;
     this.referenceAtlasTransientBounds = null;
     const availability = this.session.selectedReferenceAvailability;
-    this.statusMessage = availability?.available
+    const budget = this.session.selectedReferenceBoundaryBudget;
+    this.statusMessage = budget?.budgetStatus === 'BLOCKED'
+      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
+      : availability?.available
       ? `Selected atlas region matches ${availability.matchedFixtureRole}: ${availability.matchedFixtureId}.`
       : 'Selected atlas region is not staged. Export a patch request to preprocess it offline.';
-    this.lastError = availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
+    this.lastError = budget?.budgetStatus === 'BLOCKED'
+      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
+      : availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
     this.render();
   }
 
@@ -746,9 +771,11 @@ export class EnvironmentStudioScene extends PhaserScene {
       ...fixture.bounds,
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
-    });
+    }, { selectedReferenceFixtureId: fixture.fixtureId });
     this.referenceBoundaryDrawing = false;
-    this.statusMessage = `Selected ${fixture.role} overlay: ${fixture.fixtureId}.`;
+    this.statusMessage = fixture.role === 'lowResolutionReferencePatch'
+      ? `Selected low-resolution fallback overlay: ${fixture.fixtureId}. Use only as a fallback; it is not a missionReadyPatch.`
+      : `Selected ${fixture.role} overlay: ${fixture.fixtureId}.`;
     this.lastError = null;
     this.render();
   }
@@ -759,6 +786,7 @@ export class EnvironmentStudioScene extends PhaserScene {
         this.blockReferenceBathymetryAction('Reference patch load');
         return;
       }
+      if (!this.referenceBudgetAllowsGeneration('Load Mission Patch')) return;
       this.session = loadEnvironmentStudioReferenceFixture(this.session);
       this.statusMessage = `Loaded ${this.session.loadedReferenceFixtureRole}: ${this.session.loadedReferenceFixtureId}.`;
       this.lastError = null;
@@ -853,8 +881,12 @@ export class EnvironmentStudioScene extends PhaserScene {
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
     });
-    this.statusMessage = 'Moved or resized selected reference patch.';
-    this.lastError = null;
+    this.statusMessage = this.session.selectedReferenceBoundaryBudget?.budgetStatus === 'BLOCKED'
+      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
+      : 'Moved or resized selected reference patch.';
+    this.lastError = this.session.selectedReferenceBoundaryBudget?.budgetStatus === 'BLOCKED'
+      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
+      : null;
     this.render();
   }
 
@@ -864,6 +896,7 @@ export class EnvironmentStudioScene extends PhaserScene {
         this.blockReferenceBathymetryAction('Reference patch bathymetry generation');
         return;
       }
+      if (!this.referenceBudgetAllowsGeneration('Generate 3D Bathymetry')) return;
       if (!this.session.loadedReferenceFixtureId) this.session = loadEnvironmentStudioReferenceFixture(this.session);
       this.session = generateEnvironmentStudioRegionFromReferenceWindow(this.session, { seed: this.readSeed() });
       this.statusMessage = 'Generated regional 3D bathymetry from the selected reference patch.';
@@ -1147,6 +1180,7 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   generateFields() {
     try {
+      if (this.session.sourceMode === 'referenceBathymetryAtlas' && !this.referenceBudgetAllowsGeneration('Generate Currents & Science Fields')) return;
       this.session = regenerateEnvironmentStudioFields(this.session, { seed: this.readSeed() });
       this.statusMessage = this.session.sourceMode === 'referenceBathymetryAtlas'
         ? 'Generated reference bathymetry + synthetic bathymetry-conditioned fields.'
@@ -1161,6 +1195,7 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   composeReferenceEnvironmentArtifact() {
     try {
+      if (!this.referenceBudgetAllowsGeneration('Compose Environment Artifact')) return;
       this.session = composeEnvironmentStudioReferenceEnvironment(this.session, { seed: this.readSeed() });
       this.statusMessage = 'Composed a package-backed EnvironmentArtifact from reference bathymetry and generated synthetic fields.';
       this.lastError = null;
@@ -1173,6 +1208,7 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   validateReferenceLaunch() {
     try {
+      if (!this.referenceBudgetAllowsGeneration('Validate Launch')) return;
       this.session = validateEnvironmentStudioReferenceLaunch(this.session, { seed: this.readSeed() });
       const launch = this.session.launchValidationResult;
       this.statusMessage = launch?.planningLaunchReady && launch?.status === 'WARN'
@@ -1192,6 +1228,7 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   launchReferenceEnvironmentToPlanning() {
     try {
+      if (!this.referenceBudgetAllowsGeneration('Launch to Planning')) return;
       const result = buildEnvironmentStudioReferencePlanningLaunch(this.session, { seed: this.readSeed() });
       this.session = result.session;
       const launchDebug = {
@@ -1234,6 +1271,7 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   exportReferenceBenchmarkBundle() {
     try {
+      if (!this.referenceBudgetAllowsGeneration('Export Public Benchmark Bundle')) return;
       const result = buildEnvironmentStudioReferenceBenchmarkBundle(this.session, { seed: this.readSeed() });
       this.session = result.session;
       downloadJSON('anchor_reference_environment_benchmark_bundle.json', result.bundle);
@@ -1530,6 +1568,9 @@ export class EnvironmentStudioScene extends PhaserScene {
       referenceAtlasPerf: referenceAtlasPerfDebug,
       version: ENVIRONMENT_STUDIO_SCENE_VERSION,
       routeActive: Boolean(active),
+      boundaryBudget: debug.boundaryBudget ?? this.session.selectedReferenceBoundaryBudget ?? null,
+      oversizeGenerationBlockedCount: this.oversizeGenerationBlockedCount,
+      lastBlockedGenerationReason: this.lastBlockedGenerationReason,
       referenceManifestLoaded: this.referenceManifestLoaded === true,
       visualAcceptance: environmentStudioVisualAcceptanceMetrics(this.session),
       globeRendered: Boolean(active && this.globeRendererContext?.renderer),
@@ -1606,8 +1647,10 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
   const manifest = session.referenceBathymetryManifest ?? atlas.manifest ?? {};
   const availabilityMessage = referenceFixtureAvailabilityMessage(session);
   const availability = session.selectedReferenceAvailability;
-  const canLoadPatch = availability?.available === true;
-  const canExportRequest = Boolean(selected && !canLoadPatch);
+  const boundaryBudget = session.selectedReferenceBoundaryBudget ?? availability?.boundaryBudget ?? null;
+  const budgetBlocked = boundaryBudget?.budgetStatus === 'BLOCKED';
+  const canLoadPatch = availability?.available === true && !budgetBlocked;
+  const canExportRequest = Boolean(selected && boundaryBudget?.patchRequestAllowed !== false && (!availability?.available || budgetBlocked));
   const selectedBoundsLabel = selected
     ? `${formatNumber(bounds.westLon)} to ${formatNumber(bounds.eastLon)} lon, ${formatNumber(bounds.southLat)} to ${formatNumber(bounds.northLat)} lat`
     : 'draw or click an available patch';
@@ -1672,7 +1715,17 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         ${metricHtml('Matching Fixture', availability?.matchedFixtureId ?? 'none')}
         ${metricHtml('Matching Role', availability?.matchedFixtureRole ?? 'n/a')}
         ${metricHtml('Selected Size', selected ? `${formatNumber(Math.abs(Number(bounds.eastLon) - Number(bounds.westLon)))} x ${formatNumber(Math.abs(Number(bounds.northLat) - Number(bounds.southLat)))} deg` : 'n/a')}
+        ${metricHtml('Budget Status', boundaryBudget?.budgetStatus ?? 'none selected')}
+        ${metricHtml('Source Cells', boundaryBudget ? formatInteger(boundaryBudget.sourceCellCount) : 'n/a')}
+        ${metricHtml('Source Grid', boundaryBudget ? `${formatInteger(boundaryBudget.estimatedColumns)} x ${formatInteger(boundaryBudget.estimatedRows)}` : 'n/a')}
+        ${metricHtml('Field Grid', boundaryBudget ? `${formatInteger(boundaryBudget.fieldGridEstimate?.columns)} x ${formatInteger(boundaryBudget.fieldGridEstimate?.rows)}` : 'n/a')}
       </div>
+      ${boundaryBudget ? `
+        <div class="environment-studio-budget-status environment-studio-budget-status-${escapeAttr(String(boundaryBudget.budgetStatus ?? 'unknown').toLowerCase())}" data-boundary-budget-status="${escapeAttr(boundaryBudget.budgetStatus ?? 'UNKNOWN')}">
+          <strong>${escapeHtml(boundaryBudget.budgetStatus ?? 'UNKNOWN')}</strong>
+          <span>${escapeHtml(budgetBlocked ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE : boundaryBudget.recommendedAction ?? 'Region budget estimated.')}</span>
+        </div>
+      ` : ''}
       <details>
         <summary>Manual bbox controls</summary>
         ${numberInput('Window width deg', 'env-reference-window-width-deg', Number(bounds.eastLon ?? -121.7) - Number(bounds.westLon ?? -123.0), 0.1, 12, 0.1)}
@@ -1823,6 +1876,13 @@ function referenceAtlasRightPanelHtml(session = {}) {
   const loaded = session.loadedReferenceFixture ?? null;
   const stats = selected.sampledStats ?? {};
   const bounds = selected.bounds ?? {};
+  const boundaryBudget = session.selectedReferenceBoundaryBudget ?? availability.boundaryBudget ?? null;
+  const budgetMetrics = boundaryBudget ? `
+          ${metricHtml('Budget status', boundaryBudget.budgetStatus)}
+          ${metricHtml('Source cells', formatInteger(boundaryBudget.sourceCellCount))}
+          ${metricHtml('Budget source grid', `${formatInteger(boundaryBudget.estimatedColumns)} x ${formatInteger(boundaryBudget.estimatedRows)}`)}
+          ${metricHtml('Field samples', formatInteger(boundaryBudget.estimatedFieldSampleCount))}
+        ` : '';
   if (loaded) {
     return `
       <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
@@ -1835,6 +1895,7 @@ function referenceAtlasRightPanelHtml(session = {}) {
           ${metricHtml('Dataset', loaded.sourceDataset)}
           ${metricHtml('Source resolution', loaded.sourceResolution)}
           ${metricHtml('Raster shape', loaded.columns && loaded.rows ? `${loaded.columns} x ${loaded.rows}` : 'n/a')}
+          ${budgetMetrics}
           ${metricHtml('Digest', shortDigest(loaded.digest))}
           ${metricHtml('Bathymetry', session.bathymetryArtifactDigest ? 'CURRENT' : 'NOT_GENERATED')}
           ${metricHtml('Fields', session.fieldRegenerationResult?.fieldGenerationStatus ?? 'REQUIRES_REGENERATION')}
@@ -1861,8 +1922,10 @@ function referenceAtlasRightPanelHtml(session = {}) {
         ${metricHtml('Land / Ocean', `${formatNumber(stats.landFraction)} / ${formatNumber(stats.oceanFraction)}`)}
         ${metricHtml('Wet connectivity', formatNumber(stats.wetConnectedFraction))}
         ${metricHtml('Slope mean', formatNumber(stats.slopeStats?.mean))}
+        ${budgetMetrics}
         ${metricHtml('Validation', selected.validation?.status ?? 'UNKNOWN')}
       </div>
+      ${boundaryBudget?.budgetStatus === 'BLOCKED' ? `<p class="hud-muted">${escapeHtml(REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE)}</p>` : ''}
       <table class="environment-studio-table">
         <tbody>
           <tr><td>Recommended next action</td><td>${escapeHtml(availability.recommendedAction ?? 'exportPatchRequest')}</td></tr>
@@ -2524,8 +2587,10 @@ function worldMapConsoleHtml(scene, summary = {}) {
 function regionalBathymetryConsoleHtml(scene, summary = {}) {
   const session = scene.session;
   const camera = session.previewCameraState ?? {};
-  const canCompose = Boolean(session.fieldRegenerationResult?.currentArtifactDigest && session.fieldRegenerationResult?.scalarArtifactDigest);
-  const canLaunch = session.launchValidationResult?.planningLaunchReady === true;
+  const boundaryBudget = session.selectedReferenceBoundaryBudget ?? session.selectedReferenceAvailability?.boundaryBudget ?? null;
+  const budgetBlocked = boundaryBudget?.budgetStatus === 'BLOCKED';
+  const canCompose = !budgetBlocked && Boolean(session.fieldRegenerationResult?.currentArtifactDigest && session.fieldRegenerationResult?.scalarArtifactDigest);
+  const canLaunch = !budgetBlocked && session.launchValidationResult?.planningLaunchReady === true;
   const isReferencePatch = session.sourceMode === 'referenceBathymetryAtlas';
   const loaded = session.loadedReferenceFixture ?? {};
   const bathymetryGenerated = Boolean(summary.bathymetryArtifactDigest);
@@ -2558,18 +2623,20 @@ function regionalBathymetryConsoleHtml(scene, summary = {}) {
         ${isReferencePatch ? metricHtml('Fixture Role', session.loadedReferenceFixtureRole ?? 'n/a') : ''}
         ${isReferencePatch ? metricHtml('Source resolution', loaded.sourceResolution ?? session.referenceAtlas?.sourceDataset?.sourceResolution) : ''}
         ${isReferencePatch ? metricHtml('Fixture Digest', shortDigest(loaded.digest)) : ''}
+        ${isReferencePatch ? metricHtml('Budget Status', boundaryBudget?.budgetStatus ?? 'n/a') : ''}
         ${metricHtml('Source grid', `${summary.sourceGridShape.columns} x ${summary.sourceGridShape.rows}`)}
         ${metricHtml('Preview grid', `${summary.previewGridShape.columns} x ${summary.previewGridShape.rows}`)}
         ${metricHtml(isReferencePatch ? 'Patch Digest' : 'Window Digest', shortDigest(session.selectedReferenceWindow?.patchDigest ?? session.selectedOperationalWindow?.windowDigest))}
         ${metricHtml('Bathymetry Artifact', shortDigest(summary.bathymetryArtifactDigest))}
       </div>
-      <button class="console-button primary" type="button" data-action="${isReferencePatch ? 'env-reference-generate-bathymetry' : 'env-studio-regenerate-world-bathymetry'}">${bathymetryGenerated ? 'Regenerate Bathymetry' : 'Generate 3D Bathymetry'}</button>
+      ${budgetBlocked ? `<p class="hud-muted">${escapeHtml(REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE)}</p>` : ''}
+      <button class="console-button primary" type="button" data-action="${isReferencePatch ? 'env-reference-generate-bathymetry' : 'env-studio-regenerate-world-bathymetry'}" ${budgetBlocked ? 'disabled' : ''}>${bathymetryGenerated ? 'Regenerate Bathymetry' : 'Generate 3D Bathymetry'}</button>
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Artifacts</h2>
       ${fieldRegenerationSummaryHtml(session.fieldRegenerationResult)}
       ${referenceEnvironmentLaunchSummaryHtml(session)}
-      <button class="console-button primary" type="button" data-action="env-studio-generate-fields">Generate Currents &amp; Science Fields</button>
+      <button class="console-button primary" type="button" data-action="env-studio-generate-fields" ${budgetBlocked ? 'disabled' : ''}>Generate Currents &amp; Science Fields</button>
       <button class="console-button secondary" type="button" data-action="env-studio-compose-environment" ${canCompose ? '' : 'disabled'}>Compose Environment Artifact</button>
       <button class="console-button secondary" type="button" data-action="env-studio-validate-launch" ${canCompose ? '' : 'disabled'}>Validate Launch</button>
       <button class="console-button primary" type="button" data-action="env-studio-launch-planning" ${canLaunch ? '' : 'disabled'}>Launch to Planning</button>
@@ -4027,6 +4094,11 @@ function formatInputNumber(value) {
 function formatNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? String(Math.round(number * 10) / 10) : 'n/a';
+}
+
+function formatInteger(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(Math.round(number)) : 'n/a';
 }
 
 function roundMetric(value) {

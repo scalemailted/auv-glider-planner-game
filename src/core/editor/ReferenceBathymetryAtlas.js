@@ -3,6 +3,10 @@ import {
   canonicalizeJsonValue
 } from '../../../packages/codecs/src/index.js';
 import { createBathymetryArtifactFromField } from '../generation/BathymetryArtifactAdapter.js';
+import {
+  estimateReferenceAtlasBoundaryBudget,
+  sourceResolutionArcSecondsFromReference
+} from './ReferenceAtlasBoundaryBudget.js';
 
 export const REFERENCE_BATHYMETRY_ATLAS_TYPE = 'anchor.reference-bathymetry-atlas';
 export const REFERENCE_BATHYMETRY_ATLAS_VERSION = '1.0.0';
@@ -545,7 +549,7 @@ export function referenceFixtureAtLonLat(atlasInput = {}, lon = 0, lat = 0) {
   return fixture ? compactReferenceFixture(fixture) : null;
 }
 
-export function referenceFixtureAvailabilityForBounds(atlasInput = {}, boundsInput = DEFAULT_REFERENCE_BOUNDS) {
+export function referenceFixtureAvailabilityForBounds(atlasInput = {}, boundsInput = DEFAULT_REFERENCE_BOUNDS, options = {}) {
   const atlas = normalizeReferenceBathymetryAtlas(atlasInput);
   const bounds = normalizeLonLatBounds(boundsInput);
   const fixtures = normalizeReferenceFixtures(atlas.referenceFixtures ?? atlas.manifest?.fixtures ?? []);
@@ -557,12 +561,20 @@ export function referenceFixtureAvailabilityForBounds(atlasInput = {}, boundsInp
     }))
     .filter((entry) => entry.containsSelection || entry.overlapFraction >= 0.72)
     .sort((a, b) => referenceFixtureSortKey(a.fixture, b.fixture) || b.overlapFraction - a.overlapFraction);
-  const best = matches[0] ?? null;
+  const preferredFixtureId = options.preferredFixtureId ?? options.fixtureId ?? null;
+  const preferred = preferredFixtureId ? matches.find((entry) => entry.fixture.fixtureId === preferredFixtureId) : null;
+  const best = preferred ?? matches[0] ?? null;
   const status = !best
     ? 'notStaged'
     : best.fixture.role === 'missionReadyPatch'
       ? 'missionReadyPatchAvailable'
       : 'lowResolutionReferencePatchAvailable';
+  const boundaryBudget = estimateReferenceAtlasBoundaryBudget(bounds, {
+    atlas,
+    fixture: best?.fixture ?? null,
+    availability: best ? { matchedFixture: best.fixture } : null,
+    sourceResolutionArcSeconds: best ? sourceResolutionArcSecondsFromReference(best.fixture, 15) : 15
+  });
   return {
     status,
     available: Boolean(best),
@@ -571,6 +583,7 @@ export function referenceFixtureAvailabilityForBounds(atlasInput = {}, boundsInp
     matchedFixture: best?.fixture ? compactReferenceFixture(best.fixture) : null,
     overlapFraction: best ? round(best.overlapFraction) : 0,
     requestedBounds: bounds,
+    boundaryBudget,
     recommendedAction: !best
       ? 'exportPatchRequest'
       : best.fixture.role === 'missionReadyPatch'
@@ -585,6 +598,12 @@ export function createReferenceBathymetryPatchRequest(boundsInput = DEFAULT_REFE
   const bounds = normalizeLonLatBounds(boundsInput);
   const suggestedFixtureId = String(options.suggestedFixtureId ?? `reference_patch_${stableToken(canonicalJsonDigest(bounds))}`);
   const requestedResolution = String(options.requestedResolution ?? '15 arc-second');
+  const boundaryBudget = options.boundaryBudget ?? estimateReferenceAtlasBoundaryBudget(bounds, {
+    atlas,
+    sourceResolutionArcSeconds: options.sourceResolutionArcSeconds ?? sourceResolutionArcSecondsFromReference({ sourceResolution: requestedResolution }, 15),
+    depthLayerCount: options.depthLayerCount,
+    timeFrameCount: options.timeFrameCount
+  });
   const downloadCommand = [
     'python tools/python/download_reference_bathymetry.py patch',
     `--name ${suggestedFixtureId}`,
@@ -601,6 +620,7 @@ export function createReferenceBathymetryPatchRequest(boundsInput = DEFAULT_REFE
     provider: atlas.sourceDataset?.provider ?? 'NOAA NCEI',
     requestedResolution,
     bounds,
+    boundaryBudget,
     suggestedFixtureId,
     downloadCommand,
     preprocessCommand: 'npm.cmd run preprocess:reference-bathy',

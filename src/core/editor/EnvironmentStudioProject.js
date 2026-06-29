@@ -110,6 +110,12 @@ import {
   referenceFixtureCoverageOverlays,
   referenceBathymetryVisualMetrics
 } from './ReferenceBathymetryAtlas.js';
+import {
+  REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE,
+  estimateReferenceAtlasBoundaryBudget,
+  referenceAtlasBudgetAllowsGeneration,
+  sourceResolutionArcSecondsFromReference
+} from './ReferenceAtlasBoundaryBudget.js';
 
 export const ENVIRONMENT_STUDIO_PROJECT_TYPE = 'anchor.environment-studio-project';
 export const ENVIRONMENT_STUDIO_PROJECT_VERSION = '1.0.0';
@@ -126,6 +132,7 @@ export {
   REFERENCE_BATHYMETRY_WINDOW_TYPE,
   createReferenceBathymetryPatchRequest,
   compactReferenceBathymetryManifest,
+  estimateReferenceAtlasBoundaryBudget,
   referenceFixtureAvailabilityForBounds,
   referenceFixtureCoverageOverlays,
   referenceAtlasPatchOverlays,
@@ -469,9 +476,18 @@ export function createEnvironmentStudioSession(options = {}) {
     options.selectedReferenceWindow ?? options.selectedReferencePatch ?? null,
     referenceAtlas
   );
+  const selectedReferenceFixtureId = options.selectedReferenceFixtureId
+    ?? options.selectedFixtureId
+    ?? options.loadedReferenceFixtureId
+    ?? options.loadedFixtureId
+    ?? null;
   const selectedReferenceAvailability = selectedReferenceWindow
-    ? referenceFixtureAvailabilityForBounds(referenceAtlas, selectedReferenceWindow.bounds)
+    ? referenceFixtureAvailabilityForBounds(referenceAtlas, selectedReferenceWindow.bounds, { preferredFixtureId: selectedReferenceFixtureId })
     : null;
+  const selectedReferenceBoundaryBudget = referenceBoundaryBudgetForSelection(referenceAtlas, selectedReferenceWindow, {
+    availability: selectedReferenceAvailability,
+    loadedFixture: options.loadedReferenceFixture ?? null
+  });
   const worldMap = normalizeWorldMap(options.worldMap ?? options.syntheticWorldMap ?? {
     style: options.worldStyle ?? options.style,
     seed: options.worldSeed ?? options.atlasSeed ?? options.seed ?? recipe.randomization?.worldSeed,
@@ -557,8 +573,10 @@ export function createEnvironmentStudioSession(options = {}) {
     referenceBathymetryManifest,
     referenceAtlas,
     referenceLayer: referenceBathymetryLayerById(options.referenceLayer ?? 'topographyBathymetry').id,
+    selectedReferenceFixtureId,
     selectedReferenceWindow,
     selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget,
     loadedReferenceFixtureId: options.loadedReferenceFixtureId ?? options.loadedFixtureId ?? null,
     loadedReferenceFixtureRole: options.loadedReferenceFixtureRole ?? options.loadedFixtureRole ?? null,
     loadedReferenceFixture: options.loadedReferenceFixture ?? null,
@@ -857,8 +875,10 @@ export function setEnvironmentStudioSourceMode(sessionInput = {}, sourceMode = '
     ...session,
     sourceMode: mode,
     studioStage: mode === 'proceduralSyntheticSandbox' ? 'worldMap' : 'globalAtlasSelector',
+    selectedReferenceFixtureId: mode === 'referenceBathymetryAtlas' ? session.selectedReferenceFixtureId : null,
     selectedReferenceWindow: mode === 'referenceBathymetryAtlas' ? session.selectedReferenceWindow : null,
     selectedReferenceAvailability: mode === 'referenceBathymetryAtlas' ? session.selectedReferenceAvailability : null,
+    selectedReferenceBoundaryBudget: mode === 'referenceBathymetryAtlas' ? session.selectedReferenceBoundaryBudget : null,
     loadedReferenceFixtureId: mode === 'referenceBathymetryAtlas' ? session.loadedReferenceFixtureId : null,
     loadedReferenceFixtureRole: mode === 'referenceBathymetryAtlas' ? session.loadedReferenceFixtureRole : null,
     loadedReferenceFixture: mode === 'referenceBathymetryAtlas' ? session.loadedReferenceFixture : null,
@@ -883,10 +903,12 @@ export function setEnvironmentStudioReferenceBathymetryManifest(sessionInput = {
     studioStage: 'globalAtlasSelector',
     referenceBathymetryManifest,
     referenceAtlas,
+    selectedReferenceFixtureId: null,
     selectedReferenceWindow: referenceAtlas.sourceDataset?.referenceDataAvailable === true
       ? normalizeReferenceBathymetryWindow(session.selectedReferenceWindow, referenceAtlas)
       : null,
     selectedReferenceAvailability: null,
+    selectedReferenceBoundaryBudget: null,
     loadedReferenceFixtureId: null,
     loadedReferenceFixtureRole: null,
     loadedReferenceFixture: null,
@@ -908,23 +930,27 @@ export function setEnvironmentStudioReferenceLayer(sessionInput = {}, layerId = 
   });
 }
 
-export function selectEnvironmentStudioReferenceWindow(sessionInput = {}, bounds = {}) {
+export function selectEnvironmentStudioReferenceWindow(sessionInput = {}, bounds = {}, options = {}) {
   const session = normalizeSession(sessionInput);
   const selectedReferenceWindow = createReferenceBathymetryWindow({
     ...bounds,
     selectedResolutionMeters: bounds.selectedResolutionMeters,
     previewResolutionMeters: bounds.previewResolutionMeters
   }, session.referenceAtlas);
-  const selectedReferenceAvailability = referenceFixtureAvailabilityForBounds(session.referenceAtlas, selectedReferenceWindow.bounds);
+  const selectedReferenceFixtureId = options.selectedReferenceFixtureId ?? options.preferredFixtureId ?? bounds.selectedReferenceFixtureId ?? null;
+  const selectedReferenceAvailability = referenceFixtureAvailabilityForBounds(session.referenceAtlas, selectedReferenceWindow.bounds, { preferredFixtureId: selectedReferenceFixtureId });
+  const selectedReferenceBoundaryBudget = referenceBoundaryBudgetForSelection(session.referenceAtlas, selectedReferenceWindow, { availability: selectedReferenceAvailability });
   return refreshEnvironmentStudioSession({
     ...session,
     sourceMode: 'referenceBathymetryAtlas',
     studioStage: 'globalAtlasSelector',
+    selectedReferenceFixtureId,
     selectedReferenceWindow,
     selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget,
     referencePatchRequest: selectedReferenceAvailability.available
       ? null
-      : createReferenceBathymetryPatchRequest(selectedReferenceWindow.bounds, session.referenceAtlas),
+      : createReferenceBathymetryPatchRequest(selectedReferenceWindow.bounds, session.referenceAtlas, { boundaryBudget: selectedReferenceBoundaryBudget }),
     loadedReferenceFixtureId: null,
     loadedReferenceFixtureRole: null,
     loadedReferenceFixture: null,
@@ -938,9 +964,12 @@ export function loadEnvironmentStudioReferenceFixture(sessionInput = {}, fixture
   const session = normalizeSession(sessionInput);
   const fixtures = session.referenceAtlas?.referenceFixtures ?? session.referenceBathymetryManifest?.fixtures ?? [];
   const selectedAvailability = session.selectedReferenceWindow
-    ? referenceFixtureAvailabilityForBounds(session.referenceAtlas, session.selectedReferenceWindow.bounds)
+    ? referenceFixtureAvailabilityForBounds(session.referenceAtlas, session.selectedReferenceWindow.bounds, { preferredFixtureId: session.selectedReferenceFixtureId ?? fixtureId })
     : null;
-  const requestedFixtureId = fixtureId ?? selectedAvailability?.matchedFixtureId;
+  if (!fixtureId && session.selectedReferenceWindow && selectedAvailability?.available !== true) {
+    throw new Error('REFERENCE_PATCH_NOT_STAGED: selected atlas region is not staged. Export a patch request or select an available mission patch.');
+  }
+  const requestedFixtureId = fixtureId ?? session.selectedReferenceFixtureId ?? selectedAvailability?.matchedFixtureId;
   const fixture = fixtures.find((entry) => entry.fixtureId === requestedFixtureId)
     ?? fixtures.find((entry) => entry.role === 'missionReadyPatch')
     ?? fixtures[0]
@@ -951,13 +980,20 @@ export function loadEnvironmentStudioReferenceFixture(sessionInput = {}, fixture
     selectedResolutionMeters: session.selectedReferenceWindow?.selectedResolutionMeters ?? 1500,
     previewResolutionMeters: session.selectedReferenceWindow?.previewResolutionMeters ?? 6000
   }, session.referenceAtlas);
-  const selectedReferenceAvailability = referenceFixtureAvailabilityForBounds(session.referenceAtlas, selectedReferenceWindow.bounds);
+  const selectedReferenceAvailability = referenceFixtureAvailabilityForBounds(session.referenceAtlas, selectedReferenceWindow.bounds, { preferredFixtureId: fixture.fixtureId });
+  const selectedReferenceBoundaryBudget = referenceBoundaryBudgetForSelection(session.referenceAtlas, selectedReferenceWindow, {
+    availability: selectedReferenceAvailability,
+    loadedFixture: fixture
+  });
+  assertReferenceBoundaryBudgetAllowsGeneration(selectedReferenceBoundaryBudget, 'Load Mission Patch');
   return refreshEnvironmentStudioSession({
     ...session,
     sourceMode: 'referenceBathymetryAtlas',
     studioStage: 'regionalPatchWorkspace',
+    selectedReferenceFixtureId: fixture.fixtureId,
     selectedReferenceWindow,
     selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget,
     loadedReferenceFixtureId: fixture.fixtureId,
     loadedReferenceFixtureRole: fixture.role,
     loadedReferenceFixture: {
@@ -992,8 +1028,10 @@ export function clearEnvironmentStudioReferenceWindow(sessionInput = {}) {
   const session = normalizeSession(sessionInput);
   return refreshEnvironmentStudioSession({
     ...session,
+    selectedReferenceFixtureId: null,
     selectedReferenceWindow: null,
     selectedReferenceAvailability: null,
+    selectedReferenceBoundaryBudget: null,
     loadedReferenceFixtureId: null,
     loadedReferenceFixtureRole: null,
     loadedReferenceFixture: null,
@@ -1011,7 +1049,12 @@ export function generateEnvironmentStudioRegionFromReferenceWindow(sessionInput 
   const selectedReferenceWindow = session.selectedReferenceWindow?.patchDigest
     ? session.selectedReferenceWindow
     : createDefaultReferenceBathymetryWindow(session.referenceAtlas);
-  const availability = referenceFixtureAvailabilityForBounds(session.referenceAtlas, selectedReferenceWindow.bounds);
+  const availability = referenceFixtureAvailabilityForBounds(session.referenceAtlas, selectedReferenceWindow.bounds, { preferredFixtureId: session.selectedReferenceFixtureId });
+  const boundaryBudget = referenceBoundaryBudgetForSelection(session.referenceAtlas, selectedReferenceWindow, {
+    availability,
+    loadedFixture: session.loadedReferenceFixture
+  });
+  assertReferenceBoundaryBudgetAllowsGeneration(boundaryBudget, 'Generate 3D Bathymetry');
   const loadedFixtureId = session.loadedReferenceFixtureId ?? session.loadedFixture?.fixtureId ?? null;
   if (!options.allowUnloadedReferencePatch && (!loadedFixtureId || availability.matchedFixtureId !== loadedFixtureId)) {
     throw new Error('REFERENCE_PATCH_NOT_LOADED: load an available missionReadyPatch or fallback fixture before generating regional bathymetry.');
@@ -1029,8 +1072,10 @@ export function generateEnvironmentStudioRegionFromReferenceWindow(sessionInput 
     sourceMode: 'referenceBathymetryAtlas',
     studioStage: 'regionalPatchWorkspace',
     referenceAtlas: session.referenceAtlas,
+    selectedReferenceFixtureId: session.selectedReferenceFixtureId ?? loadedFixtureId,
     selectedReferenceWindow,
     selectedReferenceAvailability: availability,
+    selectedReferenceBoundaryBudget: boundaryBudget,
     loadedReferenceFixtureId: loadedFixtureId,
     loadedReferenceFixtureRole: session.loadedReferenceFixtureRole ?? availability.matchedFixtureRole ?? null,
     loadedReferenceFixture: session.loadedReferenceFixture ?? availability.matchedFixture ?? null,
@@ -1220,8 +1265,31 @@ function isReferenceBathymetrySession(session = {}) {
     || session.bathymetryBuilderResult?.type === 'anchor.reference-patch-bathymetry-builder-summary';
 }
 
+function referenceBoundaryBudgetForSelection(referenceAtlas = {}, selectedReferenceWindow = null, context = {}) {
+  if (!selectedReferenceWindow?.bounds) return null;
+  const source = context.loadedFixture ?? context.availability?.matchedFixture ?? context.availability?.matchedFixture ?? referenceAtlas?.sourceDataset ?? {};
+  const sourceResolutionArcSeconds = context.availability?.available === false || context.availability?.status === 'notStaged'
+    ? 15
+    : sourceResolutionArcSecondsFromReference(source, 15);
+  return estimateReferenceAtlasBoundaryBudget(selectedReferenceWindow.bounds, {
+    atlas: referenceAtlas,
+    availability: context.availability,
+    fixture: source,
+    sourceResolutionArcSeconds
+  });
+}
+
+function assertReferenceBoundaryBudgetAllowsGeneration(boundaryBudget = null, actionLabel = 'Reference generation') {
+  if (!boundaryBudget || referenceAtlasBudgetAllowsGeneration(boundaryBudget)) return;
+  const error = new Error(`${actionLabel} blocked: ${REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE}`);
+  error.code = 'REFERENCE_ATLAS_BOUNDARY_BUDGET_BLOCKED';
+  error.boundaryBudget = boundaryBudget;
+  throw error;
+}
+
 function buildReferenceEnvironmentResultForSession(session = {}, options = {}) {
   const refreshed = refreshEnvironmentStudioSession(normalizeSession(session));
+  assertReferenceBoundaryBudgetAllowsGeneration(refreshed.selectedReferenceBoundaryBudget, 'Generate Currents & Science Fields');
   const { fieldOptions } = fieldRegenerationOptionsForSession(refreshed, options);
   return buildReferenceBathymetryEnvironment({
     ...fieldOptions,
@@ -1247,6 +1315,7 @@ function buildReferenceEnvironmentResultForSession(session = {}, options = {}) {
 
 export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {}) {
   const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
+  assertReferenceBoundaryBudgetAllowsGeneration(session.selectedReferenceBoundaryBudget, 'Generate Currents & Science Fields');
   const { bathymetryArtifact, seed, fieldOptions } = fieldRegenerationOptionsForSession(session, options);
   const isReferenceBathymetryProject = session.sourceMode === 'referenceBathymetryAtlas'
     || session.flowGenerationInputs?.type === 'anchor.reference-patch.flow-generation-inputs'
@@ -1281,6 +1350,7 @@ export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {
 
 export function composeEnvironmentStudioReferenceEnvironment(sessionInput = {}, options = {}) {
   const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
+  assertReferenceBoundaryBudgetAllowsGeneration(session.selectedReferenceBoundaryBudget, 'Compose Environment Artifact');
   if (!isReferenceBathymetrySession(session)) {
     throw new Error('EnvironmentArtifact composition in this pass is only wired for reference-bathymetry Environment Studio projects.');
   }
@@ -1734,8 +1804,11 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     referenceBathymetryManifest: compactReferenceBathymetryManifest(session.referenceBathymetryManifest ?? session.referenceAtlas?.manifest),
     referenceAtlas: compactReferenceBathymetryAtlas(session.referenceAtlas),
     referenceLayer: session.referenceLayer,
+    selectedReferenceFixtureId: session.selectedReferenceFixtureId ?? null,
     selectedReferenceWindow: session.selectedReferenceWindow,
     selectedReferenceAvailability: session.selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget: session.selectedReferenceBoundaryBudget ?? null,
+    boundaryBudget: session.selectedReferenceBoundaryBudget ?? null,
     selectedPatchDigest: session.selectedReferenceWindow?.patchDigest ?? null,
     loadedReferenceFixtureId: session.loadedReferenceFixtureId ?? null,
     loadedReferenceFixtureRole: session.loadedReferenceFixtureRole ?? null,
@@ -1829,8 +1902,10 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     referenceBathymetryManifest: source.referenceBathymetryManifest ?? source.referenceManifest ?? source.referenceAtlas?.manifest,
     referenceAtlas: source.referenceAtlas ?? source.referenceBathymetryAtlas,
     referenceLayer: source.referenceLayer,
+    selectedReferenceFixtureId: source.selectedReferenceFixtureId ?? source.selectedFixtureId,
     selectedReferenceWindow: source.selectedReferenceWindow ?? source.selectedReferencePatch,
     selectedReferenceAvailability: source.selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget: source.selectedReferenceBoundaryBudget ?? source.boundaryBudget,
     loadedReferenceFixtureId: source.loadedReferenceFixtureId ?? source.loadedFixtureId,
     loadedReferenceFixtureRole: source.loadedReferenceFixtureRole ?? source.loadedFixtureRole,
     loadedReferenceFixture: source.loadedReferenceFixture,
@@ -1933,10 +2008,16 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
   const multiGliderSuitability = computeMultiGliderSuitability(session, regionalFeatureSummary, sourceGridShape, previewBudget);
   const dependencyGraph = dependencyGraphForState(session);
   const selectedReferenceAvailability = session.selectedReferenceWindow
-    ? referenceFixtureAvailabilityForBounds(session.referenceAtlas, session.selectedReferenceWindow.bounds)
+    ? referenceFixtureAvailabilityForBounds(session.referenceAtlas, session.selectedReferenceWindow.bounds, { preferredFixtureId: session.selectedReferenceFixtureId })
     : null;
+  const selectedReferenceBoundaryBudget = referenceBoundaryBudgetForSelection(session.referenceAtlas, session.selectedReferenceWindow, {
+    availability: selectedReferenceAvailability,
+    loadedFixture: session.loadedReferenceFixture
+  });
   const referencePatchRequest = session.selectedReferenceWindow && selectedReferenceAvailability?.available !== true
-    ? (session.referencePatchRequest ?? createReferenceBathymetryPatchRequest(session.selectedReferenceWindow.bounds, session.referenceAtlas))
+    ? (session.referencePatchRequest?.boundaryBudget
+        ? session.referencePatchRequest
+        : createReferenceBathymetryPatchRequest(session.selectedReferenceWindow.bounds, session.referenceAtlas, { boundaryBudget: selectedReferenceBoundaryBudget }))
     : session.referencePatchRequest ?? null;
   const flowGenerationInputs = flowGenerationInputsForSession(session, {
     sourceGridShape,
@@ -1953,6 +2034,7 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
     featureRecords,
     multiGliderSuitability,
     selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget,
     referencePatchRequest,
     dependencyGraph,
     flowGenerationInputs
@@ -1967,6 +2049,7 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
     featureRecords,
     multiGliderSuitability,
     selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget,
     referencePatchRequest,
     flowGenerationInputs,
     dependencyGraph,
@@ -2236,6 +2319,9 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
   const fixtureOverlays = referenceAtlasPatchOverlays(session.referenceAtlas, session.worldView, { width: 900, height: 450 });
   const selectedAvailability = session.selectedReferenceAvailability
     ?? (session.selectedReferenceWindow ? referenceFixtureAvailabilityForBounds(session.referenceAtlas, session.selectedReferenceWindow.bounds) : null);
+  const boundaryBudget = session.selectedReferenceBoundaryBudget
+    ?? selectedAvailability?.boundaryBudget
+    ?? referenceBoundaryBudgetForSelection(session.referenceAtlas, session.selectedReferenceWindow, { availability: selectedAvailability, loadedFixture: session.loadedReferenceFixture });
   return {
     projectType: ENVIRONMENT_STUDIO_PROJECT_TYPE,
     projectVersion: ENVIRONMENT_STUDIO_PROJECT_VERSION,
@@ -2255,6 +2341,14 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     selectedRegionAvailability: selectedAvailability?.status ?? null,
     matchedFixtureId: selectedAvailability?.matchedFixtureId ?? null,
     matchedFixtureRole: selectedAvailability?.matchedFixtureRole ?? null,
+    selectedReferenceFixtureId: session.selectedReferenceFixtureId ?? null,
+    boundaryBudget,
+    selectedReferenceBoundaryBudget: boundaryBudget,
+    boundaryBudgetStatus: boundaryBudget?.budgetStatus ?? null,
+    boundaryBudgetGenerationAllowed: boundaryBudget?.generationAllowed ?? null,
+    boundaryBudgetPatchRequestAllowed: boundaryBudget?.patchRequestAllowed ?? null,
+    boundaryBudgetReasons: boundaryBudget?.budgetReasons ?? [],
+    boundaryBudgetRecommendedAction: boundaryBudget?.recommendedAction ?? null,
     loadedFixtureId: session.loadedReferenceFixtureId ?? null,
     loadedFixtureRole: session.loadedReferenceFixtureRole ?? null,
     missionReadyPatchCount: fixtureOverlays.filter((entry) => entry.role === 'missionReadyPatch').length,
@@ -2444,6 +2538,9 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     lowResolutionPatchCount: fixtureOverlays.filter((entry) => entry.role === 'lowResolutionReferencePatch').length,
     patchCoverageOverlays: fixtureOverlays,
     patchOverlays: fixtureOverlays,
+    selectedReferenceFixtureId: session.selectedReferenceFixtureId ?? null,
+    boundaryBudget: session.selectedReferenceBoundaryBudget ?? session.selectedReferenceAvailability?.boundaryBudget ?? null,
+    boundaryBudgetStatus: session.selectedReferenceBoundaryBudget?.budgetStatus ?? session.selectedReferenceAvailability?.boundaryBudget?.budgetStatus ?? null,
     selectedRegionAvailability: session.selectedReferenceAvailability?.status ?? null,
     matchedFixtureId: session.selectedReferenceAvailability?.matchedFixtureId ?? null,
     matchedFixtureRole: session.selectedReferenceAvailability?.matchedFixtureRole ?? null,
@@ -3531,8 +3628,10 @@ function projectStateFromProject(project = {}) {
     referenceBathymetryManifest: project.referenceBathymetryManifest ?? project.referenceManifest ?? project.referenceAtlas?.manifest,
     referenceAtlas: project.referenceAtlas ?? project.referenceBathymetryAtlas,
     referenceLayer: project.referenceLayer,
+    selectedReferenceFixtureId: project.selectedReferenceFixtureId ?? project.selectedFixtureId,
     selectedReferenceWindow: project.selectedReferenceWindow ?? project.selectedReferencePatch,
     selectedReferenceAvailability: project.selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget: project.selectedReferenceBoundaryBudget ?? project.boundaryBudget,
     loadedReferenceFixtureId: project.loadedReferenceFixtureId ?? project.loadedFixtureId,
     loadedReferenceFixtureRole: project.loadedReferenceFixtureRole ?? project.loadedFixtureRole,
     loadedReferenceFixture: project.loadedReferenceFixture,
@@ -3601,9 +3700,20 @@ function normalizeSession(input = {}) {
     input.selectedReferenceWindow ?? input.selectedReferencePatch ?? null,
     referenceAtlas
   );
+  const selectedReferenceFixtureId = input.selectedReferenceFixtureId
+    ?? input.selectedFixtureId
+    ?? input.loadedReferenceFixtureId
+    ?? input.loadedFixtureId
+    ?? null;
   const selectedReferenceAvailability = selectedReferenceWindow
-    ? referenceFixtureAvailabilityForBounds(referenceAtlas, selectedReferenceWindow.bounds)
+    ? referenceFixtureAvailabilityForBounds(referenceAtlas, selectedReferenceWindow.bounds, { preferredFixtureId: selectedReferenceFixtureId })
     : null;
+  const selectedReferenceBoundaryBudget = input.selectedReferenceBoundaryBudget
+    ?? input.boundaryBudget
+    ?? referenceBoundaryBudgetForSelection(referenceAtlas, selectedReferenceWindow, {
+      availability: selectedReferenceAvailability,
+      loadedFixture: input.loadedReferenceFixture ?? null
+    });
   const worldMap = normalizeWorldMap(input.worldMap ?? input.syntheticWorldMap ?? {
     style: input.worldStyle ?? input.style,
     seed: input.worldSeed ?? input.atlasSeed ?? input.seed ?? recipe.randomization?.worldSeed,
@@ -3658,8 +3768,10 @@ function normalizeSession(input = {}) {
     referenceBathymetryManifest,
     referenceAtlas,
     referenceLayer: referenceBathymetryLayerById(input.referenceLayer ?? 'topographyBathymetry').id,
+    selectedReferenceFixtureId,
     selectedReferenceWindow,
     selectedReferenceAvailability,
+    selectedReferenceBoundaryBudget,
     loadedReferenceFixtureId: input.loadedReferenceFixtureId ?? input.loadedFixtureId ?? null,
     loadedReferenceFixtureRole: input.loadedReferenceFixtureRole ?? input.loadedFixtureRole ?? null,
     loadedReferenceFixture: input.loadedReferenceFixture ?? null,

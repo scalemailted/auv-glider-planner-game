@@ -1526,6 +1526,34 @@
   background: rgba(10, 35, 42, .52);
 }
 
+.environment-studio-budget-status {
+  display: grid;
+  gap: .2rem;
+  padding: .55rem .65rem;
+  border: 1px solid rgba(141, 220, 242, .22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .055);
+  color: var(--muted);
+  font-size: .74rem;
+  line-height: 1.35;
+}
+
+.environment-studio-budget-status strong {
+  color: var(--text);
+  font-size: .78rem;
+  letter-spacing: 0;
+}
+
+.environment-studio-budget-status-warn {
+  border-color: rgba(244, 180, 70, .55);
+  background: rgba(244, 180, 70, .12);
+}
+
+.environment-studio-budget-status-blocked {
+  border-color: rgba(255, 108, 108, .55);
+  background: rgba(255, 108, 108, .12);
+}
+
 .environment-studio-collapsible {
   display: grid;
   gap: .55rem;

@@ -20,6 +20,8 @@ Workflow path:
 
 Product Hub -> Simulation Lab -> Environment Studio -> Global Reference Bathymetry Atlas -> select Monterey Canyon mission-ready overlay -> Load Mission Patch -> Generate 3D Bathymetry -> Generate Currents & Science Fields -> Compose Environment Artifact -> Review Launch Warnings -> Launch to Planning -> Place waypoints -> Execute Mission -> Debrief -> Export Public Benchmark Bundle
 
+The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. Oversized selections can be exported as patch requests, but they are not generated live in Alpha. The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the ETOPO 2022 15 arc-second Monterey Canyon fixture.
+
 1. Open Product Hub.
 2. Open Simulation Lab.
 3. Open Environment Studio.

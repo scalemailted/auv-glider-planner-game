@@ -35,7 +35,9 @@ The checked-in manifest currently reports `AVAILABLE` with a compact global over
 - preview path: `assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-raster.json`
 - preview kind: `compactRasterJson`
 
-The global atlas overview is a low-resolution selection layer. It is not mission-resolution bathymetry. Mission-ready environments use staged high-resolution regional patches such as the ETOPO 2022 15 arc-second Monterey Canyon fixture. It does not contain raw source paths or hidden truth.
+The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the ETOPO 2022 15 arc-second Monterey Canyon fixture. It does not contain raw source paths or hidden truth.
+
+The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. Oversized selections can be exported as patch requests, but they are not generated live in Alpha.
 
 The two Monterey Canyon fixtures are:
 
@@ -63,7 +65,7 @@ The preserved fallback fixture is:
 - shape: 90 columns x 72 rows
 - bounds: west -123.0, east -121.5, south 36.0, north 37.2
 
-Environment Studio opens to the Global Atlas Selector, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users load a staged patch into the Regional Patch Workspace before generating regional bathymetry. If a selected region is not staged, the browser exports an `anchor.reference-bathymetry-patch-request` with local commands instead of generating fake reference data.
+Environment Studio opens to the Global Atlas Selector, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users load a staged patch into the Regional Patch Workspace before generating regional bathymetry. If a selected region is not staged or is too large for live Alpha generation, the browser exports an `anchor.reference-bathymetry-patch-request` with local commands and boundary-budget metadata instead of generating fake reference data.
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 
