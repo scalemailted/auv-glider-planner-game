@@ -1,4 +1,5 @@
-export const REFERENCE_ATLAS_BOUNDARY_BUDGET_VERSION = 'reference-atlas-boundary-budget-r1';
+export const REFERENCE_ATLAS_BOUNDARY_BUDGET_VERSION = 'reference-atlas-boundary-budget-r1-3';
+export const REFERENCE_ATLAS_OPERATIONAL_WINDOW_VERSION = 'reference-atlas-operational-window-r1';
 
 export const REFERENCE_ATLAS_ALPHA_BUDGET = Object.freeze({
   okSourceCellsMax: 150000,
@@ -16,6 +17,8 @@ export const REFERENCE_ATLAS_ALPHA_BUDGET = Object.freeze({
 });
 
 export const REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE = 'Region is too large for live browser generation in Alpha. Export a patch request or select a smaller window.';
+export const REFERENCE_ATLAS_MULTITILE_MESSAGE = 'Multi-tile preprocessing required. Live Alpha generation is disabled for this operational window.';
+export const REFERENCE_ATLAS_TINY_SELECTION_MESSAGE = 'Selected region is smaller than recommended for mission planning.';
 
 const DEFAULT_BOUNDS = Object.freeze({
   westLon: -123,
@@ -24,9 +27,19 @@ const DEFAULT_BOUNDS = Object.freeze({
   northLat: 37.2
 });
 
+export const REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS = Object.freeze([
+  { id: 'custom', label: 'Draw Custom Window', widthKm: null, heightKm: null },
+  { id: 'localPatch', label: 'Local Patch, about 100 x 100 km', widthKm: 100, heightKm: 100 },
+  { id: 'regionalSurvey', label: 'Regional Survey, about 250 x 200 km', widthKm: 250, heightKm: 200 },
+  { id: 'fleetSurvey', label: 'Fleet Survey, about 500 x 350 km', widthKm: 500, heightKm: 350 },
+  { id: 'gulfSegment', label: 'Gulf Segment, about 800 x 500 km', widthKm: 800, heightKm: 500 },
+  { id: 'basinCampaign', label: 'Basin Campaign, about 1200 x 800 km', widthKm: 1200, heightKm: 800 }
+]);
+
 export function estimateReferenceAtlasBoundaryBudget(boundsInput = DEFAULT_BOUNDS, options = {}) {
   const budget = { ...REFERENCE_ATLAS_ALPHA_BUDGET, ...(options.budget ?? {}) };
   const bounds = normalizeBudgetBounds(boundsInput);
+  const operationalWindow = estimateReferenceAtlasOperationalWindow(bounds, options);
   const sourceResolutionArcSeconds = positiveNumber(
     options.sourceResolutionArcSeconds
       ?? options.actualRasterResolutionArcSeconds
@@ -72,16 +85,24 @@ export function estimateReferenceAtlasBoundaryBudget(boundsInput = DEFAULT_BOUND
     budgetStatus = 'BLOCKED';
     budgetReasons.push(`Source cells ${sourceCellCount} exceed Alpha hard limit ${budget.warnSourceCellsMax}.`);
   }
+  if (
+    budgetStatus === 'BLOCKED'
+    && validation.valid
+    && ['gulfScale', 'basinCampaign'].includes(operationalWindow.scaleClass)
+  ) {
+    budgetStatus = 'MULTI_TILE_REQUIRED';
+    budgetReasons.unshift('Operational window is valid but too large for one live browser-generated Alpha patch.');
+  }
   if (budgetStatus !== 'BLOCKED') {
-    if (sourceCellCount > budget.okSourceCellsMax) {
+    if (budgetStatus !== 'MULTI_TILE_REQUIRED' && sourceCellCount > budget.okSourceCellsMax) {
       budgetStatus = 'WARN';
       budgetReasons.push(`Source cells ${sourceCellCount} exceed Alpha OK budget ${budget.okSourceCellsMax}.`);
     }
-    if (estimatedRows > budget.sourceRowsWarnMax) {
+    if (budgetStatus !== 'MULTI_TILE_REQUIRED' && estimatedRows > budget.sourceRowsWarnMax) {
       budgetStatus = 'WARN';
       budgetReasons.push(`Source rows ${estimatedRows} are near the browser hard limit.`);
     }
-    if (estimatedColumns > budget.sourceColumnsWarnMax) {
+    if (budgetStatus !== 'MULTI_TILE_REQUIRED' && estimatedColumns > budget.sourceColumnsWarnMax) {
       budgetStatus = 'WARN';
       budgetReasons.push(`Source columns ${estimatedColumns} are near the browser hard limit.`);
     }
@@ -99,12 +120,15 @@ export function estimateReferenceAtlasBoundaryBudget(boundsInput = DEFAULT_BOUND
     && validation.unsupportedAntimeridian !== true
     && widthDegrees > 0
     && heightDegrees > 0;
-  const generationAllowed = budgetStatus !== 'BLOCKED' && patchRequestAllowed;
+  const multiTileRecommended = budgetStatus === 'MULTI_TILE_REQUIRED'
+    || (patchRequestAllowed && ['gulfScale', 'basinCampaign'].includes(operationalWindow.scaleClass));
+  const generationAllowed = budgetStatus !== 'BLOCKED' && budgetStatus !== 'MULTI_TILE_REQUIRED' && patchRequestAllowed;
   const recommendedAction = recommendedActionForStatus(budgetStatus, patchRequestAllowed);
 
   return {
     version: REFERENCE_ATLAS_BOUNDARY_BUDGET_VERSION,
     bounds,
+    operationalWindow,
     sourceResolutionArcSeconds,
     resolutionDegrees: round(resolutionDegrees, 8),
     approximateWidthKm,
@@ -123,6 +147,7 @@ export function estimateReferenceAtlasBoundaryBudget(boundsInput = DEFAULT_BOUND
     recommendedAction,
     generationAllowed,
     patchRequestAllowed,
+    multiTileRecommended,
     claimBoundary: {
       selectionEstimateOnly: true,
       browserGenerationBudgetGate: true,
@@ -133,6 +158,55 @@ export function estimateReferenceAtlasBoundaryBudget(boundsInput = DEFAULT_BOUND
       operationalOceanForecast: false
     }
   };
+}
+
+export function estimateReferenceAtlasOperationalWindow(boundsInput = DEFAULT_BOUNDS, options = {}) {
+  const bounds = normalizeBudgetBounds(boundsInput);
+  const validation = validateBudgetBounds(boundsInput, bounds);
+  const widthDegrees = Math.max(0, Number(bounds.eastLon) - Number(bounds.westLon));
+  const heightDegrees = Math.max(0, Number(bounds.northLat) - Number(bounds.southLat));
+  const centerLon = round((Number(bounds.westLon) + Number(bounds.eastLon)) / 2);
+  const centerLat = round((Number(bounds.southLat) + Number(bounds.northLat)) / 2);
+  const widthKm = round(widthDegrees * 111.32 * Math.max(0.05, Math.cos(centerLat * Math.PI / 180)), 3);
+  const heightKm = round(heightDegrees * 111.32, 3);
+  const areaKm2 = round(widthKm * heightKm, 3);
+  const scaleClass = classifyOperationalScale({ widthKm, heightKm, areaKm2, valid: validation.valid });
+  return {
+    version: REFERENCE_ATLAS_OPERATIONAL_WINDOW_VERSION,
+    bounds,
+    centerLon,
+    centerLat,
+    widthKm,
+    heightKm,
+    areaKm2,
+    scaleClass,
+    userIntent: String(options.userIntent ?? scaleClass),
+    validSelection: validation.valid && scaleClass !== 'globalInvalid',
+    warnings: tinySelection(bounds) ? [REFERENCE_ATLAS_TINY_SELECTION_MESSAGE] : [],
+    reasons: validation.reasons
+  };
+}
+
+export function referenceAtlasBoundsForOperationalPreset(centerInput = {}, presetId = 'regionalSurvey') {
+  const preset = REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS.find((entry) => entry.id === presetId)
+    ?? REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS.find((entry) => entry.id === 'regionalSurvey');
+  const centerLon = finite(centerInput.lon ?? centerInput.centerLon, -122.25);
+  const centerLat = finite(centerInput.lat ?? centerInput.centerLat, 36.6);
+  const widthKm = positiveNumber(preset?.widthKm, 250);
+  const heightKm = positiveNumber(preset?.heightKm, 200);
+  const lonSpan = widthKm / Math.max(0.000001, 111.32 * Math.max(0.05, Math.cos(centerLat * Math.PI / 180)));
+  const latSpan = heightKm / 111.32;
+  return boundsFromCenterSpan(centerLon, centerLat, lonSpan, latSpan);
+}
+
+export function referenceAtlasEnsureMinimumOperationalBounds(boundsInput = DEFAULT_BOUNDS, presetId = 'localPatch') {
+  const bounds = normalizeBudgetBounds(boundsInput);
+  if (!tinySelection(bounds)) return bounds;
+  const operational = estimateReferenceAtlasOperationalWindow(bounds);
+  return referenceAtlasBoundsForOperationalPreset({
+    centerLon: operational.centerLon,
+    centerLat: operational.centerLat
+  }, presetId);
 }
 
 export function sourceResolutionArcSecondsFromReference(input = {}, fallback = 15) {
@@ -147,7 +221,9 @@ export function sourceResolutionArcSecondsFromReference(input = {}, fallback = 1
 }
 
 export function referenceAtlasBudgetAllowsGeneration(boundaryBudget = null) {
-  return boundaryBudget?.budgetStatus !== 'BLOCKED' && boundaryBudget?.generationAllowed !== false;
+  return boundaryBudget?.generationAllowed === true
+    && boundaryBudget?.budgetStatus !== 'BLOCKED'
+    && boundaryBudget?.budgetStatus !== 'MULTI_TILE_REQUIRED';
 }
 
 function validateBudgetBounds(rawInput = {}, bounds = {}) {
@@ -201,15 +277,44 @@ function gridEstimate(sourceRows = 0, sourceColumns = 0, maxRows = 1, maxColumns
 }
 
 function recommendedActionForStatus(status = 'OK', patchRequestAllowed = false) {
+  if (status === 'MULTI_TILE_REQUIRED') return 'exportMultiTilePatchRequest';
   if (status === 'BLOCKED') return patchRequestAllowed ? 'Export a patch request or select a smaller window.' : 'Select a valid non-antimeridian lon/lat window.';
   if (status === 'WARN') return 'Proceed only with a staged patch or export a patch request for offline preprocessing.';
   return 'Region is within Alpha live browser generation budget.';
 }
 
 function benchmarkClassForBudget(status = 'OK', cells = 0) {
+  if (status === 'MULTI_TILE_REQUIRED') return 'MULTI_TILE_PATCH_REQUEST_ONLY';
   if (status === 'BLOCKED') return 'OVERSIZED_PATCH_REQUEST_ONLY';
   if (status === 'WARN') return 'MEDIUM_BROWSER_DECIMATED';
   return cells <= 100000 ? 'SMALL_BROWSER_READY' : 'BROWSER_READY';
+}
+
+function classifyOperationalScale({ widthKm = 0, heightKm = 0, areaKm2 = 0, valid = true } = {}) {
+  if (!valid || widthKm <= 0 || heightKm <= 0 || widthKm > 10000 || heightKm > 6000 || areaKm2 > 40000000) return 'globalInvalid';
+  const maxSide = Math.max(widthKm, heightKm);
+  if (maxSide <= 160 && areaKm2 <= 26000) return 'localPatch';
+  if (maxSide <= 360 && areaKm2 <= 90000) return 'regionalSurvey';
+  if (widthKm <= 1050 && heightKm <= 730 && areaKm2 <= 780000) return 'gulfScale';
+  return 'basinCampaign';
+}
+
+function tinySelection(bounds = {}) {
+  return Math.max(0, Number(bounds.eastLon) - Number(bounds.westLon)) < 0.2
+    || Math.max(0, Number(bounds.northLat) - Number(bounds.southLat)) < 0.2;
+}
+
+function boundsFromCenterSpan(centerLon = 0, centerLat = 0, lonSpan = 1, latSpan = 1) {
+  const width = Math.min(360, Math.max(0.05, Number(lonSpan)));
+  const height = Math.min(180, Math.max(0.05, Number(latSpan)));
+  const clampedCenterLon = clamp(centerLon, -180 + width / 2, 180 - width / 2);
+  const clampedCenterLat = clamp(centerLat, -90 + height / 2, 90 - height / 2);
+  return normalizeBudgetBounds({
+    westLon: clampedCenterLon - width / 2,
+    eastLon: clampedCenterLon + width / 2,
+    southLat: clampedCenterLat - height / 2,
+    northLat: clampedCenterLat + height / 2
+  });
 }
 
 function parseArcSeconds(value) {
@@ -225,6 +330,12 @@ function finite(value, fallback = 0) {
 function positiveNumber(value, fallback = 1) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function clamp(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return min;
+  return Math.min(max, Math.max(min, number));
 }
 
 function clampInteger(value, min, max) {

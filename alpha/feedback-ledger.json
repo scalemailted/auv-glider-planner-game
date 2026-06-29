@@ -515,6 +515,39 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-024",
+      "title": "Reference atlas should allow large operational windows without pretending they are live browser patches.",
+      "source": "alpha tester",
+      "status": "resolved",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Bathymetry Atlas",
+      "summary": "Alpha review found that large Gulf-scale selections were still treated like one browser-generated patch. Environment Studio now separates the selected OperationalWindow from the GenerationBudget, keeps large valid windows selectable, disables live generation for multi-tile regions, and exports an explicit multi-tile patch request artifact for offline preprocessing.",
+      "decision": "Accepted for REF-ATLAS-INTERACT-R1.3.",
+      "proposedPhase": "REF-ATLAS-INTERACT-R1.3",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/ref-atlas-operational-window-r1/qa-summary.json",
+        "tools/js/smoke_reference_atlas_operational_window_budget.mjs",
+        "tools/js/smoke_reference_atlas_multitile_patch_request.mjs",
+        "tools/js/audit_reference_atlas_operational_window_acceptance.mjs"
+      ],
+      "acceptanceCriteria": [
+        "Local, regional, fleet, Gulf segment, and basin campaign presets are selectable as operational windows.",
+        "Gulf-scale windows report MULTI_TILE_REQUIRED, generationAllowed=false, patchRequestAllowed=true, multiTileRecommended=true, and recommendedAction=exportMultiTilePatchRequest.",
+        "Tiny click-only selections expand or normalize to a usable local operational window.",
+        "The multi-tile patch request artifact preserves source dataset identity, resolution, tile plan, suggested tile bounds, commands, claim boundary, and digest without raw local paths or hidden truth.",
+        "The Monterey mission-ready patch still loads, generates bathymetry and fields, composes an environment, and validates launch readiness."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

@@ -26,6 +26,7 @@ import {
   clearEnvironmentStudioWorldWindow,
   composeEnvironmentStudioReferenceEnvironment,
   createReferenceBathymetryPatchRequest,
+  createReferenceBathymetryMultiTilePatchRequest,
   createEnvironmentStudioMosaic,
   createEnvironmentStudioSession,
   domainProfileById,
@@ -85,11 +86,16 @@ import {
   referenceAtlasZoomView,
   referenceFixtureAtLonLat
 } from '../../../core/editor/ReferenceBathymetryAtlas.js';
-import { REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE } from '../../../core/editor/ReferenceAtlasBoundaryBudget.js';
+import {
+  REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE,
+  REFERENCE_ATLAS_MULTITILE_MESSAGE,
+  REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS,
+  referenceAtlasBoundsForOperationalPreset
+} from '../../../core/editor/ReferenceAtlasBoundaryBudget.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
-export const ENVIRONMENT_STUDIO_SCENE_VERSION = 'environment-studio-scene-r1-2';
+export const ENVIRONMENT_STUDIO_SCENE_VERSION = 'environment-studio-scene-r1-3';
 
 function createReferenceAtlasPerfState() {
   return {
@@ -165,6 +171,8 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.referenceAtlasPerf = createReferenceAtlasPerfState();
     this.oversizeGenerationBlockedCount = 0;
     this.lastBlockedGenerationReason = null;
+    this.lastPatchRequestType = null;
+    this.lastPatchRequestDigest = null;
     this.referenceAtlasLoadStartedAt = globalThis.performance?.now?.() ?? Date.now();
     this.globeRendererContext = null;
     this.globeRegionSelectionMode = false;
@@ -679,14 +687,34 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   referenceBudgetAllowsGeneration(actionLabel = 'Reference generation') {
     const budget = this.session.selectedReferenceBoundaryBudget ?? this.session.selectedReferenceAvailability?.boundaryBudget ?? null;
-    if (!budget || budget.budgetStatus !== 'BLOCKED') return true;
-    const reason = `${actionLabel} blocked: ${REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE}`;
+    if (!budget || budget.generationAllowed !== false) return true;
+    const message = budget.budgetStatus === 'MULTI_TILE_REQUIRED'
+      ? REFERENCE_ATLAS_MULTITILE_MESSAGE
+      : REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE;
+    const reason = `${actionLabel} blocked: ${message}`;
     this.oversizeGenerationBlockedCount += 1;
     this.lastBlockedGenerationReason = reason;
-    this.statusMessage = `${actionLabel} blocked by Alpha region-size budget.`;
-    this.lastError = REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE;
+    this.statusMessage = budget.budgetStatus === 'MULTI_TILE_REQUIRED'
+      ? `${actionLabel} disabled for this large operational window. Export a multi-tile patch request.`
+      : `${actionLabel} blocked by Alpha region-size budget.`;
+    this.lastError = message;
     this.render();
     return false;
+  }
+
+  referenceSelectionStatusMessage(availability = null, budget = null) {
+    if (budget?.budgetStatus === 'MULTI_TILE_REQUIRED') {
+      return 'Selected large operational window. Multi-tile preprocessing is required before generation.';
+    }
+    if (budget?.budgetStatus === 'BLOCKED') return REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE;
+    if (availability?.available) return `Selected atlas region matches ${availability.matchedFixtureRole}: ${availability.matchedFixtureId}.`;
+    return 'Selected operational window is not staged. Export a patch request to preprocess it offline.';
+  }
+
+  referenceSelectionErrorMessage(availability = null, budget = null) {
+    if (budget?.budgetStatus === 'MULTI_TILE_REQUIRED') return REFERENCE_ATLAS_MULTITILE_MESSAGE;
+    if (budget?.budgetStatus === 'BLOCKED') return REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE;
+    return availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
   }
 
   selectReferenceWindowAt(lon, lat) {
@@ -699,32 +727,44 @@ export class EnvironmentStudioScene extends PhaserScene {
       this.selectReferenceFixture(fixtureAtPoint.fixtureId);
       return;
     }
-    const widthDegrees = this.numberValue('env-reference-window-width-deg', 2.7);
-    const heightDegrees = this.numberValue('env-reference-window-height-deg', 1.8);
-    const westLon = clampNumber(Number(lon) - widthDegrees / 2, -180, 180 - widthDegrees);
-    const eastLon = clampNumber(westLon + widthDegrees, -180, 180);
-    const southLat = clampNumber(Number(lat) - heightDegrees / 2, -90, 90 - heightDegrees);
-    const northLat = clampNumber(southLat + heightDegrees, -90, 90);
+    const presetBounds = referenceAtlasBoundsForOperationalPreset({ lon, lat }, 'regionalSurvey');
     this.session = selectEnvironmentStudioReferenceWindow(this.session, {
-      westLon,
-      eastLon,
-      southLat,
-      northLat,
+      ...presetBounds,
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
     });
     this.referenceBoundaryDrawing = false;
     const availability = this.session.selectedReferenceAvailability;
     const budget = this.session.selectedReferenceBoundaryBudget;
-    this.statusMessage = budget?.budgetStatus === 'BLOCKED'
-      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
-      : availability?.available
-      ? `Selected atlas region matches ${availability.matchedFixtureRole}: ${availability.matchedFixtureId}.`
-      : 'Selected atlas region is not staged. Export a patch request to preprocess it offline.';
-    this.lastError = budget?.budgetStatus === 'BLOCKED'
-      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
-      : availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
+    this.statusMessage = this.referenceSelectionStatusMessage(availability, budget);
+    this.lastError = this.referenceSelectionErrorMessage(availability, budget);
     this.render();
+  }
+
+  selectReferenceOperationalPreset(presetId = 'regionalSurvey', centerInput = {}) {
+    if (!this.referenceDataAvailable()) {
+      this.blockReferenceBathymetryAction('Reference operational window selection');
+      return;
+    }
+    if (presetId === 'custom') {
+      this.referenceBoundaryDrawing = true;
+      this.statusMessage = 'Custom operational window mode enabled. Drag the atlas map to draw a lon/lat region.';
+      this.lastError = null;
+      this.render();
+      return;
+    }
+    const existing = this.session.selectedReferenceWindow?.bounds;
+    const viewport = referenceAtlasViewport(this.session.worldView, this.session.referenceAtlas);
+    const inferredCenterLon = existing
+      ? (Number(existing.westLon) + Number(existing.eastLon)) / 2
+      : (viewport?.centerLon ?? -122.25);
+    const inferredCenterLat = existing
+      ? (Number(existing.southLat) + Number(existing.northLat)) / 2
+      : (viewport?.centerLat ?? 36.6);
+    const centerLon = Number(centerInput.lon ?? centerInput.centerLon ?? inferredCenterLon);
+    const centerLat = Number(centerInput.lat ?? centerInput.centerLat ?? inferredCenterLat);
+    const bounds = referenceAtlasBoundsForOperationalPreset({ centerLon, centerLat }, presetId);
+    this.selectReferenceBounds(bounds);
   }
 
   selectReferenceBounds(boundsInput = {}) {
@@ -747,14 +787,8 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.referenceAtlasTransientBounds = null;
     const availability = this.session.selectedReferenceAvailability;
     const budget = this.session.selectedReferenceBoundaryBudget;
-    this.statusMessage = budget?.budgetStatus === 'BLOCKED'
-      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
-      : availability?.available
-      ? `Selected atlas region matches ${availability.matchedFixtureRole}: ${availability.matchedFixtureId}.`
-      : 'Selected atlas region is not staged. Export a patch request to preprocess it offline.';
-    this.lastError = budget?.budgetStatus === 'BLOCKED'
-      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
-      : availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
+    this.statusMessage = this.referenceSelectionStatusMessage(availability, budget);
+    this.lastError = this.referenceSelectionErrorMessage(availability, budget);
     this.render();
   }
 
@@ -799,16 +833,35 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   exportReferencePatchRequest() {
     const selectedBounds = this.session.selectedReferenceWindow?.bounds;
+    const budget = this.session.selectedReferenceBoundaryBudget ?? this.session.selectedReferenceAvailability?.boundaryBudget ?? null;
     const request = this.session.referencePatchRequest
-      ?? (selectedBounds ? createReferenceBathymetryPatchRequest(selectedBounds, this.session.referenceAtlas) : null);
+      ?? (selectedBounds
+        ? (budget?.multiTileRecommended || budget?.recommendedAction === 'exportMultiTilePatchRequest'
+          ? createReferenceBathymetryMultiTilePatchRequest(selectedBounds, this.session.referenceAtlas, {
+              boundaryBudget: budget,
+              generationBudget: budget,
+              operationalWindow: budget?.operationalWindow
+            })
+          : createReferenceBathymetryPatchRequest(selectedBounds, this.session.referenceAtlas, {
+              boundaryBudget: budget,
+              generationBudget: budget,
+              operationalWindow: budget?.operationalWindow
+            }))
+        : null);
     if (!request) {
       this.lastError = 'Select an unstaged atlas region before exporting a patch request.';
       this.statusMessage = 'Patch request export skipped.';
       this.render();
       return;
     }
-    downloadJSON(`${request.suggestedFixtureId}.reference-bathymetry-patch-request.json`, request);
-    this.statusMessage = 'Exported reference bathymetry patch request JSON.';
+    const fixtureName = request.suggestedFixtureId ?? request.suggestedFixturePrefix ?? 'reference-bathymetry-request';
+    const isMultiTile = request.artifactType === 'anchor.reference-bathymetry-multitile-patch-request';
+    downloadJSON(`${fixtureName}.${isMultiTile ? 'reference-bathymetry-multitile-patch-request' : 'reference-bathymetry-patch-request'}.json`, request);
+    this.lastPatchRequestType = request.artifactType ?? null;
+    this.lastPatchRequestDigest = request.requestDigest ?? null;
+    this.statusMessage = isMultiTile
+      ? 'Exported multi-tile reference bathymetry patch request JSON.'
+      : 'Exported reference bathymetry patch request JSON.';
     this.lastError = null;
     this.render();
   }
@@ -881,12 +934,8 @@ export class EnvironmentStudioScene extends PhaserScene {
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
     });
-    this.statusMessage = this.session.selectedReferenceBoundaryBudget?.budgetStatus === 'BLOCKED'
-      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
-      : 'Moved or resized selected reference patch.';
-    this.lastError = this.session.selectedReferenceBoundaryBudget?.budgetStatus === 'BLOCKED'
-      ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE
-      : null;
+    this.statusMessage = this.referenceSelectionStatusMessage(this.session.selectedReferenceAvailability, this.session.selectedReferenceBoundaryBudget);
+    this.lastError = this.referenceSelectionErrorMessage(this.session.selectedReferenceAvailability, this.session.selectedReferenceBoundaryBudget);
     this.render();
   }
 
@@ -1569,6 +1618,10 @@ export class EnvironmentStudioScene extends PhaserScene {
       version: ENVIRONMENT_STUDIO_SCENE_VERSION,
       routeActive: Boolean(active),
       boundaryBudget: debug.boundaryBudget ?? this.session.selectedReferenceBoundaryBudget ?? null,
+      operationalWindow: debug.operationalWindow ?? this.session.selectedReferenceOperationalWindow ?? this.session.selectedReferenceBoundaryBudget?.operationalWindow ?? null,
+      generationBudget: debug.generationBudget ?? this.session.selectedReferenceGenerationBudget ?? this.session.selectedReferenceBoundaryBudget ?? null,
+      lastPatchRequestType: this.lastPatchRequestType,
+      lastPatchRequestDigest: this.lastPatchRequestDigest,
       oversizeGenerationBlockedCount: this.oversizeGenerationBlockedCount,
       lastBlockedGenerationReason: this.lastBlockedGenerationReason,
       referenceManifestLoaded: this.referenceManifestLoaded === true,
@@ -1648,9 +1701,17 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
   const availabilityMessage = referenceFixtureAvailabilityMessage(session);
   const availability = session.selectedReferenceAvailability;
   const boundaryBudget = session.selectedReferenceBoundaryBudget ?? availability?.boundaryBudget ?? null;
+  const operationalWindow = session.selectedReferenceOperationalWindow ?? boundaryBudget?.operationalWindow ?? availability?.operationalWindow ?? null;
+  const generationBudget = session.selectedReferenceGenerationBudget ?? boundaryBudget ?? null;
   const budgetBlocked = boundaryBudget?.budgetStatus === 'BLOCKED';
-  const canLoadPatch = availability?.available === true && !budgetBlocked;
-  const canExportRequest = Boolean(selected && boundaryBudget?.patchRequestAllowed !== false && (!availability?.available || budgetBlocked));
+  const multiTileRequired = boundaryBudget?.budgetStatus === 'MULTI_TILE_REQUIRED' || boundaryBudget?.multiTileRecommended === true;
+  const canLoadPatch = availability?.available === true && generationBudget?.generationAllowed !== false;
+  const canExportRequest = Boolean(selected && boundaryBudget?.patchRequestAllowed !== false && (!availability?.available || budgetBlocked || multiTileRequired));
+  const exportRequestLabel = multiTileRequired ? 'Export Multi-Tile Patch Request' : 'Export Patch Request';
+  const budgetStatusLabel = boundaryBudget?.budgetStatus ?? 'none selected';
+  const budgetStatusMessage = boundaryBudget
+    ? (multiTileRequired ? REFERENCE_ATLAS_MULTITILE_MESSAGE : budgetBlocked ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE : boundaryBudget.recommendedAction ?? 'Region budget estimated.')
+    : '';
   const selectedBoundsLabel = selected
     ? `${formatNumber(bounds.westLon)} to ${formatNumber(bounds.eastLon)} lon, ${formatNumber(bounds.southLat)} to ${formatNumber(bounds.northLat)} lat`
     : 'draw or click an available patch';
@@ -1658,7 +1719,7 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
     <section class="console-header">
       <div class="console-kicker">Simulation Lab / Environment Studio</div>
       <h1>Reference Bathymetry Atlas</h1>
-      <p>Select a lon/lat region from the global reference overview. High-resolution mission patches must be preprocessed before use.</p>
+      <p>Select an operational lon/lat window from the global reference overview. Live generation is budget-gated separately from valid large-region selection.</p>
     </section>
     <section class="console-status">
       <span>Stage</span>
@@ -1709,13 +1770,23 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         <button type="button" data-action="env-reference-select-boundary" ${disabledAttr}>Select Monterey Patch</button>
         <button type="button" data-action="env-reference-clear-boundary">Clear</button>
       </div>
+      <div class="environment-studio-camera-row environment-studio-operational-preset-row" aria-label="Operational window presets">
+        ${REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS.map((preset) => `<button type="button" class="${operationalWindow?.userIntent === preset.id || operationalWindow?.scaleClass === preset.id ? 'active' : ''}" data-env-reference-window-preset="${escapeAttr(preset.id)}" ${disabledAttr}>${escapeHtml(preset.label)}</button>`).join('')}
+      </div>
       <div class="cell-inspector-metrics">
         ${metricHtml('Selected Bounds', selectedBoundsLabel)}
+        ${metricHtml('Operational Scale', operationalWindow?.scaleClass ?? 'none selected')}
+        ${metricHtml('Operational Size', operationalWindow ? `${formatNumber(operationalWindow.widthKm)} x ${formatNumber(operationalWindow.heightKm)} km` : 'n/a')}
+        ${metricHtml('Operational Area', operationalWindow ? `${formatInteger(operationalWindow.areaKm2)} km2` : 'n/a')}
+        ${metricHtml('Valid Selection', operationalWindow ? (operationalWindow.validSelection ? 'yes' : 'no') : 'n/a')}
         ${metricHtml('Patch Availability', availability?.status ?? 'none selected')}
         ${metricHtml('Matching Fixture', availability?.matchedFixtureId ?? 'none')}
         ${metricHtml('Matching Role', availability?.matchedFixtureRole ?? 'n/a')}
         ${metricHtml('Selected Size', selected ? `${formatNumber(Math.abs(Number(bounds.eastLon) - Number(bounds.westLon)))} x ${formatNumber(Math.abs(Number(bounds.northLat) - Number(bounds.southLat)))} deg` : 'n/a')}
-        ${metricHtml('Budget Status', boundaryBudget?.budgetStatus ?? 'none selected')}
+        ${metricHtml('Budget Status', budgetStatusLabel)}
+        ${metricHtml('Live Generation', generationBudget?.generationAllowed === true ? 'enabled' : generationBudget ? 'disabled' : 'n/a')}
+        ${metricHtml('Patch Request', boundaryBudget?.patchRequestAllowed === true ? 'allowed' : boundaryBudget ? 'not allowed' : 'n/a')}
+        ${metricHtml('Recommended Action', boundaryBudget?.recommendedAction ?? 'select a window')}
         ${metricHtml('Source Cells', boundaryBudget ? formatInteger(boundaryBudget.sourceCellCount) : 'n/a')}
         ${metricHtml('Source Grid', boundaryBudget ? `${formatInteger(boundaryBudget.estimatedColumns)} x ${formatInteger(boundaryBudget.estimatedRows)}` : 'n/a')}
         ${metricHtml('Field Grid', boundaryBudget ? `${formatInteger(boundaryBudget.fieldGridEstimate?.columns)} x ${formatInteger(boundaryBudget.fieldGridEstimate?.rows)}` : 'n/a')}
@@ -1723,7 +1794,8 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
       ${boundaryBudget ? `
         <div class="environment-studio-budget-status environment-studio-budget-status-${escapeAttr(String(boundaryBudget.budgetStatus ?? 'unknown').toLowerCase())}" data-boundary-budget-status="${escapeAttr(boundaryBudget.budgetStatus ?? 'UNKNOWN')}">
           <strong>${escapeHtml(boundaryBudget.budgetStatus ?? 'UNKNOWN')}</strong>
-          <span>${escapeHtml(budgetBlocked ? REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE : boundaryBudget.recommendedAction ?? 'Region budget estimated.')}</span>
+          <span>${escapeHtml(budgetStatusMessage)}</span>
+          <small>${escapeHtml((boundaryBudget.budgetReasons ?? []).slice(0, 3).join(' '))}</small>
         </div>
       ` : ''}
       <details>
@@ -1747,8 +1819,8 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
     <section class="console-section environment-studio-basic-panel" data-keep-title="true">
       <h2>Actions</h2>
       <button class="console-button primary" type="button" data-action="env-reference-load-patch" ${canLoadPatch ? '' : 'disabled'}>Load Mission Patch</button>
-      <button class="console-button secondary" type="button" data-action="env-reference-export-patch-request" ${canExportRequest ? '' : 'disabled'}>Export Patch Request</button>
-      ${canExportRequest ? `<code>${escapeHtml(session.referencePatchRequest?.downloadCommand ?? '')}</code><code>${escapeHtml(session.referencePatchRequest?.preprocessCommand ?? 'npm.cmd run preprocess:reference-bathy')}</code>` : ''}
+      <button class="console-button secondary" type="button" data-action="env-reference-export-patch-request" ${canExportRequest ? '' : 'disabled'}>${escapeHtml(exportRequestLabel)}</button>
+      ${canExportRequest ? `<code>${escapeHtml(session.referencePatchRequest?.downloadCommand ?? session.referencePatchRequest?.downloadCommands?.[0] ?? '')}</code><code>${escapeHtml(session.referencePatchRequest?.preprocessCommand ?? session.referencePatchRequest?.preprocessCommands?.[0] ?? 'npm.cmd run preprocess:reference-bathy')}</code>` : ''}
       <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
       <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
       <input id="env-studio-import-file" type="file" accept="application/json,.json" hidden data-env-studio-import />
@@ -1822,6 +1894,9 @@ function bindEnvironmentStudioReferenceAtlasControls(scene, root) {
   root?.querySelector?.('[data-action="env-reference-select-boundary"]')?.addEventListener('click', () => scene.selectReferenceWindowFromControls());
   root?.querySelector?.('[data-action="env-reference-focus-patch"]')?.addEventListener('click', () => scene.focusSelectedReferencePatch());
   root?.querySelector?.('[data-action="env-reference-clear-boundary"]')?.addEventListener('click', () => scene.clearReferenceWindow());
+  root?.querySelectorAll?.('[data-env-reference-window-preset]')?.forEach((button) => {
+    button.addEventListener('click', () => scene.selectReferenceOperationalPreset(button.getAttribute('data-env-reference-window-preset')));
+  });
   root?.querySelector?.('[data-env-reference-fixture-selector]')?.addEventListener('change', (event) => scene.selectReferenceFixture(event.target.value));
   root?.querySelectorAll?.('[data-env-reference-window-action]')?.forEach((button) => {
     button.addEventListener('click', () => scene.adjustReferenceWindow(button.getAttribute('data-env-reference-window-action')));
@@ -1877,8 +1952,15 @@ function referenceAtlasRightPanelHtml(session = {}) {
   const stats = selected.sampledStats ?? {};
   const bounds = selected.bounds ?? {};
   const boundaryBudget = session.selectedReferenceBoundaryBudget ?? availability.boundaryBudget ?? null;
+  const operationalWindow = session.selectedReferenceOperationalWindow ?? boundaryBudget?.operationalWindow ?? availability.operationalWindow ?? null;
+  const generationBudget = session.selectedReferenceGenerationBudget ?? boundaryBudget ?? null;
   const budgetMetrics = boundaryBudget ? `
           ${metricHtml('Budget status', boundaryBudget.budgetStatus)}
+          ${metricHtml('Operational scale', operationalWindow?.scaleClass ?? 'n/a')}
+          ${metricHtml('Operational size', operationalWindow ? `${formatNumber(operationalWindow.widthKm)} x ${formatNumber(operationalWindow.heightKm)} km` : 'n/a')}
+          ${metricHtml('Live generation', generationBudget?.generationAllowed === true ? 'enabled' : 'disabled')}
+          ${metricHtml('Patch request', boundaryBudget.patchRequestAllowed === true ? 'allowed' : 'not allowed')}
+          ${metricHtml('Recommended action', boundaryBudget.recommendedAction)}
           ${metricHtml('Source cells', formatInteger(boundaryBudget.sourceCellCount))}
           ${metricHtml('Budget source grid', `${formatInteger(boundaryBudget.estimatedColumns)} x ${formatInteger(boundaryBudget.estimatedRows)}`)}
           ${metricHtml('Field samples', formatInteger(boundaryBudget.estimatedFieldSampleCount))}
@@ -1910,7 +1992,7 @@ function referenceAtlasRightPanelHtml(session = {}) {
     <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
       <div class="console-kicker">Selected Atlas Region</div>
       <h2>${escapeHtml(availability.matchedFixtureId ?? 'Selected Atlas Region')}</h2>
-      <p class="hud-muted">${availability.available ? 'This region overlaps a staged reference fixture. Load it before generating regional bathymetry.' : 'This region is not staged. Export a patch request and preprocess it offline before use.'}</p>
+      <p class="hud-muted">${boundaryBudget?.budgetStatus === 'MULTI_TILE_REQUIRED' ? 'This is a valid large operational window. Export a multi-tile patch request and preprocess it offline before generation.' : availability.available ? 'This region overlaps a staged reference fixture. Load it before generating regional bathymetry.' : 'This region is not staged. Export a patch request and preprocess it offline before use.'}</p>
       <div class="cell-inspector-metrics">
         ${metricHtml('Patch Digest', shortDigest(selected.patchDigest))}
         ${metricHtml('West / East lon', `${formatNumber(bounds.westLon)} / ${formatNumber(bounds.eastLon)}`)}
@@ -1925,11 +2007,12 @@ function referenceAtlasRightPanelHtml(session = {}) {
         ${budgetMetrics}
         ${metricHtml('Validation', selected.validation?.status ?? 'UNKNOWN')}
       </div>
+      ${boundaryBudget?.budgetStatus === 'MULTI_TILE_REQUIRED' ? `<p class="hud-muted">${escapeHtml(REFERENCE_ATLAS_MULTITILE_MESSAGE)}</p>` : ''}
       ${boundaryBudget?.budgetStatus === 'BLOCKED' ? `<p class="hud-muted">${escapeHtml(REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE)}</p>` : ''}
       <table class="environment-studio-table">
         <tbody>
-          <tr><td>Recommended next action</td><td>${escapeHtml(availability.recommendedAction ?? 'exportPatchRequest')}</td></tr>
-          <tr><td>Preprocess command</td><td>${escapeHtml(session.referencePatchRequest?.downloadCommand ?? 'Patch is staged; load it from the atlas.')}</td></tr>
+          <tr><td>Recommended next action</td><td>${escapeHtml(boundaryBudget?.recommendedAction ?? availability.recommendedAction ?? 'exportPatchRequest')}</td></tr>
+          <tr><td>Preprocess command</td><td>${escapeHtml(session.referencePatchRequest?.downloadCommand ?? session.referencePatchRequest?.downloadCommands?.[0] ?? 'Patch is staged; load it from the atlas.')}</td></tr>
           <tr><td>Expected artifacts after load</td><td>Bathymetry artifact, wet/land masks, coastline summary, validation report, and FIELD-REGEN inputs.</td></tr>
           <tr><td>Current Artifact</td><td>REQUIRES_REGENERATION</td></tr>
           <tr><td>Scalar Artifact</td><td>REQUIRES_REGENERATION</td></tr>
@@ -2307,6 +2390,20 @@ function drawReferenceSelectionOverlay(context, session = {}, width = 1, height 
   context.strokeRect(x, y, rectWidth, rectHeight);
   context.fillStyle = 'rgba(248, 226, 108, 0.12)';
   context.fillRect(x, y, rectWidth, rectHeight);
+  context.setLineDash([]);
+  context.fillStyle = '#fff5a8';
+  context.strokeStyle = '#2a2100';
+  context.lineWidth = 2;
+  const handleSize = 12;
+  for (const point of [
+    [x, y],
+    [x + rectWidth, y],
+    [x, y + rectHeight],
+    [x + rectWidth, y + rectHeight]
+  ]) {
+    context.fillRect(point[0] - handleSize / 2, point[1] - handleSize / 2, handleSize, handleSize);
+    context.strokeRect(point[0] - handleSize / 2, point[1] - handleSize / 2, handleSize, handleSize);
+  }
   context.restore();
 }
 

@@ -5,6 +5,8 @@ import {
 import { createBathymetryArtifactFromField } from '../generation/BathymetryArtifactAdapter.js';
 import {
   estimateReferenceAtlasBoundaryBudget,
+  estimateReferenceAtlasOperationalWindow,
+  referenceAtlasEnsureMinimumOperationalBounds,
   sourceResolutionArcSecondsFromReference
 } from './ReferenceAtlasBoundaryBudget.js';
 
@@ -19,6 +21,7 @@ export const REFERENCE_BATHYMETRY_RASTER_VERSION = '1.0.0';
 export const REFERENCE_BATHYMETRY_OVERVIEW_TYPE = 'anchor.reference-bathymetry-overview';
 export const REFERENCE_BATHYMETRY_OVERVIEW_VERSION = '1.0.0';
 export const REFERENCE_BATHYMETRY_PATCH_REQUEST_TYPE = 'anchor.reference-bathymetry-patch-request';
+export const REFERENCE_BATHYMETRY_MULTITILE_PATCH_REQUEST_TYPE = 'anchor.reference-bathymetry-multitile-patch-request';
 export const REFERENCE_BATHYMETRY_PATCH_REQUEST_VERSION = '1.0.0';
 export const REFERENCE_PATCH_BATHYMETRY_BUILDER_VERSION = 'real-bathy-r1-reference-patch-builder';
 export const NO_REFERENCE_DATA_FIXTURE = 'NO_REFERENCE_DATA_FIXTURE';
@@ -465,20 +468,20 @@ export function referenceAtlasZoomView(
 }
 
 export function referenceAtlasBoundsFromDrag(startLonLat = {}, endLonLat = {}, options = {}) {
-  const minLonSpan = positive(options.minLonSpanDegrees, 0.1);
-  const minLatSpan = positive(options.minLatSpanDegrees, 0.1);
   const centerLon = (Number(startLonLat.lon ?? 0) + Number(endLonLat.lon ?? 0)) / 2;
   const centerLat = (Number(startLonLat.lat ?? 0) + Number(endLonLat.lat ?? 0)) / 2;
+  const minLonSpan = positive(options.minLonSpanDegrees, 0.05);
+  const minLatSpan = positive(options.minLatSpanDegrees, 0.05);
   const lonSpan = Math.max(minLonSpan, Math.abs(Number(endLonLat.lon ?? 0) - Number(startLonLat.lon ?? 0)));
   const latSpan = Math.max(minLatSpan, Math.abs(Number(endLonLat.lat ?? 0) - Number(startLonLat.lat ?? 0)));
   const clampedCenterLon = clampNumber(centerLon, -180 + lonSpan / 2, 180 - lonSpan / 2);
   const clampedCenterLat = clampNumber(centerLat, -90 + latSpan / 2, 90 - latSpan / 2);
-  return normalizeLonLatBounds({
+  return referenceAtlasEnsureMinimumOperationalBounds(normalizeLonLatBounds({
     westLon: clampedCenterLon - lonSpan / 2,
     eastLon: clampedCenterLon + lonSpan / 2,
     southLat: clampedCenterLat - latSpan / 2,
     northLat: clampedCenterLat + latSpan / 2
-  });
+  }), options.minimumPresetId ?? 'localPatch');
 }
 
 export function referenceAtlasLonLatToNormalized(lon = 0, lat = 0, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
@@ -575,6 +578,7 @@ export function referenceFixtureAvailabilityForBounds(atlasInput = {}, boundsInp
     availability: best ? { matchedFixture: best.fixture } : null,
     sourceResolutionArcSeconds: best ? sourceResolutionArcSecondsFromReference(best.fixture, 15) : 15
   });
+  const operationalWindow = boundaryBudget.operationalWindow ?? estimateReferenceAtlasOperationalWindow(bounds);
   return {
     status,
     available: Boolean(best),
@@ -583,9 +587,11 @@ export function referenceFixtureAvailabilityForBounds(atlasInput = {}, boundsInp
     matchedFixture: best?.fixture ? compactReferenceFixture(best.fixture) : null,
     overlapFraction: best ? round(best.overlapFraction) : 0,
     requestedBounds: bounds,
+    operationalWindow,
     boundaryBudget,
+    generationBudget: boundaryBudget,
     recommendedAction: !best
-      ? 'exportPatchRequest'
+      ? boundaryBudget.recommendedAction === 'exportMultiTilePatchRequest' ? 'exportMultiTilePatchRequest' : 'exportPatchRequest'
       : best.fixture.role === 'missionReadyPatch'
         ? 'loadMissionPatch'
         : 'loadLowResolutionFallback',
@@ -604,6 +610,7 @@ export function createReferenceBathymetryPatchRequest(boundsInput = DEFAULT_REFE
     depthLayerCount: options.depthLayerCount,
     timeFrameCount: options.timeFrameCount
   });
+  const operationalWindow = options.operationalWindow ?? boundaryBudget.operationalWindow ?? estimateReferenceAtlasOperationalWindow(bounds);
   const downloadCommand = [
     'python tools/python/download_reference_bathymetry.py patch',
     `--name ${suggestedFixtureId}`,
@@ -620,7 +627,9 @@ export function createReferenceBathymetryPatchRequest(boundsInput = DEFAULT_REFE
     provider: atlas.sourceDataset?.provider ?? 'NOAA NCEI',
     requestedResolution,
     bounds,
+    operationalWindow,
     boundaryBudget,
+    generationBudget: boundaryBudget,
     suggestedFixtureId,
     downloadCommand,
     preprocessCommand: 'npm.cmd run preprocess:reference-bathy',
@@ -630,6 +639,62 @@ export function createReferenceBathymetryPatchRequest(boundsInput = DEFAULT_REFE
     rawExternalDataPathIncluded: false,
     claimBoundary: {
       patchRequestOnly: true,
+      bathymetryGenerated: false,
+      currentField4DGenerated: false,
+      scalarField4DGenerated: false,
+      certifiedForNavigation: false,
+      operationalOceanForecast: false,
+      hiddenTruthExposed: false
+    }
+  };
+  return withDigest(requestBase, 'requestDigest');
+}
+
+export function createReferenceBathymetryMultiTilePatchRequest(boundsInput = DEFAULT_REFERENCE_BOUNDS, atlasInput = {}, options = {}) {
+  const atlas = normalizeReferenceBathymetryAtlas(atlasInput);
+  const bounds = normalizeLonLatBounds(boundsInput);
+  const requestedResolution = String(options.requestedResolution ?? '15 arc-second');
+  const generationBudget = options.generationBudget ?? options.boundaryBudget ?? estimateReferenceAtlasBoundaryBudget(bounds, {
+    atlas,
+    sourceResolutionArcSeconds: options.sourceResolutionArcSeconds ?? sourceResolutionArcSecondsFromReference({ sourceResolution: requestedResolution }, 15),
+    depthLayerCount: options.depthLayerCount,
+    timeFrameCount: options.timeFrameCount
+  });
+  const operationalWindow = options.operationalWindow ?? generationBudget.operationalWindow ?? estimateReferenceAtlasOperationalWindow(bounds, { userIntent: 'gulfScale' });
+  const suggestedFixturePrefix = String(options.suggestedFixturePrefix ?? `reference_multitile_${stableToken(canonicalJsonDigest({ bounds, requestedResolution }))}`);
+  const tilePlan = referenceMultiTilePlan(bounds, generationBudget, { suggestedFixturePrefix });
+  const suggestedTileBounds = tilePlan.tiles.map((tile) => tile.bounds);
+  const downloadCommands = tilePlan.tiles.map((tile) => [
+    'python tools/python/download_reference_bathymetry.py patch',
+    `--name ${tile.fixtureId}`,
+    '--resolution 15s',
+    `--west ${round(tile.bounds.westLon)}`,
+    `--east ${round(tile.bounds.eastLon)}`,
+    `--south ${round(tile.bounds.southLat)}`,
+    `--north ${round(tile.bounds.northLat)}`
+  ].join(' '));
+  const requestBase = {
+    artifactType: REFERENCE_BATHYMETRY_MULTITILE_PATCH_REQUEST_TYPE,
+    artifactVersion: REFERENCE_BATHYMETRY_PATCH_REQUEST_VERSION,
+    sourceDataset: 'ETOPO_2022',
+    provider: atlas.sourceDataset?.provider ?? 'NOAA NCEI',
+    requestedResolution,
+    bounds,
+    operationalWindow,
+    boundaryBudget: generationBudget,
+    generationBudget,
+    tilePlan,
+    suggestedTileBounds,
+    suggestedFixturePrefix,
+    downloadCommands,
+    preprocessCommands: ['npm.cmd run preprocess:reference-bathy'],
+    stitchOrMosaicNote: 'Offline preprocessing should download each tile, preprocess them into staged fixtures, then mosaic or register them as a multi-tile regional patch. Browser runtime does not stitch tiles in this phase.',
+    browserRunsPython: false,
+    localAbsolutePathsIncluded: false,
+    rawExternalDataPathIncluded: false,
+    claimBoundary: {
+      patchRequestOnly: true,
+      multiTileRequestOnly: true,
       bathymetryGenerated: false,
       currentField4DGenerated: false,
       scalarField4DGenerated: false,
@@ -1386,6 +1451,49 @@ function boundsOverlapFraction(a = {}, b = {}) {
   const aArea = Math.max(0.000001, (Number(a.eastLon) - Number(a.westLon)) * (Number(a.northLat) - Number(a.southLat)));
   const bArea = Math.max(0.000001, (Number(b.eastLon) - Number(b.westLon)) * (Number(b.northLat) - Number(b.southLat)));
   return overlapArea / Math.min(aArea, bArea);
+}
+
+function referenceMultiTilePlan(boundsInput = DEFAULT_REFERENCE_BOUNDS, generationBudget = {}, options = {}) {
+  const bounds = normalizeLonLatBounds(boundsInput);
+  const maxColumns = Math.max(1, Number(generationBudget.fieldGridEstimate?.maxColumns ?? 160));
+  const maxRows = Math.max(1, Number(generationBudget.fieldGridEstimate?.maxRows ?? 160));
+  const estimatedColumns = Math.max(1, Number(generationBudget.estimatedColumns ?? 1));
+  const estimatedRows = Math.max(1, Number(generationBudget.estimatedRows ?? 1));
+  const tileColumns = Math.max(1, Math.ceil(estimatedColumns / Math.max(1, maxColumns * 2)));
+  const tileRows = Math.max(1, Math.ceil(estimatedRows / Math.max(1, maxRows * 2)));
+  const lonSpan = (bounds.eastLon - bounds.westLon) / tileColumns;
+  const latSpan = (bounds.northLat - bounds.southLat) / tileRows;
+  const prefix = String(options.suggestedFixturePrefix ?? 'reference_multitile');
+  const tiles = [];
+  for (let row = 0; row < tileRows; row += 1) {
+    for (let column = 0; column < tileColumns; column += 1) {
+      const tileBounds = normalizeLonLatBounds({
+        westLon: bounds.westLon + column * lonSpan,
+        eastLon: column === tileColumns - 1 ? bounds.eastLon : bounds.westLon + (column + 1) * lonSpan,
+        southLat: row === tileRows - 1 ? bounds.southLat : bounds.northLat - (row + 1) * latSpan,
+        northLat: bounds.northLat - row * latSpan
+      });
+      tiles.push({
+        tileId: `${prefix}_r${row + 1}_c${column + 1}`,
+        fixtureId: `${prefix}_r${row + 1}_c${column + 1}`,
+        row,
+        column,
+        bounds: tileBounds,
+        estimatedColumns: Math.max(1, Math.ceil(estimatedColumns / tileColumns)),
+        estimatedRows: Math.max(1, Math.ceil(estimatedRows / tileRows))
+      });
+    }
+  }
+  return {
+    type: 'regular-lonlat-grid',
+    tileRows,
+    tileColumns,
+    tileCount: tiles.length,
+    maxEstimatedColumnsPerTile: Math.max(1, Math.ceil(estimatedColumns / tileColumns)),
+    maxEstimatedRowsPerTile: Math.max(1, Math.ceil(estimatedRows / tileRows)),
+    sourceResolutionArcSeconds: generationBudget.sourceResolutionArcSeconds ?? 15,
+    tiles
+  };
 }
 
 function isWorldScaleBounds(bounds = null) {

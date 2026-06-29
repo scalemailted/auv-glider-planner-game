@@ -204,6 +204,8 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Atlas to Monterey Patch to Environment": "tests/e2e/environment_studio_r1.spec.js",
   "Boundary Budget Status and Patch Request": "tests/e2e/reference_atlas_budget_r1.spec.js",
   "Monterey Patch Still Loads Under Budget Gate": "tests/e2e/reference_atlas_budget_r1.spec.js",
+  "Large Operational Window Can Be Selected": "tests/e2e/reference_atlas_operational_window_r1.spec.js",
+  "Monterey Patch Still Loads": "tests/e2e/reference_atlas_operational_window_r1.spec.js",
   "Reference Patch Generates Environment Fields": "tests/e2e/environment_studio_r1.spec.js",
   "Export / Import Generated Reference Environment": "tests/e2e/environment_studio_r1.spec.js",
   "Reference Environment Owner Walkthrough": "tests/e2e/environment_studio_r1.spec.js",

@@ -86,6 +86,8 @@ The generated currents, scalars, hotspots, and hazard candidates are determinist
 
 The reference-derived Monterey Canyon path is ready for human alpha retest. Retest evidence lives in ignored local owner-review artifacts, while tester instructions and the feedback template are tracked in `docs/alpha_reference_environment_retest_protocol.md` and `alpha/reference-environment-retest-feedback-template.json`.
 
+For REF-ATLAS-INTERACT-R1.3, large valid operational windows such as Gulf-scale selections are not rejected as tiny browser patches. The browser records the selected `OperationalWindow`, reports a separate `GenerationBudget` with `MULTI_TILE_REQUIRED`, and exports `anchor.reference-bathymetry-multitile-patch-request` JSON containing tile bounds, suggested fixture prefix, offline download/preprocess commands, claim-boundary flags, and a request digest. The artifact is still a request only: it does not include raw external paths, hidden truth, generated currents, generated scalar fields, or an operational forecast claim.
+
 ## Boundaries
 
 Reference bathymetry is a public source surface for `bottomDepthMeters = h(x, y)`.

@@ -30,6 +30,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Atlas to Monterey Patch to Environment$/i,
       /^Boundary Budget Status and Patch Request$/i,
       /^Monterey Patch Still Loads Under Budget Gate$/i,
+      /^Large Operational Window Can Be Selected$/i,
+      /^Monterey Patch Still Loads$/i,
       /^Reference Patch Generates Environment Fields$/i,
       /^Export \/ Import Generated Reference Environment$/i,
       /^Reference Environment Owner Walkthrough$/i,

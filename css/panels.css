@@ -1549,6 +1549,11 @@
   background: rgba(244, 180, 70, .12);
 }
 
+.environment-studio-budget-status-multi_tile_required {
+  border-color: rgba(91, 172, 211, .62);
+  background: rgba(91, 172, 211, .14);
+}
+
 .environment-studio-budget-status-blocked {
   border-color: rgba(255, 108, 108, .55);
   background: rgba(255, 108, 108, .12);
