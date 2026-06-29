@@ -77,16 +77,74 @@ import {
   syntheticGlobeViewportVisualMetrics
 } from '../../../core/editor/SyntheticGlobeWorld.js';
 import {
+  referenceAtlasBoundsFromDrag,
   referenceAtlasNormalizedToLonLat,
+  referenceAtlasPanView,
   referenceAtlasPatchOverlays,
   referenceAtlasViewport,
-  referenceBathymetryLayerColor,
+  referenceAtlasZoomView,
   referenceFixtureAtLonLat
 } from '../../../core/editor/ReferenceBathymetryAtlas.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
 export const ENVIRONMENT_STUDIO_SCENE_VERSION = 'environment-studio-scene-r1-1';
+
+function createReferenceAtlasPerfState() {
+  return {
+    atlasInteractionActive: false,
+    lastInteractionType: null,
+    pointerDownCount: 0,
+    pointerMoveCount: 0,
+    pointerUpCount: 0,
+    panCommitCount: 0,
+    wheelCount: 0,
+    wheelCommitCount: 0,
+    zoomCommitCount: 0,
+    boundaryDrawStartCount: 0,
+    boundaryPreviewCount: 0,
+    boundaryCommitCount: 0,
+    rasterRenderCount: 0,
+    fullRasterRenderCount: 0,
+    appRenderCount: 0,
+    consoleRenderCount: 0,
+    sceneRestartCount: 0,
+    listenerAttachCount: 0,
+    listenerDetachCount: 0,
+    activeListenerCount: 0,
+    lastFrameMs: 0,
+    maxFrameMs: 0,
+    longTaskCount: 0,
+    longTaskThresholdMs: 500,
+    cacheHitCount: 0,
+    cacheMissCount: 0,
+    lastCacheKey: null,
+    hiddenTruthExposed: false,
+    rawExternalDataPathExposed: false
+  };
+}
+
+function recordReferenceAtlasAppRender(scene, type = 'render') {
+  if (!scene?.referenceAtlasPerf) return;
+  if (type === 'console') {
+    scene.referenceAtlasPerf.consoleRenderCount += 1;
+    return;
+  }
+  scene.referenceAtlasPerf.appRenderCount += 1;
+}
+
+function referenceAtlasPerfDebugPayload(scene) {
+  const perf = scene?.referenceAtlasPerf ?? createReferenceAtlasPerfState();
+  return {
+    ...perf,
+    atlasInteractionActive: perf.atlasInteractionActive === true,
+    transientViewportActive: Boolean(scene?.referenceAtlasTransientView),
+    transientBoundaryActive: Boolean(scene?.referenceAtlasTransientBounds),
+    cachedLayerCount: Number(scene?.referenceAtlasCanvasCache?.size ?? 0),
+    hiddenTruthExposed: false,
+    rawExternalDataPathExposed: false
+  };
+}
 
 export class EnvironmentStudioScene extends PhaserScene {
   constructor() {
@@ -99,6 +157,12 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.worldBoundaryDrawing = false;
     this.worldPointerState = null;
     this.worldTileCanvasCache = new Map();
+    this.referenceAtlasCanvasCache = new Map();
+    this.referenceAtlasPreviewBinding = null;
+    this.referenceAtlasTransientView = null;
+    this.referenceAtlasTransientBounds = null;
+    this.referenceAtlasPerf = createReferenceAtlasPerfState();
+    this.referenceAtlasLoadStartedAt = globalThis.performance?.now?.() ?? Date.now();
     this.globeRendererContext = null;
     this.globeRegionSelectionMode = false;
   }
@@ -121,6 +185,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   async loadReferenceBathymetryManifest() {
+    this.referenceAtlasLoadStartedAt = globalThis.performance?.now?.() ?? Date.now();
     try {
       const response = await fetch('assets/reference_bathymetry/manifest.json', { cache: 'no-store' });
       if (!response.ok) throw new Error(`Reference bathymetry manifest returned HTTP ${response.status}.`);
@@ -158,10 +223,12 @@ export class EnvironmentStudioScene extends PhaserScene {
       this.statusMessage = 'Reference bathymetry manifest could not be loaded.';
       this.lastError = `${REFERENCE_BATHYMETRY_BLOCKED_MESSAGE} Manifest load detail: ${error?.message ?? String(error)}`;
     }
+    this.referenceAtlasPerf.initialLoadMs = roundMetric((globalThis.performance?.now?.() ?? Date.now()) - this.referenceAtlasLoadStartedAt);
     if (this.sys?.isActive?.()) this.render();
   }
 
   shutdown() {
+    this.cleanupReferenceAtlasPreviewBinding();
     this.clearObjects();
     this.destroyPreviewHost();
     this.clearRightPanel();
@@ -174,6 +241,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   render() {
+    if (isReferenceAtlasStage(this.session.studioStage)) recordReferenceAtlasAppRender(this, 'render');
     this.session = refreshEnvironmentStudioSession(this.session);
     this.renderConsole();
     this.renderRightPanel();
@@ -204,6 +272,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   renderReferenceAtlasConsole() {
+    recordReferenceAtlasAppRender(this, 'console');
     const summary = environmentStudioSessionSummary(this.session);
     this.app.setPanel(referenceAtlasConsoleHtml(this, summary));
     bindEnvironmentStudioReferenceAtlasControls(this, this.app.elements?.consoleRoot ?? globalThis.document);
@@ -437,6 +506,7 @@ export class EnvironmentStudioScene extends PhaserScene {
   renderPreview() {
     if (!this.previewHost) return;
     this.destroyGlobeRenderer();
+    this.cleanupReferenceAtlasPreviewBinding();
     const project = buildEnvironmentStudioProject(this.session);
     if (isReferenceAtlasStage(this.session.studioStage) || (this.session.studioStage === 'regionalPatchWorkspace' && !this.session.bathymetryArtifactDigest)) {
       this.previewHost.innerHTML = referenceAtlasPreviewHtml(this.session, project);
@@ -588,7 +658,7 @@ export class EnvironmentStudioScene extends PhaserScene {
     }
     this.referenceBoundaryDrawing = !this.referenceBoundaryDrawing;
     this.statusMessage = this.referenceBoundaryDrawing
-      ? 'Bounding-box selection enabled. Click the atlas map to place the reference patch.'
+      ? 'Bounding-box selection enabled. Drag the atlas map to draw a reference patch.'
       : 'Bounding-box selection disabled.';
     this.render();
   }
@@ -629,6 +699,32 @@ export class EnvironmentStudioScene extends PhaserScene {
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
     });
     this.referenceBoundaryDrawing = false;
+    const availability = this.session.selectedReferenceAvailability;
+    this.statusMessage = availability?.available
+      ? `Selected atlas region matches ${availability.matchedFixtureRole}: ${availability.matchedFixtureId}.`
+      : 'Selected atlas region is not staged. Export a patch request to preprocess it offline.';
+    this.lastError = availability?.available ? null : 'High-resolution patch not staged for the selected atlas region.';
+    this.render();
+  }
+
+  selectReferenceBounds(boundsInput = {}) {
+    if (!this.referenceDataAvailable()) {
+      this.blockReferenceBathymetryAction('Reference patch selection');
+      return;
+    }
+    const bounds = {
+      westLon: Number(boundsInput.westLon),
+      eastLon: Number(boundsInput.eastLon),
+      southLat: Number(boundsInput.southLat),
+      northLat: Number(boundsInput.northLat)
+    };
+    this.session = selectEnvironmentStudioReferenceWindow(this.session, {
+      ...bounds,
+      selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
+      previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
+    });
+    this.referenceBoundaryDrawing = false;
+    this.referenceAtlasTransientBounds = null;
     const availability = this.session.selectedReferenceAvailability;
     this.statusMessage = availability?.available
       ? `Selected atlas region matches ${availability.matchedFixtureRole}: ${availability.matchedFixtureId}.`
@@ -1363,9 +1459,32 @@ export class EnvironmentStudioScene extends PhaserScene {
   }
 
   destroyPreviewHost() {
+    this.cleanupReferenceAtlasPreviewBinding();
     this.destroyGlobeRenderer();
     this.previewHost?.remove?.();
     this.previewHost = null;
+  }
+
+  cleanupReferenceAtlasPreviewBinding() {
+    const binding = this.referenceAtlasPreviewBinding;
+    if (!binding) return;
+    binding.abortController?.abort?.();
+    if (binding.rafId != null) globalThis.cancelAnimationFrame?.(binding.rafId);
+    if (binding.wheelCommitTimer != null) globalThis.clearTimeout?.(binding.wheelCommitTimer);
+    if (binding.panelUpdateTimer != null) globalThis.clearTimeout?.(binding.panelUpdateTimer);
+    if (binding.pointerId != null) {
+      try {
+        binding.canvas?.releasePointerCapture?.(binding.pointerId);
+      } catch {
+        // Pointer capture may already be released by the browser.
+      }
+    }
+    this.referenceAtlasTransientView = null;
+    this.referenceAtlasTransientBounds = null;
+    this.referenceAtlasPreviewBinding = null;
+    this.referenceAtlasPerf.listenerDetachCount += Number(binding.listenerCount ?? 0);
+    this.referenceAtlasPerf.activeListenerCount = 0;
+    this.referenceAtlasPerf.atlasInteractionActive = false;
   }
 
   destroyGlobeRenderer() {
@@ -1404,8 +1523,11 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   publishDebug(active = true) {
     const debug = environmentStudioDebugPayload(this.session);
+    const referenceAtlasPerfDebug = referenceAtlasPerfDebugPayload(this);
+    globalThis.ANCHOR_REFERENCE_ATLAS_PERF_DEBUG = referenceAtlasPerfDebug;
     globalThis.ANCHOR_ENVIRONMENT_STUDIO_DEBUG = {
       ...debug,
+      referenceAtlasPerf: referenceAtlasPerfDebug,
       version: ENVIRONMENT_STUDIO_SCENE_VERSION,
       routeActive: Boolean(active),
       referenceManifestLoaded: this.referenceManifestLoaded === true,
@@ -1421,6 +1543,7 @@ export class EnvironmentStudioScene extends PhaserScene {
       activeRafCount: Boolean(active && this.globeRendererContext?.rafId != null) ? 1 : 0,
       activeCanvasCount: Boolean(active && this.globeRendererContext?.renderer?.domElement?.isConnected) ? 1 : 0,
       hiddenTruthExposed: false,
+      rawExternalDataPathExposed: false,
       simulationChanged: false,
       scoringChanged: false
     };
@@ -1855,44 +1978,205 @@ function referenceAtlasPreviewHtml(session = {}, project = {}) {
 
 function bindReferenceBathymetryPreview(scene, root) {
   const canvas = root?.querySelector?.('[data-env-reference-bathymetry-map]');
-  drawReferenceBathymetryCanvas(canvas, scene.session);
+  if (!canvas) return;
+  const abortController = new AbortController();
+  const binding = {
+    abortController,
+    canvas,
+    listenerCount: 0,
+    pointerId: null,
+    pointerMode: null,
+    pointerStart: null,
+    pointerStartView: null,
+    pointerStartLonLat: null,
+    rafId: null,
+    wheelCommitTimer: null,
+    panelUpdateTimer: null
+  };
+  scene.referenceAtlasPreviewBinding = binding;
+  const signal = abortController.signal;
+  const addListener = (target, type, handler, options = {}) => {
+    if (!target?.addEventListener) return;
+    target.addEventListener(type, handler, { ...options, signal });
+    binding.listenerCount += 1;
+    scene.referenceAtlasPerf.listenerAttachCount += 1;
+    scene.referenceAtlasPerf.activeListenerCount += 1;
+  };
+  const coordinateLabel = root.querySelector('[data-env-reference-coordinate]');
+  const schedulePreviewDraw = () => {
+    if (binding.rafId != null) return;
+    binding.rafId = globalThis.requestAnimationFrame?.(() => {
+      binding.rafId = null;
+      drawReferenceBathymetryCanvas(canvas, scene.session, {
+        scene,
+        worldView: scene.referenceAtlasTransientView,
+        selectedBounds: scene.referenceAtlasTransientBounds
+      });
+    }) ?? null;
+  };
+  const pointerPoint = (event) => referenceCanvasPoint(canvas, event);
+  const updateCoordinateLabel = (event) => {
+    const lonLat = referenceCanvasLonLat(canvas, scene.session, event, {
+      worldView: scene.referenceAtlasTransientView ?? scene.session.worldView
+    });
+    if (coordinateLabel) coordinateLabel.textContent = `${formatNumber(lonLat.lon)} lon, ${formatNumber(lonLat.lat)} lat`;
+    return lonLat;
+  };
   root?.querySelectorAll?.('[data-env-reference-view-action]')?.forEach((button) => {
-    button.addEventListener('click', () => scene.adjustReferenceView(button.getAttribute('data-env-reference-view-action')));
+    addListener(button, 'click', () => scene.adjustReferenceView(button.getAttribute('data-env-reference-view-action')));
   });
-  root?.querySelector?.('[data-action="env-reference-focus-patch"]')?.addEventListener('click', () => scene.focusSelectedReferencePatch());
-  canvas?.addEventListener?.('mousemove', (event) => {
-    const lonLat = referenceCanvasLonLat(canvas, scene.session, event);
-    const label = root.querySelector('[data-env-reference-coordinate]');
-    if (label) label.textContent = `${formatNumber(lonLat.lon)} lon, ${formatNumber(lonLat.lat)} lat`;
+  addListener(root?.querySelector?.('[data-action="env-reference-focus-patch"]'), 'click', () => scene.focusSelectedReferencePatch());
+  addListener(canvas, 'pointerdown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    scene.referenceAtlasPerf.pointerDownCount += 1;
+    scene.referenceAtlasPerf.atlasInteractionActive = true;
+    scene.referenceAtlasPerf.lastInteractionType = scene.referenceBoundaryDrawing ? 'boundary' : 'pan';
+    binding.pointerId = event.pointerId;
+    binding.pointerMode = scene.referenceBoundaryDrawing ? 'boundary' : 'pan';
+    binding.pointerStart = pointerPoint(event);
+    binding.pointerStartView = { ...(scene.referenceAtlasTransientView ?? scene.session.worldView ?? {}) };
+    binding.pointerStartLonLat = referenceCanvasLonLat(canvas, scene.session, event, { worldView: binding.pointerStartView });
+    try {
+      canvas.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Pointer capture is best-effort for older browser engines.
+    }
+    if (binding.pointerMode === 'boundary') {
+      scene.referenceAtlasPerf.boundaryDrawStartCount += 1;
+      scene.referenceAtlasTransientBounds = referenceAtlasBoundsFromDrag(binding.pointerStartLonLat, binding.pointerStartLonLat, referenceBoundaryDragOptions(scene));
+      schedulePreviewDraw();
+    }
   });
-  canvas?.addEventListener?.('click', (event) => {
+  addListener(canvas, 'pointermove', (event) => {
+    scene.referenceAtlasPerf.pointerMoveCount += 1;
+    const lonLat = updateCoordinateLabel(event);
+    if (binding.pointerId == null || event.pointerId !== binding.pointerId) return;
+    event.preventDefault();
+    const point = pointerPoint(event);
+    if (binding.pointerMode === 'boundary') {
+      scene.referenceAtlasPerf.lastInteractionType = 'boundary';
+      scene.referenceAtlasPerf.boundaryPreviewCount += 1;
+      scene.referenceAtlasTransientBounds = referenceAtlasBoundsFromDrag(binding.pointerStartLonLat, lonLat, referenceBoundaryDragOptions(scene));
+      schedulePreviewDraw();
+      return;
+    }
+    scene.referenceAtlasPerf.lastInteractionType = 'pan';
+    scene.referenceAtlasTransientView = referenceAtlasPanView(
+      binding.pointerStartView,
+      point.x - binding.pointerStart.x,
+      point.y - binding.pointerStart.y,
+      scene.session.referenceAtlas
+    );
+    schedulePreviewDraw();
+  });
+  const finishPointer = (event, cancelled = false) => {
+    if (binding.pointerId == null || event.pointerId !== binding.pointerId) return;
+    event.preventDefault?.();
+    scene.referenceAtlasPerf.pointerUpCount += cancelled ? 0 : 1;
+    const startPoint = binding.pointerStart ?? pointerPoint(event);
+    const endPoint = pointerPoint(event);
+    const moved = Math.hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y) > 0.008;
+    const mode = binding.pointerMode;
+    try {
+      canvas.releasePointerCapture?.(binding.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+    binding.pointerId = null;
+    binding.pointerMode = null;
+    scene.referenceAtlasPerf.atlasInteractionActive = false;
+    if (cancelled) {
+      scene.referenceAtlasTransientView = null;
+      scene.referenceAtlasTransientBounds = null;
+      schedulePreviewDraw();
+      return;
+    }
+    if (mode === 'boundary') {
+      const bounds = scene.referenceAtlasTransientBounds;
+      scene.referenceAtlasTransientBounds = null;
+      scene.referenceAtlasPerf.boundaryCommitCount += 1;
+      if (bounds) scene.selectReferenceBounds(bounds);
+      return;
+    }
+    if (moved && scene.referenceAtlasTransientView) {
+      scene.session = setEnvironmentStudioWorldView(scene.session, scene.referenceAtlasTransientView);
+      scene.referenceAtlasTransientView = null;
+      scene.referenceAtlasPerf.panCommitCount += 1;
+      scene.statusMessage = 'Reference atlas view updated.';
+      scene.lastError = null;
+      scene.render();
+      return;
+    }
+    scene.referenceAtlasTransientView = null;
     const lonLat = referenceCanvasLonLat(canvas, scene.session, event);
     scene.selectReferenceWindowAt(lonLat.lon, lonLat.lat);
-  });
+  };
+  addListener(canvas, 'pointerup', (event) => finishPointer(event));
+  addListener(canvas, 'pointercancel', (event) => finishPointer(event, true));
+  addListener(canvas, 'wheel', (event) => {
+    event.preventDefault();
+    scene.referenceAtlasPerf.wheelCount += 1;
+    scene.referenceAtlasPerf.atlasInteractionActive = true;
+    scene.referenceAtlasPerf.lastInteractionType = 'wheel';
+    const point = pointerPoint(event);
+    const factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+    scene.referenceAtlasTransientView = referenceAtlasZoomView(
+      scene.referenceAtlasTransientView ?? scene.session.worldView ?? {},
+      factor,
+      scene.session.referenceAtlas,
+      point,
+      { maxZoom: 5 }
+    );
+    schedulePreviewDraw();
+    if (binding.wheelCommitTimer != null) globalThis.clearTimeout?.(binding.wheelCommitTimer);
+    binding.wheelCommitTimer = globalThis.setTimeout?.(() => {
+      binding.wheelCommitTimer = null;
+      if (!scene.referenceAtlasTransientView) return;
+      scene.session = setEnvironmentStudioWorldView(scene.session, scene.referenceAtlasTransientView);
+      scene.referenceAtlasTransientView = null;
+      scene.referenceAtlasPerf.wheelCommitCount += 1;
+      scene.referenceAtlasPerf.zoomCommitCount += 1;
+      scene.referenceAtlasPerf.atlasInteractionActive = false;
+      scene.statusMessage = 'Reference atlas view updated.';
+      scene.lastError = null;
+      scene.render();
+    }, 140) ?? null;
+  }, { passive: false });
+  drawReferenceBathymetryCanvas(canvas, scene.session, { scene });
 }
 
-function drawReferenceBathymetryCanvas(canvas, session = {}) {
+function drawReferenceBathymetryCanvas(canvas, session = {}, options = {}) {
   if (!canvas?.getContext) return;
+  const startedAt = globalThis.performance?.now?.() ?? Date.now();
   const context = canvas.getContext('2d');
   const width = canvas.width;
   const height = canvas.height;
-  const image = context.createImageData(width, height);
-  const layer = session.referenceLayer ?? 'topographyBathymetry';
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const { lon, lat } = referenceViewportLonLat(session, x / Math.max(1, width - 1), y / Math.max(1, height - 1));
-      const color = referenceBathymetryLayerColor(session.referenceAtlas, layer, lon, lat);
-      const index = (y * width + x) * 4;
-      image.data[index] = color[0];
-      image.data[index + 1] = color[1];
-      image.data[index + 2] = color[2];
-      image.data[index + 3] = color[3];
-    }
+  const scene = options.scene ?? null;
+  const drawSession = {
+    ...session,
+    worldView: options.worldView ?? session.worldView
+  };
+  const layerCanvas = referenceAtlasLayerCanvas(scene, session, width, height);
+  context.clearRect(0, 0, width, height);
+  if (layerCanvas) {
+    const sourceRect = referenceAtlasSourceRectForView(layerCanvas, drawSession);
+    context.drawImage(
+      layerCanvas,
+      sourceRect.x,
+      sourceRect.y,
+      sourceRect.width,
+      sourceRect.height,
+      0,
+      0,
+      width,
+      height
+    );
   }
-  context.putImageData(image, 0, 0);
-  drawReferenceGridOverlay(context, session, width, height);
-  drawReferenceFixtureCoverageOverlay(context, session, width, height);
-  drawReferenceSelectionOverlay(context, session, width, height);
+  drawReferenceGridOverlay(context, drawSession, width, height);
+  drawReferenceFixtureCoverageOverlay(context, drawSession, width, height);
+  drawReferenceSelectionOverlay(context, drawSession, width, height, { bounds: options.selectedBounds });
+  recordReferenceAtlasCanvasFrame(scene, startedAt);
 }
 
 function drawReferenceGridOverlay(context, session = {}, width = 1, height = 1) {
@@ -1944,8 +2228,8 @@ function drawReferenceFixtureCoverageOverlay(context, session = {}, width = 1, h
   context.restore();
 }
 
-function drawReferenceSelectionOverlay(context, session = {}, width = 1, height = 1) {
-  const bounds = session.selectedReferenceWindow?.bounds;
+function drawReferenceSelectionOverlay(context, session = {}, width = 1, height = 1, options = {}) {
+  const bounds = options.bounds ?? session.selectedReferenceWindow?.bounds;
   if (!bounds) return;
   const nw = referenceLonLatToCanvas(session, bounds.westLon, bounds.northLat, width, height);
   const se = referenceLonLatToCanvas(session, bounds.eastLon, bounds.southLat, width, height);
@@ -1963,11 +2247,21 @@ function drawReferenceSelectionOverlay(context, session = {}, width = 1, height 
   context.restore();
 }
 
-function referenceCanvasLonLat(canvas, session = {}, event = {}) {
+function referenceCanvasLonLat(canvas, session = {}, event = {}, options = {}) {
+  const point = referenceCanvasPoint(canvas, event);
+  return referenceViewportLonLat(
+    { ...session, worldView: options.worldView ?? session.worldView },
+    point.x,
+    point.y
+  );
+}
+
+function referenceCanvasPoint(canvas, event = {}) {
   const rect = canvas.getBoundingClientRect();
-  const nx = (event.clientX - rect.left) / Math.max(1, rect.width);
-  const ny = (event.clientY - rect.top) / Math.max(1, rect.height);
-  return referenceViewportLonLat(session, nx, ny);
+  return {
+    x: clampNumber((event.clientX - rect.left) / Math.max(1, rect.width), 0, 1),
+    y: clampNumber((event.clientY - rect.top) / Math.max(1, rect.height), 0, 1)
+  };
 }
 
 function referenceViewportLonLat(session = {}, nx = 0.5, ny = 0.5) {
@@ -1986,6 +2280,148 @@ function referenceLonLatToCanvas(session = {}, lon = 0, lat = 0, width = 1, heig
     x: ((Number(lon) - viewport.lonWest) / Math.max(0.000001, viewport.lonEast - viewport.lonWest)) * width,
     y: ((viewport.latNorth - Number(lat)) / Math.max(0.000001, viewport.latNorth - viewport.latSouth)) * height
   };
+}
+
+function referenceBoundaryDragOptions(scene) {
+  return {
+    minLonSpanDegrees: scene?.numberValue?.('env-reference-window-width-deg', 2.7) ?? 2.7,
+    minLatSpanDegrees: scene?.numberValue?.('env-reference-window-height-deg', 1.8) ?? 1.8
+  };
+}
+
+function referenceAtlasLayerCanvas(scene, session = {}, width = 900, height = 450) {
+  const atlas = session.referenceAtlas ?? {};
+  const layer = session.referenceLayer ?? 'topographyBathymetry';
+  const digest = atlas.overviewDigest ?? atlas.atlasDigest ?? atlas.overviewRasterArtifact?.rasterDigest ?? 'reference-atlas';
+  const key = `${digest}:${layer}:${width}x${height}`;
+  if (scene?.referenceAtlasCanvasCache?.has?.(key)) {
+    scene.referenceAtlasPerf.cacheHitCount += 1;
+    scene.referenceAtlasPerf.lastCacheKey = key;
+    return scene.referenceAtlasCanvasCache.get(key);
+  }
+  const canvas = buildReferenceAtlasLayerCanvas(session, width, height);
+  if (!canvas) return null;
+  if (scene?.referenceAtlasCanvasCache?.set) {
+    scene.referenceAtlasCanvasCache.set(key, canvas);
+    scene.referenceAtlasPerf.cacheMissCount += 1;
+    scene.referenceAtlasPerf.fullRasterRenderCount += 1;
+    scene.referenceAtlasPerf.lastCacheKey = key;
+  }
+  return canvas;
+}
+
+function buildReferenceAtlasLayerCanvas(session = {}, width = 900, height = 450) {
+  const canvas = globalThis.document?.createElement?.('canvas');
+  if (!canvas?.getContext) return null;
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(width, height);
+  const layer = session.referenceLayer ?? 'topographyBathymetry';
+  const artifact = session.referenceAtlas?.overviewRasterArtifact ?? session.referenceAtlas?.overviewArtifact ?? null;
+  for (let y = 0; y < height; y += 1) {
+    const ny = y / Math.max(1, height - 1);
+    for (let x = 0; x < width; x += 1) {
+      const nx = x / Math.max(1, width - 1);
+      const elevation = sampleReferenceOverviewRasterNormalized(artifact, nx, ny);
+      const color = referenceAtlasCacheLayerColor(layer, elevation, artifact, nx, ny);
+      const index = (y * width + x) * 4;
+      image.data[index] = color[0];
+      image.data[index + 1] = color[1];
+      image.data[index + 2] = color[2];
+      image.data[index + 3] = color[3];
+    }
+  }
+  context.putImageData(image, 0, 0);
+  return canvas;
+}
+
+function referenceAtlasSourceRectForView(layerCanvas, session = {}) {
+  const viewport = referenceAtlasViewport(session.worldView, session.referenceAtlas);
+  const bounds = viewport.bounds;
+  const worldLonSpan = Math.max(0.000001, bounds.eastLon - bounds.westLon);
+  const worldLatSpan = Math.max(0.000001, bounds.northLat - bounds.southLat);
+  const x = clampNumber(((viewport.lonWest - bounds.westLon) / worldLonSpan) * layerCanvas.width, 0, layerCanvas.width - 1);
+  const y = clampNumber(((bounds.northLat - viewport.latNorth) / worldLatSpan) * layerCanvas.height, 0, layerCanvas.height - 1);
+  const rectWidth = clampNumber((viewport.lonSpan / worldLonSpan) * layerCanvas.width, 1, layerCanvas.width - x);
+  const rectHeight = clampNumber((viewport.latSpan / worldLatSpan) * layerCanvas.height, 1, layerCanvas.height - y);
+  return { x, y, width: rectWidth, height: rectHeight };
+}
+
+function sampleReferenceOverviewRasterNormalized(artifact = null, nx = 0.5, ny = 0.5) {
+  const raster = artifact?.grid?.elevationMeters;
+  const rows = raster?.length ?? 0;
+  const columns = raster?.[0]?.length ?? 0;
+  if (!rows || !columns) return null;
+  const lonAxis = artifact.grid?.lonAxis;
+  const latAxis = artifact.grid?.latAxis;
+  const lonDescending = Array.isArray(lonAxis) && lonAxis.length >= 2 && Number(lonAxis[0]) > Number(lonAxis[lonAxis.length - 1]);
+  const latDescending = !Array.isArray(latAxis) || latAxis.length < 2 || Number(latAxis[0]) > Number(latAxis[latAxis.length - 1]);
+  const x = (lonDescending ? 1 - nx : nx) * (columns - 1);
+  const y = (latDescending ? ny : 1 - ny) * (rows - 1);
+  return bilinearArraySample(raster, x, y);
+}
+
+function referenceAtlasCacheLayerColor(layer = 'topographyBathymetry', elevation = null, artifact = null, nx = 0.5, ny = 0.5) {
+  const z = Number.isFinite(Number(elevation)) ? Number(elevation) : -3200;
+  if (layer === 'landOcean') return z >= 0 ? [127, 117, 72, 255] : [30, 116, 160, 255];
+  if (layer === 'patchCoverage') return z >= 0 ? [82, 100, 74, 255] : [22, 67, 104, 255];
+  if (layer === 'sourceQuality') return [80, 128, 150, 255];
+  if (layer === 'slope') {
+    const slope = Math.abs(Number(sampleReferenceOverviewRasterNormalized(artifact, nx + 1 / 900, ny) ?? z) - Number(sampleReferenceOverviewRasterNormalized(artifact, nx - 1 / 900, ny) ?? z))
+      + Math.abs(Number(sampleReferenceOverviewRasterNormalized(artifact, nx, ny + 1 / 450) ?? z) - Number(sampleReferenceOverviewRasterNormalized(artifact, nx, ny - 1 / 450) ?? z));
+    return rgbaLocal(mixRgbLocal([24, 61, 98], [228, 176, 82], clampNumber(slope / 1800, 0, 1)));
+  }
+  if (z >= 0) {
+    return rgbaLocal(mixRgbLocal([83, 112, 64], [185, 162, 105], clampNumber(z / 1400, 0, 1)));
+  }
+  const depth = Math.abs(z);
+  if (depth < 120) return rgbaLocal(mixRgbLocal([75, 189, 184], [36, 136, 174], depth / 120));
+  if (depth < 1500) return rgbaLocal(mixRgbLocal([36, 136, 174], [24, 75, 138], (depth - 120) / 1380));
+  return rgbaLocal(mixRgbLocal([24, 75, 138], [6, 26, 74], clampNumber((depth - 1500) / 3500, 0, 1)));
+}
+
+function bilinearArraySample(raster = [], x = 0, y = 0) {
+  const rows = raster.length;
+  const columns = raster[0]?.length ?? 0;
+  if (!rows || !columns) return null;
+  const clampedX = clampNumber(x, 0, columns - 1);
+  const clampedY = clampNumber(y, 0, rows - 1);
+  const x0 = Math.floor(clampedX);
+  const y0 = Math.floor(clampedY);
+  const x1 = Math.min(columns - 1, x0 + 1);
+  const y1 = Math.min(rows - 1, y0 + 1);
+  const tx = clampedX - x0;
+  const ty = clampedY - y0;
+  const a = Number(raster[y0]?.[x0]);
+  const b = Number(raster[y0]?.[x1]);
+  const c = Number(raster[y1]?.[x0]);
+  const d = Number(raster[y1]?.[x1]);
+  if (![a, b, c, d].every(Number.isFinite)) return null;
+  return a * (1 - tx) * (1 - ty) + b * tx * (1 - ty) + c * (1 - tx) * ty + d * tx * ty;
+}
+
+function mixRgbLocal(a = [0, 0, 0], b = [255, 255, 255], t = 0) {
+  const clamped = clampNumber(t, 0, 1);
+  return [
+    Math.round(Number(a[0]) + (Number(b[0]) - Number(a[0])) * clamped),
+    Math.round(Number(a[1]) + (Number(b[1]) - Number(a[1])) * clamped),
+    Math.round(Number(a[2]) + (Number(b[2]) - Number(a[2])) * clamped)
+  ];
+}
+
+function rgbaLocal(color = [0, 0, 0], alpha = 255) {
+  return [color[0], color[1], color[2], alpha];
+}
+
+function recordReferenceAtlasCanvasFrame(scene, startedAt) {
+  if (!scene?.referenceAtlasPerf) return;
+  const endedAt = globalThis.performance?.now?.() ?? Date.now();
+  const ms = Math.max(0, endedAt - startedAt);
+  scene.referenceAtlasPerf.rasterRenderCount += 1;
+  scene.referenceAtlasPerf.lastFrameMs = roundMetric(ms);
+  scene.referenceAtlasPerf.maxFrameMs = Math.max(scene.referenceAtlasPerf.maxFrameMs, roundMetric(ms));
+  if (ms > scene.referenceAtlasPerf.longTaskThresholdMs) scene.referenceAtlasPerf.longTaskCount += 1;
 }
 
 function worldMapConsoleHtml(scene, summary = {}) {

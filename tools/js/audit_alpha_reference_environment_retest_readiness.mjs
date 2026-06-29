@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const REF_ATLAS_OWNER_PACKAGE = 'artifacts/owner-review/ref-atlas-ux-r1-2/qa-summary.json';
+const REF_ATLAS_OWNER_PACKAGE = 'artifacts/owner-review/ref-atlas-interact-r1-1/qa-summary.json';
 
 function readJson(relativePath) {
   return JSON.parse(readFileSync(path.join(root, relativePath), 'utf8').replace(/^\uFEFF/, ''));
@@ -58,12 +58,24 @@ assert.ok(Object.hasOwn(feedbackTemplate.usability, 'patchRequestExportClear'), 
 
 const ownerSummary = readJson(REF_ATLAS_OWNER_PACKAGE);
 assert.match(ownerSummary.status, /^PASS/);
+assert.equal(ownerSummary.phase, 'REF-ATLAS-INTERACT-R1.1');
+assert.equal(ownerSummary.atlasLoaded, true);
 assert.equal(ownerSummary.defaultStage, 'globalAtlasSelector');
 assert.equal(ownerSummary.overviewIsGlobal, true);
 assert.equal(ownerSummary.defaultViewIsRegionalPatch, false);
 assert.equal(ownerSummary.fixtureStatus, 'AVAILABLE');
 assert.ok(Number(ownerSummary.missionReadyPatchCount) >= 1);
 assert.ok(Number(ownerSummary.lowResolutionPatchCount) >= 1);
+assert.equal(ownerSummary.panResponsive, true);
+assert.equal(ownerSummary.wheelZoomResponsive, true);
+assert.equal(ownerSummary.boundaryDrawResponsive, true);
+assert.equal(ownerSummary.patchRequestVisible, true);
+assert.equal(ownerSummary.resetResponsive, true);
+assert.equal(ownerSummary.montereyFocusResponsive, true);
+assert.equal(ownerSummary.selectedPatchLoaded, true);
+assert.equal(Number(ownerSummary.sceneRestartCountDuringInteraction), 0);
+assert.ok(Number(ownerSummary.maxLongTaskMs) < 500);
+assert.equal(Number(ownerSummary.activeReferenceAtlasListenersAfterCleanup), 0);
 assert.equal(ownerSummary.loadedFixtureId, 'monterey_canyon_15s');
 assert.equal(ownerSummary.loadedFixtureRole, 'missionReadyPatch');
 assert.equal(ownerSummary.referenceFixtureId, 'monterey_canyon_15s');
@@ -72,8 +84,7 @@ assert.equal(ownerSummary.rawExternalDataPathExposed, false);
 assert.equal(ownerSummary.simulationChanged, false);
 assert.equal(ownerSummary.scoringChanged, false);
 assert.equal(ownerSummary.planningLaunchReady, true);
-assert.equal(ownerSummary.blockingWarningCount, 0);
-assert.equal(ownerSummary.failureCount, 0);
+assert.equal(ownerSummary.planningWorkspaceReached, true);
 assert.ok(Array.isArray(ownerSummary.screenshots) && ownerSummary.screenshots.length >= 10, 'ref atlas owner package must include at least 10 screenshots');
 
 const artifactText = [
@@ -112,6 +123,6 @@ console.log('audit_alpha_reference_environment_retest_readiness: ok', {
   ownerPackageStatus: ownerSummary.status,
   defaultStage: ownerSummary.defaultStage,
   launchValidationStatus: ownerSummary.launchValidationStatus,
-  benchmarkBundleDigest: ownerSummary.benchmarkBundleDigest,
+  maxLongTaskMs: ownerSummary.maxLongTaskMs,
   screenshotCount: ownerSummary.screenshots.length
 });

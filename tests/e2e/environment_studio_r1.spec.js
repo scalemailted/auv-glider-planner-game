@@ -12,7 +12,7 @@ import { canonicalJsonDigest, canonicalizeJsonValue } from '../../packages/codec
 
 let server;
 const BASE = 'http://127.0.0.1:9391';
-let OWNER_REVIEW_DIR = path.resolve(process.env.ANCHOR_E2E_OWNER_REVIEW_DIR ?? 'artifacts/owner-review/ref-atlas-ux-r1-2');
+let OWNER_REVIEW_DIR = path.resolve(process.env.ANCHOR_E2E_OWNER_REVIEW_DIR ?? 'artifacts/owner-review/ref-atlas-interact-r1-1');
 const REQUIRED_SCREENSHOTS = [
   '01-global-atlas-default-full-world.png',
   '02-global-atlas-reset-view.png',
@@ -31,6 +31,18 @@ const REQUIRED_SCREENSHOTS = [
   '15-project-export-import-roundtrip.png',
   '16-main-menu-cleanup.png'
 ];
+const INTERACT_SCREENSHOTS = [
+  '01-atlas-loaded.png',
+  '02-after-pan.png',
+  '03-after-wheel-zoom.png',
+  '04-boundary-drawing.png',
+  '05-boundary-selected.png',
+  '06-patch-request-visible.png',
+  '07-after-reset.png',
+  '08-monterey-focused.png',
+  '09-monterey-loaded.png',
+  '10-planning-launch-ready.png'
+];
 const FNV_DIGEST_PATTERN = /(?:^|-)fnv1a32:/;
 let GIT_BRANCH = 'unknown';
 let GIT_HEAD = 'unknown';
@@ -42,7 +54,9 @@ export const EXACT_TITLES = [
   'Reference Patch Generates Environment Fields',
   'Export / Import Generated Reference Environment',
   'Reference Environment Owner Walkthrough',
-  'Reference Environment Export/Benchmark Roundtrip'
+  'Reference Environment Export/Benchmark Roundtrip',
+  'Atlas Interaction Does Not Freeze',
+  'Atlas Selection Still Reaches Planning'
 ];
 
 test.setTimeout(900000);
@@ -469,6 +483,171 @@ test(EXACT_TITLES[5], async ({ page }) => {
   browserErrors.assertClean();
 });
 
+test(EXACT_TITLES[6], async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
+  await openEnvironmentStudio(page);
+  await waitForReferenceManifest(page);
+  await expect(page.locator('[data-env-reference-bathymetry-map]')).toBeVisible();
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[0]);
+
+  const initialDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+  if (!hasReferenceFixture(initialDebug)) {
+    await writeQaSummary(ownerReviewSummaryFromDebug({
+      ...initialDebug,
+      atlasLoaded: true,
+      panResponsive: false,
+      wheelZoomResponsive: false,
+      boundaryDrawResponsive: false,
+      patchRequestVisible: false,
+      resetResponsive: false
+    }));
+    browserErrors.assertClean();
+    return;
+  }
+
+  await page.locator('[data-env-reference-view-action="zoom-in"]').first().click();
+  await page.locator('[data-env-reference-view-action="zoom-in"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasViewport?.zoom ?? 1), { timeout: 15000 }).toBeGreaterThan(1);
+  const initialViewport = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasViewport);
+  const center = await referenceAtlasScreenPoint(page, 0, 0);
+  await page.mouse.move(center.x, center.y);
+  await page.mouse.down();
+  for (let index = 1; index <= 8; index += 1) {
+    await page.mouse.move(center.x + index * 14, center.y + index * 7);
+  }
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasViewport?.centerLon ?? 0), { timeout: 15000 }).not.toBe(initialViewport.centerLon);
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[1]);
+
+  const afterPan = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasViewport);
+  const beforeWheelPerf = await page.evaluate(() => window.ANCHOR_REFERENCE_ATLAS_PERF_DEBUG);
+  for (let index = 0; index < 6; index += 1) {
+    await page.mouse.wheel(0, -120);
+  }
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasViewport?.zoom ?? 1), { timeout: 15000 }).toBeGreaterThan(afterPan.zoom);
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[2]);
+
+  await page.locator('[data-env-reference-view-action="reset"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasViewport?.worldFractionVisible ?? 0), { timeout: 15000 }).toBe(1);
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[6]);
+
+  await page.locator('[data-action="env-reference-draw-boundary"]').first().click();
+  const boundaryStart = await referenceAtlasScreenPoint(page, -80.8, 25.8);
+  const boundaryEnd = await referenceAtlasScreenPoint(page, -79.6, 24.6);
+  await page.mouse.move(boundaryStart.x, boundaryStart.y);
+  await page.mouse.down();
+  await page.mouse.move(boundaryEnd.x, boundaryEnd.y, { steps: 8 });
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[3]);
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedRegionAvailability ?? null), { timeout: 15000 }).toBe('notStaged');
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[4]);
+  await expect(page.locator('[data-action="env-reference-export-patch-request"]').first()).toBeVisible();
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[5]);
+
+  const finalDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+  const finalPerf = await page.evaluate(() => window.ANCHOR_REFERENCE_ATLAS_PERF_DEBUG);
+  expect(finalPerf.sceneRestartCount).toBe(0);
+  expect(finalPerf.maxFrameMs).toBeLessThan(500);
+  expect(finalPerf.hiddenTruthExposed).toBe(false);
+  expect(finalPerf.rawExternalDataPathExposed).toBe(false);
+  expect(finalDebug.hiddenTruthExposed).toBe(false);
+  expect(finalDebug.rawExternalDataPathExposed).toBe(false);
+  expect(finalDebug.simulationChanged).toBe(false);
+  expect(finalDebug.scoringChanged).toBe(false);
+  await expect(page.locator('[data-env-reference-bathymetry-map]')).toBeVisible();
+
+  const cleanupPerf = await page.evaluate(() => {
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('EnvironmentStudioScene');
+    scene?.cleanupReferenceAtlasPreviewBinding?.();
+    scene?.publishDebug?.(true);
+    return window.ANCHOR_REFERENCE_ATLAS_PERF_DEBUG;
+  });
+  expect(cleanupPerf.activeListenerCount).toBe(0);
+
+  await writeQaSummary(ownerReviewSummaryFromDebug({
+    ...finalDebug,
+    referenceAtlasPerf: finalPerf,
+    atlasLoaded: true,
+    panResponsive: Math.abs(Number(afterPan.centerLon) - Number(initialViewport.centerLon)) > 0.1,
+    wheelZoomResponsive: Number(finalPerf.wheelCommitCount ?? 0) > Number(beforeWheelPerf.wheelCommitCount ?? 0),
+    boundaryDrawResponsive: Number(finalPerf.boundaryCommitCount ?? 0) > 0,
+    patchRequestVisible: true,
+    resetResponsive: true,
+    sceneRestartCountDuringInteraction: finalPerf.sceneRestartCount,
+    maxLongTaskMs: finalPerf.maxFrameMs,
+    activeReferenceAtlasListenersAfterCleanup: cleanupPerf.activeListenerCount,
+    listenerAttachCount: cleanupPerf.listenerAttachCount,
+    listenerDetachCount: cleanupPerf.listenerDetachCount
+  }));
+  browserErrors.assertClean();
+});
+
+test(EXACT_TITLES[7], async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page, { ignoreFavicon: true });
+  await openEnvironmentStudio(page);
+  await waitForReferenceManifest(page);
+
+  const initialDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+  if (!hasReferenceFixture(initialDebug)) {
+    await writeQaSummary(ownerReviewSummaryFromDebug({
+      ...initialDebug,
+      planningLaunchReady: false,
+      planningWorkspaceReached: false
+    }));
+    browserErrors.assertClean();
+    return;
+  }
+
+  await page.locator('[data-action="env-reference-select-boundary"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.matchedFixtureId ?? null), { timeout: 15000 }).toBe('monterey_canyon_15s');
+  await page.locator('[data-action="env-reference-focus-patch"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasViewport?.zoom ?? 1), { timeout: 15000 }).toBeGreaterThan(1);
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[7]);
+
+  await page.locator('[data-action="env-reference-load-patch"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 15000 }).toBe('regionalPatchWorkspace');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.loadedFixtureId ?? null), { timeout: 15000 }).toBe('monterey_canyon_15s');
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[8]);
+
+  await page.locator('#mission-console [data-action="env-reference-generate-bathymetry"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 30000 }).toMatch(FNV_DIGEST_PATTERN);
+  await page.locator('[data-action="env-studio-generate-fields"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.fieldGenerationStatus ?? null), { timeout: 30000 }).toBe('CURRENT');
+  await page.locator('[data-action="env-studio-compose-environment"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.environmentArtifactStatus ?? null), { timeout: 30000 }).toBe('CURRENT');
+  await page.locator('[data-action="env-studio-validate-launch"]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.planningLaunchReady ?? null), { timeout: 30000 }).toBe(true);
+  await expect(page.locator('[data-action="env-studio-launch-planning"]').first()).toBeEnabled();
+  await captureOwnerScreenshot(page, INTERACT_SCREENSHOTS[9]);
+
+  const launchReadyDebug = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG);
+  await page.locator('[data-action="env-studio-launch-planning"]').first().click();
+  await expect.poll(
+    () => page.evaluate(() => window.ANCHOR_REFERENCE_ENVIRONMENT_LAUNCH_DEBUG?.activeScene ?? null),
+    { timeout: 20000 }
+  ).toBe('MissionWorkspaceScene');
+  const launchDebug = await page.evaluate(() => window.ANCHOR_REFERENCE_ENVIRONMENT_LAUNCH_DEBUG);
+  expect(launchDebug.referenceFixtureId).toBe('monterey_canyon_15s');
+  expect(launchDebug.hiddenTruthExposed).toBe(false);
+  expect(launchDebug.simulationChanged).toBe(false);
+  expect(launchDebug.scoringChanged).toBe(false);
+
+  await writeQaSummary(ownerReviewSummaryFromDebug({
+    ...launchReadyDebug,
+    ...launchDebug,
+    referenceAtlasPerf: undefined,
+    atlasLoaded: true,
+    selectedAvailability: launchReadyDebug.selectedRegionAvailability,
+    loadedFixtureId: launchReadyDebug.loadedFixtureId,
+    environmentDigest: launchReadyDebug.environmentArtifactDigest,
+    montereyFocusResponsive: true,
+    selectedPatchLoaded: true,
+    planningLaunchReady: true,
+    planningWorkspaceReached: true
+  }));
+  browserErrors.assertClean();
+});
+
 async function openEnvironmentStudio(page) {
   await page.goto(BASE + '/');
   await waitForAnchorAppReady(page, { routeId: 'main-menu' });
@@ -597,14 +776,14 @@ async function resetOwnerReviewPackage() {
     await fs.rm(OWNER_REVIEW_DIR, { recursive: true, force: true });
   } catch (error) {
     if (error?.code !== 'EPERM') throw error;
-    OWNER_REVIEW_DIR = path.join(os.tmpdir(), 'anchor-ref-atlas-ux-r1-2-owner-review');
+    OWNER_REVIEW_DIR = path.join(os.tmpdir(), 'anchor-ref-atlas-interact-r1-1-owner-review');
     await fs.rm(OWNER_REVIEW_DIR, { recursive: true, force: true });
   }
   try {
     await fs.mkdir(OWNER_REVIEW_DIR, { recursive: true });
   } catch (error) {
     if (error?.code !== 'EPERM') throw error;
-    OWNER_REVIEW_DIR = path.join(os.tmpdir(), 'anchor-ref-atlas-ux-r1-2-owner-review');
+    OWNER_REVIEW_DIR = path.join(os.tmpdir(), 'anchor-ref-atlas-interact-r1-1-owner-review');
     await fs.rm(OWNER_REVIEW_DIR, { recursive: true, force: true });
     await fs.mkdir(OWNER_REVIEW_DIR, { recursive: true });
   }
@@ -634,6 +813,19 @@ async function referenceMapMetrics(page) {
   });
 }
 
+async function referenceAtlasScreenPoint(page, lon, lat) {
+  return page.evaluate(({ lon, lat }) => {
+    const canvas = document.querySelector('[data-env-reference-bathymetry-map]');
+    const rect = canvas?.getBoundingClientRect?.();
+    const viewport = window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasViewport;
+    if (!canvas || !rect || !viewport) throw new Error('Reference atlas canvas or viewport is unavailable.');
+    return {
+      x: rect.left + ((Number(lon) - Number(viewport.lonWest)) / Math.max(0.000001, Number(viewport.lonEast) - Number(viewport.lonWest))) * rect.width,
+      y: rect.top + ((Number(viewport.latNorth) - Number(lat)) / Math.max(0.000001, Number(viewport.latNorth) - Number(viewport.latSouth))) * rect.height
+    };
+  }, { lon, lat });
+}
+
 async function readQaSummary() {
   try {
     const text = await fs.readFile(path.join(OWNER_REVIEW_DIR, 'qa-summary.json'), 'utf8');
@@ -658,6 +850,8 @@ async function writeQaSummary(patch) {
 
 function ownerReviewSummaryFromDebug(debug = {}) {
   const warningSummary = debug.warningSummary ?? debug.launchWarningSummary ?? {};
+  const perf = debug.referenceAtlasPerf ?? {};
+  const hasReferenceAtlasPerf = Boolean(debug.referenceAtlasPerf);
   const hasBlockingLaunchIssue = Number(warningSummary.blockingWarningCount ?? debug.blockingWarningCount ?? 0) > 0
     || Number(warningSummary.failureCount ?? debug.failureCount ?? 0) > 0;
   const atlasDefaultValid = debug.defaultStage === 'globalAtlasSelector'
@@ -672,9 +866,14 @@ function ownerReviewSummaryFromDebug(debug = {}) {
       : 'REF_ATLAS_UX_R1_ACCEPTANCE_FAIL';
   return {
     status,
-    phase: 'REF-ATLAS-UX-R1.2',
+    phase: 'REF-ATLAS-INTERACT-R1.1',
     branch: GIT_BRANCH,
     head: GIT_HEAD,
+    atlasLoaded: debug.atlasLoaded === true
+      || debug.referenceManifestLoaded === true
+      || debug.referenceDataAvailable === true
+      || debug.referenceFixtureStatus === 'AVAILABLE',
+    initialLoadMs: hasReferenceAtlasPerf || debug.initialLoadMs !== undefined ? Number(perf.initialLoadMs ?? debug.initialLoadMs ?? 0) : undefined,
     defaultStage: debug.defaultStage ?? null,
     studioStage: debug.studioStage ?? null,
     defaultViewIsRegionalPatch: debug.defaultViewIsRegionalPatch === true ? true : false,
@@ -696,6 +895,7 @@ function ownerReviewSummaryFromDebug(debug = {}) {
     latSpanAtReset: debug.atlasViewport?.latSpan ?? null,
     pageScrollbarsInMapArea: debug.pageScrollbarsInMapArea === true ? true : false,
     selectedAtlasBounds: debug.selectedAtlasBounds ?? debug.selectedPatchBounds ?? null,
+    selectedAvailability: debug.selectedAvailability ?? debug.selectedRegionAvailability ?? null,
     selectedRegionAvailability: debug.selectedRegionAvailability ?? null,
     matchedFixtureId: debug.matchedFixtureId ?? null,
     matchedFixtureRole: debug.matchedFixtureRole ?? null,
@@ -719,6 +919,7 @@ function ownerReviewSummaryFromDebug(debug = {}) {
     hotspotArtifactDigest: debug.hotspotArtifactDigest ?? null,
     hazardCandidateDigest: debug.hazardCandidateDigest ?? null,
     environmentArtifactDigest: debug.environmentArtifactDigest ?? null,
+    environmentDigest: debug.environmentDigest ?? debug.environmentArtifactDigest ?? null,
     environmentArtifactStatus: debug.environmentArtifactStatus ?? null,
     launchValidationStatus: debug.launchValidationStatus ?? null,
     launchValidationDigest: debug.launchValidationDigest ?? null,
@@ -735,6 +936,30 @@ function ownerReviewSummaryFromDebug(debug = {}) {
     defaultSourceMode: debug.defaultSourceMode ?? 'referenceBathymetryAtlas',
     proceduralSandboxDefault: debug.proceduralSandboxDefault === true ? true : false,
     patchRequestExported: debug.patchRequestExported === true ? true : undefined,
+    panResponsive: debug.panResponsive === true ? true : undefined,
+    wheelZoomResponsive: debug.wheelZoomResponsive === true ? true : undefined,
+    boundaryDrawResponsive: debug.boundaryDrawResponsive === true ? true : undefined,
+    patchRequestVisible: debug.patchRequestVisible === true ? true : undefined,
+    resetResponsive: debug.resetResponsive === true ? true : undefined,
+    montereyFocusResponsive: debug.montereyFocusResponsive === true ? true : undefined,
+    selectedPatchLoaded: debug.selectedPatchLoaded === true ? true : undefined,
+    planningWorkspaceReached: debug.planningWorkspaceReached === true ? true : undefined,
+    sceneRestartCountDuringInteraction: hasReferenceAtlasPerf || debug.sceneRestartCountDuringInteraction !== undefined
+      ? Number(debug.sceneRestartCountDuringInteraction ?? perf.sceneRestartCount ?? 0)
+      : undefined,
+    maxLongTaskMs: hasReferenceAtlasPerf || debug.maxLongTaskMs !== undefined ? Number(debug.maxLongTaskMs ?? perf.maxFrameMs ?? 0) : undefined,
+    rasterRenderCount: hasReferenceAtlasPerf ? Number(perf.rasterRenderCount ?? 0) : undefined,
+    fullRasterRenderCount: hasReferenceAtlasPerf ? Number(perf.fullRasterRenderCount ?? 0) : undefined,
+    cacheHitCount: hasReferenceAtlasPerf ? Number(perf.cacheHitCount ?? 0) : undefined,
+    cacheMissCount: hasReferenceAtlasPerf ? Number(perf.cacheMissCount ?? 0) : undefined,
+    wheelCount: hasReferenceAtlasPerf ? Number(perf.wheelCount ?? 0) : undefined,
+    panCommitCount: hasReferenceAtlasPerf ? Number(perf.panCommitCount ?? 0) : undefined,
+    boundaryCommitCount: hasReferenceAtlasPerf ? Number(perf.boundaryCommitCount ?? 0) : undefined,
+    listenerAttachCount: hasReferenceAtlasPerf || debug.listenerAttachCount !== undefined ? Number(debug.listenerAttachCount ?? perf.listenerAttachCount ?? 0) : undefined,
+    listenerDetachCount: hasReferenceAtlasPerf || debug.listenerDetachCount !== undefined ? Number(debug.listenerDetachCount ?? perf.listenerDetachCount ?? 0) : undefined,
+    activeReferenceAtlasListenersAfterCleanup: hasReferenceAtlasPerf || debug.activeReferenceAtlasListenersAfterCleanup !== undefined
+      ? Number(debug.activeReferenceAtlasListenersAfterCleanup ?? perf.activeListenerCount ?? 0)
+      : undefined,
     rawExternalDataPathExposed: false,
     hiddenTruthExposed: false,
     simulationChanged: false,

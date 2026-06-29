@@ -25,6 +25,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Alpha Pages and Compact Layout$/i,
       /^Alpha Browser Compatibility Critical Path$/i,
       /^Global Atlas Visual Correctness$/i,
+      /^Atlas Interaction Does Not Freeze$/i,
+      /^Atlas Selection Still Reaches Planning$/i,
       /^Atlas to Monterey Patch to Environment$/i,
       /^Reference Patch Generates Environment Fields$/i,
       /^Export \/ Import Generated Reference Environment$/i,

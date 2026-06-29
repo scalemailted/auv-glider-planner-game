@@ -3,19 +3,19 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const ownerReviewDir = path.resolve(root, process.env.ANCHOR_ENV_COMPOSE_OWNER_REVIEW_DIR ?? process.env.ANCHOR_E2E_OWNER_REVIEW_DIR ?? 'artifacts/owner-review/ref-atlas-ux-r1-2');
+const ownerReviewDir = path.resolve(root, process.env.ANCHOR_ENV_COMPOSE_OWNER_REVIEW_DIR ?? process.env.ANCHOR_E2E_OWNER_REVIEW_DIR ?? 'artifacts/owner-review/ref-atlas-interact-r1-1');
 const summaryPath = path.join(ownerReviewDir, 'qa-summary.json');
 
 const requiredScreenshots = [
-  '01-global-atlas-default-full-world.png',
-  '02-global-atlas-reset-view.png',
-  '03-global-atlas-land-ocean-visible.png',
-  '04-monterey-overlay-full-world.png',
-  '05-monterey-overlay-focused.png',
-  '06-monterey-patch-loaded.png',
-  '07-nonstaged-bbox-patch-request.png',
-  '08-regional-bathymetry-generated.png',
-  '09-fields-generated.png',
+  '01-atlas-loaded.png',
+  '02-after-pan.png',
+  '03-after-wheel-zoom.png',
+  '04-boundary-drawing.png',
+  '05-boundary-selected.png',
+  '06-patch-request-visible.png',
+  '07-after-reset.png',
+  '08-monterey-focused.png',
+  '09-monterey-loaded.png',
   '10-planning-launch-ready.png'
 ];
 
@@ -24,55 +24,33 @@ const requiredFields = [
   'branch',
   'head',
   'phase',
-  'defaultStage',
-  'overviewDigest',
-  'overviewPath',
-  'overviewAspectRatio',
-  'overviewBounds',
-  'overviewIsGlobal',
-  'defaultViewIsRegionalPatch',
-  'defaultViewport',
-  'resetViewport',
-  'centerLonAtReset',
-  'centerLatAtReset',
-  'lonSpanAtReset',
-  'latSpanAtReset',
-  'pageScrollbarsInMapArea',
-  'fixtureStatus',
-  'missionReadyPatchCount',
-  'lowResolutionPatchCount',
-  'patchCoverageOverlayCount',
-  'montereyOverlay',
-  'selectedRegionAvailability',
-  'patchRequestExported',
-  'matchedFixtureId',
-  'loadedFixtureId',
-  'loadedFixtureRole',
-  'referenceFixtureId',
-  'referenceFixtureDigest',
-  'bathymetryArtifactDigest',
-  'currentArtifactDigest',
-  'scalarArtifactDigest',
-  'hotspotArtifactDigest',
-  'environmentArtifactDigest',
-  'launchValidationStatus',
+  'atlasLoaded',
+  'initialLoadMs',
+  'panResponsive',
+  'wheelZoomResponsive',
+  'boundaryDrawResponsive',
+  'patchRequestVisible',
+  'resetResponsive',
+  'montereyFocusResponsive',
+  'selectedPatchLoaded',
   'planningLaunchReady',
-  'warningSummary',
-  'blockingWarningCount',
-  'failureCount',
-  'benchmarkBundleStatus',
-  'benchmarkBundleDigest',
-  'exportedProjectDigest',
-  'launchedPlanningEnvironmentDigest',
-  'missionExecuted',
-  'debriefReached',
+  'planningWorkspaceReached',
+  'sceneRestartCountDuringInteraction',
+  'maxLongTaskMs',
+  'rasterRenderCount',
+  'fullRasterRenderCount',
+  'cacheHitCount',
+  'cacheMissCount',
+  'listenerAttachCount',
+  'listenerDetachCount',
+  'activeReferenceAtlasListenersAfterCleanup',
+  'selectedAvailability',
+  'loadedFixtureId',
+  'environmentDigest',
   'hiddenTruthExposed',
   'rawExternalDataPathExposed',
   'simulationChanged',
-  'scoringChanged',
-  'activeRendererCountAfterCleanup',
-  'activeRafCountAfterCleanup',
-  'activeCanvasCountAfterCleanup'
+  'scoringChanged'
 ];
 
 assert.ok(existsSync(summaryPath), `owner review qa-summary missing: ${summaryPath}`);
@@ -85,63 +63,37 @@ for (const screenshot of requiredScreenshots) {
 }
 
 assert.ok(['PASS', 'PASS_WITH_NON_BLOCKING_WARNINGS'].includes(summary.status), `invalid owner-review status ${summary.status}`);
-assert.equal(summary.phase, 'REF-ATLAS-UX-R1.2');
-assert.equal(summary.defaultStage, 'globalAtlasSelector');
-assert.equal(summary.overviewIsGlobal, true);
-assert.equal(summary.defaultViewIsRegionalPatch, false);
-assert.ok(Math.abs(Number(summary.overviewAspectRatio) - 2) < 0.01, 'overview aspect ratio must be 2:1');
-assert.deepEqual(summary.overviewBounds, { westLon: -180, eastLon: 180, southLat: -90, northLat: 90 });
-assert.ok(summary.defaultViewport?.lonSpan >= 300, 'default viewport must cover global longitude span');
-assert.ok(summary.resetViewport?.latSpan >= 140, 'reset viewport must cover global latitude span');
-assert.ok(Math.abs(Number(summary.centerLonAtReset)) <= 1, 'reset center lon near zero');
-assert.ok(Math.abs(Number(summary.centerLatAtReset)) <= 1, 'reset center lat near zero');
-assert.equal(summary.pageScrollbarsInMapArea, false);
-assert.equal(summary.fixtureStatus, 'AVAILABLE');
-assert.ok(Number(summary.missionReadyPatchCount) >= 1);
-assert.ok(Number(summary.lowResolutionPatchCount) >= 1);
-assert.ok(Number(summary.patchCoverageOverlayCount) >= 1);
-assert.equal(summary.montereyOverlay?.visible, true, 'Monterey overlay must be visible');
-assert.equal(summary.montereyOverlay?.selectable, true, 'Monterey overlay must be selectable');
-assert.equal(summary.selectedRegionAvailability, 'missionReadyPatchAvailable');
-assert.equal(summary.patchRequestExported, true);
-assert.equal(summary.loadedFixtureId, 'monterey_canyon_15s');
-assert.equal(summary.loadedFixtureRole, 'missionReadyPatch');
-assert.equal(summary.referenceFixtureId, 'monterey_canyon_15s');
-assert.ok(String(summary.referenceFixtureDigest).startsWith('sha256:'), 'reference fixture digest must be SHA-256');
-for (const field of [
-  'bathymetryArtifactDigest',
-  'currentArtifactDigest',
-  'scalarArtifactDigest',
-  'hotspotArtifactDigest',
-  'environmentArtifactDigest',
-  'benchmarkBundleDigest',
-  'exportedProjectDigest',
-  'launchedPlanningEnvironmentDigest'
-]) {
-  assert.ok(fnvDigestPattern.test(String(summary[field])), `${field} must be a stable fnv1a32 digest`);
-}
-assert.ok(['PASS', 'WARN'].includes(summary.launchValidationStatus), 'launch status must be PASS or WARN');
-assert.equal(summary.planningLaunchReady, true);
-assert.equal(Number(summary.blockingWarningCount), 0);
-assert.equal(Number(summary.failureCount), 0);
-assert.equal(summary.benchmarkBundleStatus, 'CURRENT');
-assert.equal(summary.missionExecuted, true);
-assert.equal(summary.debriefReached, true);
+assert.equal(summary.phase, 'REF-ATLAS-INTERACT-R1.1');
+assert.equal(summary.atlasLoaded, true, 'atlas loaded');
+assert.ok(Number(summary.initialLoadMs) >= 0, 'initial load timing recorded');
+assert.equal(summary.panResponsive, true, 'pan interaction responsive');
+assert.equal(summary.wheelZoomResponsive, true, 'wheel zoom responsive');
+assert.equal(summary.boundaryDrawResponsive, true, 'boundary drawing responsive');
+assert.equal(summary.patchRequestVisible, true, 'patch request visible for unstaged boundary');
+assert.equal(summary.resetResponsive, true, 'reset responsive');
+assert.equal(summary.montereyFocusResponsive, true, 'Monterey focus responsive');
+assert.equal(summary.selectedPatchLoaded, true, 'selected patch loaded');
+assert.equal(summary.planningLaunchReady, true, 'planning launch ready');
+assert.equal(summary.planningWorkspaceReached, true, 'planning workspace reached');
+assert.equal(Number(summary.sceneRestartCountDuringInteraction), 0, 'no scene restart during interaction');
+assert.ok(Number(summary.maxLongTaskMs) < 500, `max interaction frame ${summary.maxLongTaskMs}ms must be under 500ms`);
+assert.ok(Number(summary.rasterRenderCount) >= 1, 'raster render count recorded');
+assert.ok(Number(summary.fullRasterRenderCount) >= 1, 'full raster cache build recorded');
+assert.ok(Number(summary.cacheHitCount) >= 1, 'raster cache hits recorded');
+assert.ok(Number(summary.listenerAttachCount) >= 1, 'listener attachments recorded');
+assert.ok(Number(summary.listenerDetachCount) >= 1, 'listener detachments recorded');
+assert.equal(Number(summary.activeReferenceAtlasListenersAfterCleanup), 0, 'reference atlas listeners cleaned up');
+assert.equal(summary.selectedAvailability, 'missionReadyPatchAvailable', 'selected availability reaches mission patch');
+assert.equal(summary.loadedFixtureId, 'monterey_canyon_15s', 'Monterey fixture loaded');
+assert.ok(fnvDigestPattern.test(String(summary.environmentDigest)), 'environment digest recorded');
 assert.equal(summary.hiddenTruthExposed, false);
 assert.equal(summary.rawExternalDataPathExposed, false);
 assert.equal(summary.simulationChanged, false);
 assert.equal(summary.scoringChanged, false);
-assert.equal(Number(summary.activeRendererCountAfterCleanup), 0);
-assert.equal(Number(summary.activeRafCountAfterCleanup), 0);
-assert.equal(Number(summary.activeCanvasCountAfterCleanup), 0);
-assert.ok(summary.warningSummary && typeof summary.warningSummary === 'object', 'warning summary must be preserved');
-assert.equal(Number(summary.warningSummary.blockingWarningCount ?? 0), 0);
-assert.equal(Number(summary.warningSummary.failureCount ?? 0), 0);
 
 console.log('smoke_reference_environment_owner_acceptance_summary: ok', {
   path: path.relative(root, summaryPath),
   status: summary.status,
-  launchValidationStatus: summary.launchValidationStatus,
-  benchmarkBundleDigest: summary.benchmarkBundleDigest,
+  maxLongTaskMs: summary.maxLongTaskMs,
   screenshotCount: requiredScreenshots.length
 });

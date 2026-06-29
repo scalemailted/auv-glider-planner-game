@@ -423,6 +423,60 @@ export function referenceAtlasViewport(viewInput = {}, atlasOrBounds = GLOBAL_RE
   };
 }
 
+export function referenceAtlasPanView(viewInput = {}, deltaNormalizedX = 0, deltaNormalizedY = 0, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
+  const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
+  const viewport = referenceAtlasViewport(viewInput, bounds);
+  const centerLon = viewport.centerLon - Number(deltaNormalizedX ?? 0) * viewport.lonSpan;
+  const centerLat = viewport.centerLat + Number(deltaNormalizedY ?? 0) * viewport.latSpan;
+  return referenceAtlasViewForCenter(centerLon, centerLat, viewport.zoom, bounds);
+}
+
+export function referenceAtlasZoomView(
+  viewInput = {},
+  zoomFactor = 1,
+  atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS,
+  focusPoint = { x: 0.5, y: 0.5 },
+  options = {}
+) {
+  const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
+  const viewport = referenceAtlasViewport(viewInput, bounds);
+  const factor = Number.isFinite(Number(zoomFactor)) && Number(zoomFactor) > 0 ? Number(zoomFactor) : 1;
+  const maxZoom = clampNumber(options.maxZoom ?? 32, 1, 64);
+  const nextZoom = clampNumber(viewport.zoom * factor, 1, maxZoom);
+  const focusX = clampNumber(focusPoint?.x ?? 0.5, 0, 1);
+  const focusY = clampNumber(focusPoint?.y ?? 0.5, 0, 1);
+  const focusLonLat = referenceAtlasNormalizedToLonLat(focusX, focusY, {
+    westLon: viewport.lonWest,
+    eastLon: viewport.lonEast,
+    southLat: viewport.latSouth,
+    northLat: viewport.latNorth
+  });
+  const worldLonSpan = Math.max(0.000001, bounds.eastLon - bounds.westLon);
+  const worldLatSpan = Math.max(0.000001, bounds.northLat - bounds.southLat);
+  const nextLonSpan = worldLonSpan / nextZoom;
+  const nextLatSpan = worldLatSpan / nextZoom;
+  const centerLon = Number(focusLonLat.lon) - (focusX - 0.5) * nextLonSpan;
+  const centerLat = Number(focusLonLat.lat) + (focusY - 0.5) * nextLatSpan;
+  return referenceAtlasViewForCenter(centerLon, centerLat, nextZoom, bounds);
+}
+
+export function referenceAtlasBoundsFromDrag(startLonLat = {}, endLonLat = {}, options = {}) {
+  const minLonSpan = positive(options.minLonSpanDegrees, 0.1);
+  const minLatSpan = positive(options.minLatSpanDegrees, 0.1);
+  const centerLon = (Number(startLonLat.lon ?? 0) + Number(endLonLat.lon ?? 0)) / 2;
+  const centerLat = (Number(startLonLat.lat ?? 0) + Number(endLonLat.lat ?? 0)) / 2;
+  const lonSpan = Math.max(minLonSpan, Math.abs(Number(endLonLat.lon ?? 0) - Number(startLonLat.lon ?? 0)));
+  const latSpan = Math.max(minLatSpan, Math.abs(Number(endLonLat.lat ?? 0) - Number(startLonLat.lat ?? 0)));
+  const clampedCenterLon = clampNumber(centerLon, -180 + lonSpan / 2, 180 - lonSpan / 2);
+  const clampedCenterLat = clampNumber(centerLat, -90 + latSpan / 2, 90 - latSpan / 2);
+  return normalizeLonLatBounds({
+    westLon: clampedCenterLon - lonSpan / 2,
+    eastLon: clampedCenterLon + lonSpan / 2,
+    southLat: clampedCenterLat - latSpan / 2,
+    northLat: clampedCenterLat + latSpan / 2
+  });
+}
+
 export function referenceAtlasLonLatToNormalized(lon = 0, lat = 0, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
   const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
   return {
@@ -1325,6 +1379,20 @@ function isWorldScaleBounds(bounds = null) {
 function referenceAtlasBoundsFromInput(input = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
   const bounds = input?.overviewBounds ?? input?.overviewArtifact?.bounds ?? input?.manifest?.overview?.bounds ?? input?.bounds ?? input;
   return normalizeLonLatBounds(bounds ?? GLOBAL_REFERENCE_ATLAS_BOUNDS);
+}
+
+function referenceAtlasViewForCenter(centerLon = 0, centerLat = 0, zoom = 1, atlasOrBounds = GLOBAL_REFERENCE_ATLAS_BOUNDS) {
+  const bounds = referenceAtlasBoundsFromInput(atlasOrBounds);
+  const worldLonSpan = Math.max(0.000001, bounds.eastLon - bounds.westLon);
+  const worldLatSpan = Math.max(0.000001, bounds.northLat - bounds.southLat);
+  const viewport = referenceAtlasViewport({ centerLon, centerLat, zoom }, bounds);
+  return {
+    panX: round(viewport.centerLon / Math.max(0.000001, worldLonSpan / 2)),
+    panY: round(-viewport.centerLat / Math.max(0.000001, worldLatSpan / 2)),
+    rotationYawDegrees: 0,
+    rotationPitchDegrees: 0,
+    zoom: viewport.zoom
+  };
 }
 
 function referenceAtlasLonLatToViewportPoint(lon = 0, lat = 0, viewport = referenceAtlasViewport(), width = 1, height = 1) {
