@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import {
   ENVIRONMENT_STUDIO_SCENE_VERSION,
+  deriveAtlasBoundaryActions,
   referenceAtlasStageActionState
 } from '../../src/game/phaser/scenes/EnvironmentStudioScene.js';
 
@@ -34,6 +35,10 @@ assert.equal(noSelection.selected, false);
 assert.equal(noSelection.continueToBathymetryEnabled, false);
 assert.equal(noSelection.patchRequestEnabled, false);
 assert.equal(noSelection.multiTileRequestEnabled, false);
+assert.equal(noSelection.loadMissionPatchEnabled, false);
+assert.equal(noSelection.exportMultiTileRequestEnabled, false);
+assert.equal(noSelection.primaryAction, 'none');
+assert.equal(noSelection.actionState.continueToBathymetry.variant, 'disabled');
 assert.equal(noSelection.selectedRegionNextAction, 'selectBoundary');
 
 const montereySelection = referenceAtlasStageActionState({
@@ -66,6 +71,10 @@ assert.equal(montereySelection.patchRequestEnabled, false);
 assert.equal(montereySelection.multiTileRequestEnabled, false);
 assert.equal(montereySelection.tileSetId, 'monterey_canyon_15s');
 assert.equal(montereySelection.tileSetRole, 'missionReadyTileSet');
+assert.equal(montereySelection.loadMissionPatchEnabled, true);
+assert.equal(montereySelection.primaryAction, 'continueToBathymetry');
+assert.equal(montereySelection.actionState.continueToBathymetry.variant, 'primary');
+assert.equal(montereySelection.actionState.loadMissionPatch.variant, 'secondary');
 assert.equal(montereySelection.selectedRegionNextAction, 'continueTo3DBathymetry');
 
 const unstagedSelection = referenceAtlasStageActionState({
@@ -86,6 +95,11 @@ const unstagedSelection = referenceAtlasStageActionState({
 assert.equal(unstagedSelection.continueToBathymetryEnabled, false);
 assert.equal(unstagedSelection.patchRequestEnabled, true);
 assert.equal(unstagedSelection.multiTileRequestEnabled, false);
+assert.equal(unstagedSelection.loadMissionPatchEnabled, false);
+assert.equal(unstagedSelection.primaryAction, 'exportPatchRequest');
+assert.equal(unstagedSelection.actionState.continueToBathymetry.variant, 'disabled');
+assert.equal(unstagedSelection.actionState.loadMissionPatch.variant, 'disabled');
+assert.equal(unstagedSelection.actionState.exportPatchRequest.variant, 'warning');
 assert.equal(unstagedSelection.selectedRegionNextAction, 'exportPatchRequest');
 
 const gulfSelection = referenceAtlasStageActionState({
@@ -107,7 +121,32 @@ const gulfSelection = referenceAtlasStageActionState({
 assert.equal(gulfSelection.continueToBathymetryEnabled, false);
 assert.equal(gulfSelection.patchRequestEnabled, false);
 assert.equal(gulfSelection.multiTileRequestEnabled, true);
+assert.equal(gulfSelection.loadMissionPatchEnabled, false);
+assert.equal(gulfSelection.exportMultiTileRequestEnabled, true);
+assert.equal(gulfSelection.primaryAction, 'exportMultiTileRequest');
+assert.equal(gulfSelection.actionState.continueToBathymetry.variant, 'disabled');
+assert.equal(gulfSelection.actionState.loadMissionPatch.variant, 'disabled');
+assert.equal(gulfSelection.actionState.exportMultiTileRequest.variant, 'warning');
 assert.equal(gulfSelection.selectedRegionNextAction, 'exportMultiTilePatchRequest');
+
+const gulfActions = deriveAtlasBoundaryActions({
+  selectedReferenceWindow: {
+    bounds: { westLon: -94, eastLon: -84, southLat: 24, northLat: 30 }
+  },
+  selectedReferenceAvailability: {
+    available: false,
+    status: 'requestOnly',
+    recommendedAction: 'exportMultiTilePatchRequest'
+  },
+  selectedReferenceBoundaryBudget: {
+    budgetStatus: 'MULTI_TILE_REQUIRED',
+    patchRequestAllowed: true,
+    multiTileRecommended: true,
+    recommendedAction: 'exportMultiTilePatchRequest'
+  }
+});
+assert.equal(gulfActions.primaryAction, 'exportMultiTileRequest');
+assert.equal(gulfActions.exportMultiTileRequest.enabled, true);
 
 console.log('smoke_environment_studio_stage_contract: ok', {
   version: ENVIRONMENT_STUDIO_SCENE_VERSION,

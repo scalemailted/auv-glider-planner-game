@@ -717,6 +717,39 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-031",
+      "title": "Atlas staging action buttons show enabled state for request-only regions.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas",
+      "summary": "Alpha review found that a Gulf-scale notStaged / MULTI_TILE_REQUIRED operational window still shows green Continue to 3D Bathymetry and Load Mission Patch buttons. Clicking Continue silently does nothing. The UI should disable or hide unsupported launch actions and make Export Multi-Tile Patch Request the primary action.",
+      "decision": "Accepted for ENV-STAGING-SCENE-R1.1.",
+      "proposedPhase": "ENV-STAGING-SCENE-R1.1",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/env-staging-scene-r1-1/qa-summary.json",
+        "tools/js/smoke_environment_studio_action_state.mjs",
+        "tools/js/smoke_environment_studio_stage_contract.mjs",
+        "tools/js/audit_environment_studio_stage_flow.mjs"
+      ],
+      "acceptanceCriteria": [
+        "Continue to 3D Bathymetry is disabled and visually grey for no selection, notStaged selections, and MULTI_TILE_REQUIRED selections.",
+        "Load Mission Patch is disabled for notStaged and Gulf-scale request-only selections.",
+        "Export Patch Request is the primary request action for local or regional notStaged selections.",
+        "Export Multi-Tile Patch Request is the primary request action for Gulf-scale or basin-scale MULTI_TILE_REQUIRED selections.",
+        "Monterey 15 arc-second mission-ready selection keeps Continue to 3D Bathymetry enabled and opens RegionalBathymetryScene.",
+        "Unsupported actions do not silently no-op and record visible blocked-action feedback without changing simulation, scoring, planners, or field equations."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

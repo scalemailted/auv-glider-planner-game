@@ -1083,9 +1083,36 @@
   color: #06121f;
   border-color: rgba(255,255,255,0.5);
 }
+.console-button.warning {
+  background: linear-gradient(180deg, rgba(245,195,92,0.96), rgba(213,144,48,0.96));
+  color: #08121f;
+  border-color: rgba(255,238,188,0.7);
+}
 .console-button.secondary {
   font-weight: 700;
   color: #d6e4f7;
+}
+.console-button:disabled,
+.console-button.disabled,
+.console-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: rgba(214,228,247,0.52);
+  background: linear-gradient(180deg, rgba(45,55,70,0.7), rgba(28,36,49,0.72));
+  border-color: rgba(173,190,210,0.18);
+  box-shadow: none;
+}
+.console-button:disabled:hover,
+.console-button.disabled:hover,
+.console-button[aria-disabled="true"]:hover {
+  background: linear-gradient(180deg, rgba(45,55,70,0.7), rgba(28,36,49,0.72));
+  border-color: rgba(173,190,210,0.18);
+}
+.environment-studio-action-reason {
+  display: block;
+  margin: -.24rem 0 .34rem;
+  color: rgba(214,228,247,0.64);
+  font-size: .72rem;
+  line-height: 1.25;
 }
 .scenario-field {
   display: grid;

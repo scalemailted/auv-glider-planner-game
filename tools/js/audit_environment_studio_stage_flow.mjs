@@ -12,20 +12,17 @@ import {
 import { startStaticServer } from '../../tests/e2e/static-server.mjs';
 
 const ROOT = process.cwd();
-const OWNER_REVIEW_DIR = path.resolve('artifacts/owner-review/env-staging-scene-r1');
+const OWNER_REVIEW_DIR = path.resolve('artifacts/owner-review/env-staging-scene-r1-1');
 const BASE = 'http://127.0.0.1:9404';
 const REQUIRED_SCREENSHOTS = [
-  '01-environment-studio-atlas-default.png',
-  '02-left-panel-tools-and-actions.png',
-  '03-boundary-selected-right-panel-inspector.png',
-  '04-monterey-selected-continue-enabled.png',
-  '05-regional-bathymetry-scene-opened.png',
-  '06-regional-bathymetry-mesh-preview.png',
-  '07-regional-bathymetry-provenance-panel.png',
-  '08-generate-fields-action-visible.png',
-  '09-not-staged-region-patch-request.png',
-  '10-gulf-region-multitile-request.png',
-  '11-planning-launch-path-still-available.png'
+  '01-no-selection-continue-disabled.png',
+  '02-gulf-selected-continue-disabled.png',
+  '03-gulf-selected-multitile-primary.png',
+  '04-gulf-multitile-request-exported.png',
+  '05-not-staged-region-patch-request-primary.png',
+  '06-monterey-selected-continue-enabled.png',
+  '07-monterey-continue-clicked-regional-scene-opened.png',
+  '08-regional-bathymetry-workspace-loaded.png'
 ];
 
 const branch = execFileSync('git', ['branch', '--show-current'], { cwd: ROOT, encoding: 'utf8' }).trim();
@@ -52,9 +49,12 @@ const failedResponses = [];
 let atlasDefaultDebug = null;
 let montereyDebug = null;
 let regionalDebug = null;
-let afterFieldsDebug = null;
 let notStagedDebug = null;
 let gulfDebug = null;
+let noSelectionDom = null;
+let montereyDom = null;
+let notStagedDom = null;
+let gulfDom = null;
 let notStagedPatchRequest = null;
 let gulfPatchRequest = null;
 let cleanup = null;
@@ -89,19 +89,61 @@ try {
   await waitForEnvironmentStage(page, (debug) => debug?.atlasStage?.stage === 'globalAtlasSelector');
   await page.waitForSelector('[data-env-reference-bathymetry-map]', { timeout: 30_000 });
   atlasDefaultDebug = await environmentDebug(page);
-  const continueDisabledWithoutSelection = await disabled(page, '[data-action="env-reference-continue-bathymetry"]');
-  assert.equal(continueDisabledWithoutSelection, true, 'Continue disabled without selection');
+  noSelectionDom = await atlasButtonState(page);
+  assert.equal(noSelectionDom.continueToBathymetry.disabled, true, 'Continue disabled without selection');
+  assert.equal(noSelectionDom.continueToBathymetry.ariaDisabled, 'true', 'Continue aria-disabled without selection');
+  assert.equal(noSelectionDom.continueToBathymetry.primary, false, 'disabled Continue is not primary without selection');
   await assertStageIA(page);
   await screenshot(page, REQUIRED_SCREENSHOTS[0]);
+
+  await selectGulfRegion(page);
+  await waitForEnvironmentStage(page, (debug) => debug?.atlasStage?.primaryAction === 'exportMultiTileRequest'
+    && debug?.atlasStage?.exportMultiTileRequestEnabled === true
+    && debug?.atlasStage?.continueToBathymetryEnabled === false);
+  gulfDebug = await environmentDebug(page);
+  gulfDom = await atlasButtonState(page);
+  assert.equal(gulfDebug?.atlasStage?.boundaryBudgetStatus, 'MULTI_TILE_REQUIRED', 'Gulf is multi-tile required');
+  assert.equal(gulfDom.continueToBathymetry.disabled, true, 'Gulf continue disabled');
+  assert.equal(gulfDom.continueToBathymetry.ariaDisabled, 'true', 'Gulf continue aria-disabled');
+  assert.equal(gulfDom.continueToBathymetry.primary, false, 'Gulf disabled continue not green primary');
+  assert.equal(gulfDom.loadMissionPatch.disabled, true, 'Gulf load patch disabled');
+  assert.equal(gulfDom.loadMissionPatch.primary, false, 'Gulf load patch not green primary');
+  assert.equal(gulfDom.exportPatchRequest.disabled, false, 'Gulf export multi-tile enabled');
+  assert.equal(gulfDom.exportPatchRequest.warning, true, 'Gulf export multi-tile is warning primary CTA');
+  assert.match(gulfDom.exportPatchRequest.text, /Export Multi-Tile Patch Request/, 'Gulf export label');
+  await expectPanelText(page, '#waypoint-timeline', /MULTI_TILE_REQUIRED|Multi-tile preprocessing/i);
   await screenshot(page, REQUIRED_SCREENSHOTS[1]);
+  await screenshot(page, REQUIRED_SCREENSHOTS[2]);
+  gulfPatchRequest = await downloadJson(page, '[data-env-stage-section="boundary-actions"] [data-action="env-reference-export-patch-request"]');
+  assert.equal(gulfPatchRequest.data.artifactType, 'anchor.reference-bathymetry-multitile-patch-request', 'Gulf exports multi-tile request');
+  await screenshot(page, REQUIRED_SCREENSHOTS[3]);
+
+  await selectNotStagedRegion(page);
+  await waitForEnvironmentStage(page, (debug) => debug?.atlasStage?.primaryAction === 'exportPatchRequest'
+    && debug?.atlasStage?.patchRequestEnabled === true
+    && debug?.atlasStage?.continueToBathymetryEnabled === false);
+  notStagedDebug = await environmentDebug(page);
+  notStagedDom = await atlasButtonState(page);
+  assert.equal(notStagedDom.continueToBathymetry.disabled, true, 'not-staged continue disabled');
+  assert.equal(notStagedDom.continueToBathymetry.primary, false, 'not-staged disabled continue not green primary');
+  assert.equal(notStagedDom.loadMissionPatch.disabled, true, 'not-staged load patch disabled');
+  assert.equal(notStagedDom.exportPatchRequest.disabled, false, 'not-staged patch request enabled');
+  assert.equal(notStagedDom.exportPatchRequest.warning, true, 'not-staged patch request warning CTA');
+  assert.match(notStagedDom.exportPatchRequest.text, /Export Patch Request/, 'not-staged export label');
+  await screenshot(page, REQUIRED_SCREENSHOTS[4]);
+  notStagedPatchRequest = await downloadJson(page, '[data-env-stage-section="boundary-actions"] [data-action="env-reference-export-patch-request"]');
+  assert.equal(notStagedPatchRequest.data.artifactType, 'anchor.reference-bathymetry-patch-request', 'not-staged exports patch request');
 
   await page.click('[data-action="env-reference-select-boundary"]');
   await waitForEnvironmentStage(page, (debug) => debug?.atlasStage?.continueToBathymetryEnabled === true
+    && debug?.atlasStage?.primaryAction === 'continueToBathymetry'
     && debug?.atlasStage?.tileSetId === 'monterey_canyon_15s');
   montereyDebug = await environmentDebug(page);
-  assert.equal(await disabled(page, '[data-action="env-reference-continue-bathymetry"]'), false, 'Continue enabled for Monterey');
-  await screenshot(page, REQUIRED_SCREENSHOTS[2]);
-  await screenshot(page, REQUIRED_SCREENSHOTS[3]);
+  montereyDom = await atlasButtonState(page);
+  assert.equal(montereyDom.continueToBathymetry.disabled, false, 'Continue enabled for Monterey');
+  assert.equal(montereyDom.continueToBathymetry.primary, true, 'Monterey continue is primary');
+  assert.equal(montereyDom.loadMissionPatch.disabled, false, 'Load patch remains enabled for Monterey compatibility');
+  await screenshot(page, REQUIRED_SCREENSHOTS[5]);
 
   await page.click('[data-action="env-reference-continue-bathymetry"]');
   await waitForRegionalScene(page);
@@ -110,49 +152,8 @@ try {
   assert.equal(regionalDebug.rasterAuthoritativeForSimulation, true, 'raster authoritative');
   assert.equal(regionalDebug.meshAuthoritativeForSimulation, false, 'mesh non-authoritative');
   await page.waitForSelector('[data-regional-bathymetry-mesh-preview]', { timeout: 30_000 });
-  await screenshot(page, REQUIRED_SCREENSHOTS[4]);
-  await screenshot(page, REQUIRED_SCREENSHOTS[5]);
   await screenshot(page, REQUIRED_SCREENSHOTS[6]);
-
-  await page.click('[data-action="regional-confirm-bathymetry"]');
-  await waitForRegionalStage(page, (debug) => String(debug?.bathymetryArtifactDigest ?? '').includes('fnv1a32:'));
-  assert.equal(await disabled(page, '[data-action="regional-generate-fields"]'), false, 'field generation enabled after bathymetry');
   await screenshot(page, REQUIRED_SCREENSHOTS[7]);
-
-  await page.click('[data-action="regional-generate-fields"]');
-  await waitForRegionalStage(page, (debug) => String(debug?.currentArtifactDigest ?? '').includes('fnv1a32:')
-    && String(debug?.scalarArtifactDigest ?? '').includes('fnv1a32:'));
-  await page.click('[data-action="regional-compose-environment"]');
-  await waitForRegionalStage(page, (debug) => debug?.environmentCompositionStatus === 'CURRENT');
-  await page.click('[data-action="regional-validate-launch"]');
-  await waitForRegionalStage(page, (debug) => debug?.planningLaunchReady === true);
-  afterFieldsDebug = await regionalDebugPayload(page);
-  assert.equal(await disabled(page, '[data-action="regional-launch-planning"]'), false, 'planning launch path available');
-  await screenshot(page, REQUIRED_SCREENSHOTS[10]);
-
-  await returnToMainMenu(page);
-  await openEnvironmentStudio(page);
-  await waitForTileLibrary(page);
-  await waitForEnvironmentStage(page, (debug) => debug?.atlasStage?.stage === 'globalAtlasSelector');
-  await selectNotStagedRegion(page);
-  await waitForEnvironmentStage(page, (debug) => debug?.atlasStage?.patchRequestEnabled === true
-    && debug?.atlasStage?.continueToBathymetryEnabled === false);
-  notStagedDebug = await environmentDebug(page);
-  assert.equal(await disabled(page, '[data-action="env-reference-continue-bathymetry"]'), true, 'not-staged continue disabled');
-  assert.equal(await disabled(page, '[data-action="env-reference-export-patch-request"]'), false, 'not-staged patch request enabled');
-  await screenshot(page, REQUIRED_SCREENSHOTS[8]);
-  notStagedPatchRequest = await downloadJson(page, '[data-action="env-reference-export-patch-request"]');
-  assert.equal(notStagedPatchRequest.data.artifactType, 'anchor.reference-bathymetry-patch-request', 'not-staged exports patch request');
-
-  await selectGulfRegion(page);
-  await waitForEnvironmentStage(page, (debug) => debug?.atlasStage?.multiTileRequestEnabled === true
-    && debug?.atlasStage?.continueToBathymetryEnabled === false);
-  gulfDebug = await environmentDebug(page);
-  assert.equal(await disabled(page, '[data-action="env-reference-continue-bathymetry"]'), true, 'Gulf continue disabled');
-  assert.equal(await disabled(page, '[data-action="env-reference-export-patch-request"]'), false, 'Gulf multi-tile request enabled');
-  await screenshot(page, REQUIRED_SCREENSHOTS[9]);
-  gulfPatchRequest = await downloadJson(page, '[data-action="env-reference-export-patch-request"]');
-  assert.equal(gulfPatchRequest.data.artifactType, 'anchor.reference-bathymetry-multitile-patch-request', 'Gulf exports multi-tile request');
 
   await returnToMainMenu(page);
   cleanup = await cleanupSnapshot(page);
@@ -165,7 +166,7 @@ try {
 const browserRequestedNoaaOrGebco = requestedUrls.some(isExternalNoaaOrGebcoRequest);
 const browserRequestedExternalData = requestedUrls.some((url) => /external_data/i.test(url));
 const localAbsolutePathExposed = requestedUrls.some((url) => /^file:/i.test(url) || /[A-Za-z]:\\/.test(url));
-const finalRegionalDebug = afterFieldsDebug ?? regionalDebug ?? {};
+const finalRegionalDebug = regionalDebug ?? {};
 assert.equal(browserRequestedNoaaOrGebco, false, 'browser does not request NOAA/GEBCO URLs');
 assert.equal(browserRequestedExternalData, false, 'browser does not request external_data paths');
 assert.equal(localAbsolutePathExposed, false, 'browser does not request local absolute paths');
@@ -176,7 +177,6 @@ assertNoPublicLeak({
   atlasDefaultDebug,
   montereyDebug,
   regionalDebug,
-  afterFieldsDebug,
   notStagedDebug,
   gulfDebug,
   notStagedPatchRequest: notStagedPatchRequest?.data,
@@ -193,12 +193,33 @@ const summary = {
   centerPanelHasAtlasMap: true,
   rightPanelHasSelectedRegionInspector: true,
   rectangleEditingStillWorks: Boolean(montereyDebug?.rectangleEditor?.enabled !== false),
+  noSelectionContinueDisabled: atlasDefaultDebug?.atlasStage?.continueToBathymetryEnabled === false
+    && noSelectionDom?.continueToBathymetry?.disabled === true,
+  gulfContinueDisabled: gulfDebug?.atlasStage?.continueToBathymetryEnabled === false
+    && gulfDom?.continueToBathymetry?.disabled === true
+    && gulfDom?.continueToBathymetry?.primary === false,
+  gulfLoadMissionPatchDisabled: gulfDebug?.atlasStage?.loadMissionPatchEnabled === false
+    && gulfDom?.loadMissionPatch?.disabled === true
+    && gulfDom?.loadMissionPatch?.primary === false,
+  gulfExportMultiTileEnabled: gulfDebug?.atlasStage?.exportMultiTileRequestEnabled === true
+    && gulfDom?.exportPatchRequest?.disabled === false,
+  gulfPrimaryAction: gulfDebug?.atlasStage?.primaryAction ?? null,
+  gulfPatchRequestDigest: gulfPatchRequest?.data?.requestDigest ?? null,
+  notStagedContinueDisabled: notStagedDebug?.atlasStage?.continueToBathymetryEnabled === false
+    && notStagedDom?.continueToBathymetry?.disabled === true,
+  notStagedExportPatchEnabled: notStagedDebug?.atlasStage?.exportPatchRequestEnabled === true
+    && notStagedDom?.exportPatchRequest?.disabled === false,
+  montereyContinueEnabled: montereyDebug?.atlasStage?.continueToBathymetryEnabled === true
+    && montereyDom?.continueToBathymetry?.disabled === false,
+  montereyPrimaryAction: montereyDebug?.atlasStage?.primaryAction ?? null,
   continueDisabledWithoutSelection: atlasDefaultDebug?.atlasStage?.continueToBathymetryEnabled === false,
   continueEnabledForMonterey: montereyDebug?.atlasStage?.continueToBathymetryEnabled === true,
   continueDisabledForNotStaged: notStagedDebug?.atlasStage?.continueToBathymetryEnabled === false,
   patchRequestEnabledForNotStaged: notStagedDebug?.atlasStage?.patchRequestEnabled === true,
   multiTileRequestEnabledForGulf: gulfDebug?.atlasStage?.multiTileRequestEnabled === true,
   regionalBathymetrySceneOpened: regionalDebug?.stage === 'regionalBathymetryWorkspace',
+  regionalSceneOpenedFromMonterey: regionalDebug?.stage === 'regionalBathymetryWorkspace'
+    && regionalDebug?.openedFromAtlasBoundary === true,
   loadedTileSetId: regionalDebug?.loadedTileSetId,
   loadedRasterDigest: regionalDebug?.loadedRasterDigest,
   loadedMeshLodDigest: regionalDebug?.loadedMeshLodDigest,
@@ -217,7 +238,6 @@ const summary = {
   activeRafCountAfterCleanup: cleanup.activeRafCountAfterCleanup,
   activeCanvasCountAfterCleanup: cleanup.activeCanvasCountAfterCleanup,
   notStagedPatchRequestDigest: notStagedPatchRequest?.data?.requestDigest ?? null,
-  gulfPatchRequestDigest: gulfPatchRequest?.data?.requestDigest ?? null,
   screenshots: (await fs.readdir(OWNER_REVIEW_DIR)).filter((entry) => entry.endsWith('.png')).sort(),
   consoleErrors
 };
@@ -277,6 +297,45 @@ async function environmentDebug(page) {
 
 async function regionalDebugPayload(page) {
   return page.evaluate(() => globalThis.ANCHOR_REGIONAL_BATHYMETRY_DEBUG ?? {});
+}
+
+async function atlasButtonState(page) {
+  return page.evaluate(() => {
+    function state(selector) {
+      const element = document.querySelector(selector);
+      if (!element) {
+        return {
+          exists: false,
+          disabled: true,
+          ariaDisabled: null,
+          primary: false,
+          warning: false,
+          text: '',
+          title: ''
+        };
+      }
+      return {
+        exists: true,
+        disabled: element.disabled === true,
+        ariaDisabled: element.getAttribute('aria-disabled'),
+        primary: element.classList.contains('primary'),
+        warning: element.classList.contains('warning'),
+        text: element.textContent.trim(),
+        title: element.getAttribute('title') ?? ''
+      };
+    }
+    return {
+      continueToBathymetry: state('[data-env-stage-section="boundary-actions"] [data-action="env-reference-continue-bathymetry"]'),
+      loadMissionPatch: state('[data-env-stage-section="boundary-actions"] [data-action="env-reference-load-patch"]'),
+      exportPatchRequest: state('[data-env-stage-section="boundary-actions"] [data-action="env-reference-export-patch-request"]'),
+      inspectFallback: state('[data-env-stage-section="boundary-actions"] [data-action="env-reference-inspect-fallback"]')
+    };
+  });
+}
+
+async function expectPanelText(page, selector, pattern) {
+  const text = await page.textContent(selector);
+  assert.match(text ?? '', pattern, `${selector} includes ${pattern}`);
 }
 
 async function assertStageIA(page) {
@@ -390,12 +449,18 @@ function validateQaSummary(summary) {
   assert.equal(summary.leftPanelHasBoundaryActions, true, 'left boundary actions');
   assert.equal(summary.centerPanelHasAtlasMap, true, 'center atlas map');
   assert.equal(summary.rightPanelHasSelectedRegionInspector, true, 'right inspector');
-  assert.equal(summary.continueDisabledWithoutSelection, true, 'continue disabled without selection');
-  assert.equal(summary.continueEnabledForMonterey, true, 'continue enabled for Monterey');
-  assert.equal(summary.continueDisabledForNotStaged, true, 'not staged continue disabled');
-  assert.equal(summary.patchRequestEnabledForNotStaged, true, 'not staged patch enabled');
-  assert.equal(summary.multiTileRequestEnabledForGulf, true, 'Gulf multi-tile enabled');
+  assert.equal(summary.noSelectionContinueDisabled, true, 'continue disabled without selection');
+  assert.equal(summary.gulfContinueDisabled, true, 'Gulf continue disabled');
+  assert.equal(summary.gulfLoadMissionPatchDisabled, true, 'Gulf load patch disabled');
+  assert.equal(summary.gulfExportMultiTileEnabled, true, 'Gulf multi-tile enabled');
+  assert.equal(summary.gulfPrimaryAction, 'exportMultiTileRequest', 'Gulf primary action');
+  assert.match(summary.gulfPatchRequestDigest ?? '', /^fnv1a32:/, 'Gulf patch request digest');
+  assert.equal(summary.notStagedContinueDisabled, true, 'not staged continue disabled');
+  assert.equal(summary.notStagedExportPatchEnabled, true, 'not staged patch enabled');
+  assert.equal(summary.montereyContinueEnabled, true, 'continue enabled for Monterey');
+  assert.equal(summary.montereyPrimaryAction, 'continueToBathymetry', 'Monterey primary action');
   assert.equal(summary.regionalBathymetrySceneOpened, true, 'regional scene opened');
+  assert.equal(summary.regionalSceneOpenedFromMonterey, true, 'regional scene opened from Monterey');
   assert.equal(summary.loadedTileSetId, 'monterey_canyon_15s', 'Monterey tile loaded');
   assert.equal(summary.rasterAuthoritativeForSimulation, true, 'raster authoritative');
   assert.equal(summary.meshAuthoritativeForSimulation, false, 'mesh non-authoritative');

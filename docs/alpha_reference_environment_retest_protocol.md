@@ -20,7 +20,7 @@ Workflow path:
 
 Product Hub -> Simulation Lab -> Environment Studio -> Global Reference Bathymetry Atlas -> verify hosted tile-library status -> draw an operational window -> move it by dragging inside the rectangle -> resize it from an edge and a corner -> verify bounds/budget sync -> select Monterey Canyon mission-ready overlay -> confirm mesh LOD is available and non-authoritative -> Continue to 3D Bathymetry -> Regional 3D Bathymetry Workspace -> Generate 3D Bathymetry -> Generate Currents & Science Fields -> Compose Environment Artifact -> Review Launch Warnings -> Launch to Planning -> Place waypoints -> Execute Mission -> Debrief -> Export Public Benchmark Bundle -> return to atlas -> select Gulf Segment -> verify requestOnly / multi-tile request behavior -> export multi-tile patch request
 
-The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests. The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the app-hosted ETOPO 2022 15 arc-second Monterey Canyon fixture.
+The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Continue to 3D Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Request-only and Gulf-scale regions route to patch request or multi-tile request export instead. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests. The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the app-hosted ETOPO 2022 15 arc-second Monterey Canyon fixture.
 
 The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts staged tile artifacts under `assets/reference_bathymetry/`; raw source data remains outside the app under ignored local preprocessing paths. Mesh LODs are visualization and inspection artifacts only. The raster/grid bathymetry artifact remains authoritative for sampling and environment generation.
 
@@ -33,22 +33,23 @@ The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts st
 7. Verify hosted tile-library status.
 8. Select Monterey Canyon mission-ready hosted tile overlay.
 9. Confirm mesh LOD is available and non-authoritative.
-10. Load Mission Patch.
-11. Generate 3D Bathymetry.
-12. Generate Currents & Science Fields.
-13. Compose Environment Artifact.
-14. Review Launch Warnings.
-15. Launch to Planning.
-16. Inspect environment identity and claim boundary.
-17. Place waypoints.
-18. Execute Mission.
-19. Reach Debrief.
-20. Export Public Benchmark Bundle.
-21. Return to the Global Reference Bathymetry Atlas.
-22. Select Gulf Segment.
-23. Verify requestOnly / multi-tile request behavior.
-24. Export multi-tile patch request.
-25. Export diagnostic feedback bundle if confused or blocked.
+10. Continue to 3D Bathymetry.
+11. Confirm the Regional 3D Bathymetry Workspace opens.
+12. Generate 3D Bathymetry.
+13. Generate Currents & Science Fields.
+14. Compose Environment Artifact.
+15. Review Launch Warnings.
+16. Launch to Planning.
+17. Inspect environment identity and claim boundary.
+18. Place waypoints.
+19. Execute Mission.
+20. Reach Debrief.
+21. Export Public Benchmark Bundle.
+22. Return to the Global Reference Bathymetry Atlas.
+23. Select Gulf Segment.
+24. Verify requestOnly / multi-tile request behavior and that Continue to 3D Bathymetry is disabled.
+25. Export multi-tile patch request.
+26. Export diagnostic feedback bundle if confused or blocked.
 
 ## Questions For Testers
 
