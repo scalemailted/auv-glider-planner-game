@@ -14,7 +14,7 @@ class Solver():
         self.deploymentCells = world["deploymentAgents"][0]["allowedCells"]
         self.scoring = world["scoring"]
         self.terrain = world["terrain"]
-        self.timeLimit = 15
+        self.timeLimit = 12
         self.paths = []
         self.frames = world["level"]["layers"]["truth"]["frames"]
         self.preparedFrames = {}
@@ -24,12 +24,13 @@ class Solver():
         self.scanStrict = 0.001
         self.priorityTargets = world["packet"]["planningData"]["priorityTargets"]
         self.stars = []
+        self.hazardPenalty = world["packet"]["mission"]["scoring"]["hazardPenalty"]/100
+
         for index, star in enumerate(self.priorityTargets):
             self.stars.append({index:{}})               
             self.stars[index].update({"value":star["value"]/10, "frames":star["frames"], "collected":False})
             
     def find_best_path(self):
-        print("hi")
         self.prepare_frames()
         self.deployment_canidates()
         self.update_paths()
@@ -46,19 +47,13 @@ class Solver():
         self.nowCurrent = self.preparedFrames[roundedTime]["current"]
 
     def update_paths(self):
-        # pathLength = len(self.paths)
         for i, path in enumerate(self.paths):
-            # print(self.paths[-1])
             scans = round(0 if path[1] < self.scanStrict*0.2 else self.scanMax*0.2 if path[1] < self.scanStrict*0.4 else self.scanMax*0.4 if path[1] < self.scanStrict*0.6 else self.scanMax*0.6 if path[1] < 0.9*self.scanStrict else self.scanMax*0.8 if path[1] < self.scanStrict else self.scanMax)
             if not isinstance(path[0][0], tuple):
-                # print(path[0])
                 temp1 = path[0].pop(0)
                 temp2 = path[0].pop(0)
                 path[0].insert(0, (temp1, temp2))
-                # print(path[0])
             self.make_canidates(path[0][-1], path[0], scans, path[1]*path[2], i, path[2], path[3])
-        # self.paths = self.paths[pathLength:]
-        # print(self.paths)
         self.paths.sort(key= lambda item: item[1]*item[3])
         print(self.paths[-1])
         print(self.paths[-1][1] * self.paths[-1][3])
@@ -69,19 +64,16 @@ class Solver():
             self.make_canidates(tupDeploymentCell, (tupDeploymentCell), 5)
 
     def make_canidates(self, cell, cells, num, value=0, destroyIndex=None, time=0, Olddistance=0):
-        # print("1")
         traversedCells = []
         used = cells
         potential = []
-        # print(cells)
         if isinstance(cells, list):
-            # print(cells)
             for index, (x,y) in enumerate(cells):
                 try:
                     for traversedX, traversedY in self.bresenham_line(x, y, cells[index+1][0], cells[index+1][1]):
                         traversedCells.append((traversedX, traversedY))
                 except IndexError:
-                    ""
+                    pass
         for y in range(len(self.nowRoi)):
             for x in range(len(self.nowRoi[y])):
                 if self.terrain[y][x] != 1 and self.hazards[y][x] != 1 and used.count((x,y)) == 0 and (x,y) != cell and ([cell["x"] for cell in self.deploymentCells].count(x) <= 1 and [cell["y"] for cell in self.deploymentCells].count(y) <= 1):
@@ -90,9 +82,7 @@ class Solver():
                         Thistime = time
                         Thistime += distance
                         distance += Olddistance
-                        # print(distance)
-                        if Thistime < 12:
-                            # print(Thistime)
+                        if Thistime < self.timeLimit:
                             potential.append([(x,y), scored/length, Thistime, distance])
         potential.sort(reverse=True, key=lambda item: item[1])
         final = potential[:(num + 1)]
@@ -121,7 +111,6 @@ class Solver():
         liveDistance = timed
         energy_cost = 0
         length = 0
-        antiAliasTraversedCells = []
         for cellX, cellY in self.bresenham_line(startCell[0], startCell[1], ratedCell[0], ratedCell[1]):
             length += 1
             if startCell != (cellX, cellY):
@@ -132,14 +121,13 @@ class Solver():
                 dirY = (1 if cellY < oldY else -1) * ((cellY - oldY)/total)
                 energy_cost += self.find_energy_cost(dirX, dirY, (oldX, oldY))
                 distance+=tempdist
-                # print(liveDistance)
-                self.update_frames(liveDistance if liveDistance < 12.5 else 12)
+                self.update_frames(liveDistance if liveDistance < self.timeLimit+0.5 else self.timeLimit)
             if cellX != -1:
                 if traversedCells.count((cellX, cellY)) != 0:
                     if self.hazards[cellX][cellY] != 1:
                         score += self.nowRoi[cellY][cellX]
                     else:
-                        score += (self.nowRoi[cellY][cellX] - 1.5)
+                        score += (self.nowRoi[cellY][cellX] - self.hazardPenalty)
             else:
                 return -1, -1, -1
             score += self.checkStar((cellX, cellY), liveDistance)
@@ -183,14 +171,11 @@ class Solver():
                 if x0 == x1: break
                 if e2+dy < ed: 
                     yield x0, y0+sy
-                    # yield x0, y0-sy
                 err, x0 = err - dy, x0 + sx
             if 2*e2 <= dy:
                  if y0 == y1: break
                  if dx-e2 < ed: 
                       yield x2+sx, y0
-                    #   yield x0-sx, y0
-                    #   print("t")
                  err, y0 = err+dx, y0+sy
     def bresenham_line(self, x0, y0, x1, y1):
         dx = abs(x1 - x0)
