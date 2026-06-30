@@ -684,6 +684,39 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-030",
+      "title": "Environment Studio needs a distinct atlas staging scene and local bathymetry scene.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Reference Bathymetry Atlas",
+      "summary": "Alpha review clarified the desired Environment Studio workflow. The global atlas should be a staging/setup scene for selecting an operational boundary window. Once a staged hosted tile exists for that boundary, the user should continue into a local/regional 3D bathymetry scene defined by the selected bounds. Unstaged regions should route to patch-request workflows.",
+      "decision": "Accepted for ENV-STAGING-SCENE-R1.",
+      "proposedPhase": "ENV-STAGING-SCENE-R1",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/env-staging-scene-r1/qa-summary.json",
+        "tools/js/smoke_environment_studio_stage_contract.mjs",
+        "tools/js/smoke_regional_bathymetry_scene_contract.mjs",
+        "tools/js/audit_environment_studio_stage_flow.mjs"
+      ],
+      "acceptanceCriteria": [
+        "Environment Studio opens to a Global Atlas Staging Scene with tools/actions on the left, atlas map in the center, and selected-region inspector on the right.",
+        "Continue to 3D Bathymetry is enabled only for hosted mission-ready tile selections.",
+        "Continue opens RegionalBathymetryScene with selected bounds, tile set metadata, raster digest, and non-authoritative mesh LOD metadata.",
+        "Unstaged regions export patch requests, and Gulf-scale regions export multi-tile patch requests without scene transition.",
+        "Raster/grid bathymetry remains authoritative, mesh LODs remain visualization-only, and browser runtime does not fetch NOAA/GEBCO or expose raw external_data paths."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

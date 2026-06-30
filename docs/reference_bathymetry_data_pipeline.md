@@ -8,6 +8,10 @@ ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The 
 
 The raster/grid artifact remains authoritative for bathymetry sampling and environment generation. Derived low-poly meshes are visualization/inspection artifacts only.
 
+Environment Studio is a staged workflow. The Global Atlas Staging Scene is used to select and inspect an operational boundary window. If the selected window matches an app-hosted mission-ready tile set, the user can continue to the Regional 3D Bathymetry Workspace. If the region is not staged, the user exports a patch request or multi-tile patch request.
+
+The regional 3D mesh is a decimated visualization artifact. The reference raster/grid remains authoritative for bathymetry sampling, masks, environment generation, simulation, and benchmark export.
+
 ## Commands
 
 ```powershell
@@ -92,7 +96,7 @@ The preserved fallback fixture is:
 - shape: 90 columns x 72 rows
 - bounds: west -123.0, east -121.5, south 36.0, north 37.2
 
-Environment Studio opens to the Global Atlas Selector, supports deep zoom, direct rectangle editing, and typed operational-window editing, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users load a staged patch into the Regional Patch Workspace before generating regional bathymetry. If a selected region is not staged or is too large for live Alpha generation, the browser exports an `anchor.reference-bathymetry-patch-request` or `anchor.reference-bathymetry-multitile-patch-request` with typed bounds, approximate size, local commands, and boundary-budget metadata instead of generating fake reference data.
+Environment Studio opens to the Global Atlas Staging Scene, supports deep zoom, direct rectangle editing, and typed operational-window editing, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users continue from a staged mission-ready tile into the Regional 3D Bathymetry Workspace before confirming bathymetry and generating fields. If a selected region is not staged or is too large for live Alpha generation, the browser exports an `anchor.reference-bathymetry-patch-request` or `anchor.reference-bathymetry-multitile-patch-request` with typed bounds, approximate size, local commands, and boundary-budget metadata instead of generating fake reference data.
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 

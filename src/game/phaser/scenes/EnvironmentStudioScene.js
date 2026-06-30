@@ -91,7 +91,9 @@ import {
 } from '../../../core/editor/ReferenceBathymetryAtlas.js';
 import {
   REFERENCE_BATHYMETRY_TILE_LIBRARY_MANIFEST_PATH,
+  loadMeshLod,
   loadReferenceTileLibrary,
+  loadTileSet,
   referenceTileLibraryDebugState,
   referenceTileLibraryFixtures
 } from '../../../core/editor/ReferenceBathymetryTileLibrary.js';
@@ -117,7 +119,7 @@ import {
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
-export const ENVIRONMENT_STUDIO_SCENE_VERSION = 'environment-studio-scene-r1-3';
+export const ENVIRONMENT_STUDIO_SCENE_VERSION = 'environment-staging-scene-r1';
 
 function createReferenceAtlasPerfState() {
   return {
@@ -166,6 +168,151 @@ function createReferenceAtlasRectangleEditorState() {
     lastResizePreservedOppositeEdge: true,
     lastBudgetStatus: null,
     lastPatchAvailability: null
+  };
+}
+
+export function referenceAtlasStageActionState(session = {}) {
+  const selectedBounds = session.selectedReferenceWindow?.bounds ?? null;
+  const selected = Boolean(selectedBounds);
+  const availability = session.selectedReferenceAvailability ?? null;
+  const boundaryBudget = session.selectedReferenceBoundaryBudget ?? availability?.boundaryBudget ?? null;
+  const matchedFixture = availability?.matchedFixture ?? null;
+  const matchedFixtureRole = availability?.matchedFixtureRole ?? matchedFixture?.role ?? null;
+  const tileSetId = matchedFixture?.tileLibraryTileSetId
+    ?? matchedFixture?.tileSetId
+    ?? availability?.matchedTileSetId
+    ?? availability?.matchedFixtureId
+    ?? null;
+  const tileSetRole = matchedFixture?.tileLibraryRole
+    ?? (matchedFixtureRole === 'missionReadyPatch'
+        ? 'missionReadyTileSet'
+        : matchedFixtureRole === 'lowResolutionReferencePatch'
+          ? 'lowResolutionFallbackTileSet'
+          : matchedFixture?.coverageRole ?? null);
+  const multiTileRequired = boundaryBudget?.budgetStatus === 'MULTI_TILE_REQUIRED'
+    || boundaryBudget?.multiTileRecommended === true
+    || boundaryBudget?.recommendedAction === 'exportMultiTilePatchRequest';
+  const blocked = boundaryBudget?.budgetStatus === 'BLOCKED';
+  const missionReadyTileSet = selected
+    && availability?.available === true
+    && (matchedFixtureRole === 'missionReadyPatch' || tileSetRole === 'missionReadyTileSet')
+    && Boolean(tileSetId);
+  const lowResolutionFallback = selected
+    && availability?.available === true
+    && !missionReadyTileSet
+    && (matchedFixtureRole === 'lowResolutionReferencePatch' || tileSetRole === 'lowResolutionFallbackTileSet');
+  const continueToBathymetryEnabled = missionReadyTileSet && !multiTileRequired && !blocked;
+  const multiTileRequestEnabled = selected
+    && multiTileRequired
+    && boundaryBudget?.patchRequestAllowed !== false;
+  const patchRequestEnabled = selected
+    && !continueToBathymetryEnabled
+    && !multiTileRequestEnabled
+    && boundaryBudget?.patchRequestAllowed !== false
+    && (availability?.available !== true || blocked || boundaryBudget?.recommendedAction === 'exportPatchRequest');
+  const inspectFallbackEnabled = lowResolutionFallback && !multiTileRequired;
+  let selectedRegionNextAction = 'selectBoundary';
+  if (continueToBathymetryEnabled) selectedRegionNextAction = 'continueTo3DBathymetry';
+  else if (multiTileRequestEnabled) selectedRegionNextAction = 'exportMultiTilePatchRequest';
+  else if (patchRequestEnabled) selectedRegionNextAction = 'exportPatchRequest';
+  else if (inspectFallbackEnabled) selectedRegionNextAction = 'inspectLowResolutionFallback';
+  else if (blocked) selectedRegionNextAction = 'reduceWindowOrExportPatchRequest';
+  else if (selected) selectedRegionNextAction = 'inspectSelection';
+  return {
+    stage: 'globalAtlasSelector',
+    selected,
+    selectedBounds,
+    selectedRegionAvailability: compactReferenceAtlasAvailability(availability),
+    selectedRegionNextAction,
+    tileSetId,
+    tileSetRole,
+    matchedFixtureId: availability?.matchedFixtureId ?? matchedFixture?.fixtureId ?? null,
+    matchedFixtureRole,
+    boundaryBudgetStatus: boundaryBudget?.budgetStatus ?? null,
+    continueToBathymetryEnabled,
+    patchRequestEnabled,
+    multiTileRequestEnabled,
+    inspectFallbackEnabled,
+    loadPatchEnabled: missionReadyTileSet && !blocked && !multiTileRequired
+  };
+}
+
+function compactReferenceAtlasAvailability(availability = null) {
+  if (!availability) return null;
+  const matchedFixture = availability.matchedFixture ?? null;
+  return {
+    status: availability.status ?? (availability.available ? 'available' : 'notStaged'),
+    available: availability.available === true,
+    matchedFixtureId: availability.matchedFixtureId ?? matchedFixture?.fixtureId ?? null,
+    matchedFixtureRole: availability.matchedFixtureRole ?? matchedFixture?.role ?? null,
+    tileSetId: matchedFixture?.tileLibraryTileSetId ?? matchedFixture?.tileSetId ?? null,
+    tileSetRole: matchedFixture?.tileLibraryRole ?? null,
+    sourceDataset: matchedFixture?.sourceDataset ?? null,
+    sourceResolution: matchedFixture?.sourceResolution ?? null,
+    rasterDigest: matchedFixture?.digest ?? matchedFixture?.rasterDigest ?? null,
+    meshLodCount: Array.isArray(matchedFixture?.meshLods) ? matchedFixture.meshLods.length : 0,
+    coverageStatus: availability.coverageStatus ?? matchedFixture?.coverageRole ?? null,
+    recommendedAction: availability.recommendedAction ?? availability.boundaryBudget?.recommendedAction ?? null
+  };
+}
+
+function referenceAtlasStageDebugPayload(session = {}) {
+  return referenceAtlasStageActionState(session);
+}
+
+function cloneJsonForSceneStart(value) {
+  if (value == null) return value;
+  try {
+    return globalThis.structuredClone ? globalThis.structuredClone(value) : JSON.parse(JSON.stringify(value));
+  } catch {
+    return JSON.parse(JSON.stringify(value));
+  }
+}
+
+function preferredMeshLodDescriptor(meshLods = []) {
+  const lods = Array.isArray(meshLods) ? meshLods : [];
+  return lods.find((entry) => entry.lod === 'medium')
+    ?? lods.find((entry) => entry.lod === 'coarse')
+    ?? lods[0]
+    ?? null;
+}
+
+function compactTileSetForSceneStart(tileSet = {}) {
+  const metadata = tileSet.metadata ?? tileSet;
+  return {
+    tileSetId: tileSet.tileSetId ?? metadata.tileSetId ?? null,
+    label: tileSet.label ?? metadata.label ?? null,
+    role: tileSet.role ?? metadata.role ?? null,
+    sourceDataset: tileSet.sourceDataset ?? metadata.sourceDataset ?? null,
+    provider: tileSet.provider ?? metadata.provider ?? null,
+    sourceVariant: tileSet.sourceVariant ?? metadata.sourceVariant ?? null,
+    sourceResolution: tileSet.sourceResolution ?? metadata.sourceResolution ?? null,
+    actualRasterResolutionArcSeconds: tileSet.actualRasterResolutionArcSeconds ?? metadata.actualRasterResolutionArcSeconds ?? null,
+    bounds: cloneJsonForSceneStart(tileSet.bounds ?? metadata.bounds ?? null),
+    rasterTiles: cloneJsonForSceneStart(tileSet.rasterTiles ?? metadata.rasterTiles ?? null),
+    meshLods: cloneJsonForSceneStart(tileSet.meshLods ?? metadata.meshLods ?? []),
+    claimBoundary: cloneJsonForSceneStart(tileSet.claimBoundary ?? metadata.claimBoundary ?? null),
+    digests: cloneJsonForSceneStart(tileSet.digests ?? metadata.digests ?? null),
+    digest: tileSet.digest ?? metadata.digest ?? null,
+    hiddenTruthExposed: false,
+    externalRuntimeFetchRequired: false,
+    rawExternalDataPathsIncluded: false
+  };
+}
+
+function compactMeshLodForSceneStart(meshArtifact = {}, descriptor = {}) {
+  return {
+    artifactType: meshArtifact.artifactType ?? 'anchor.reference-bathymetry-mesh-lod',
+    lod: meshArtifact.lod ?? descriptor.lod ?? null,
+    path: descriptor.path ?? null,
+    digest: descriptor.digest ?? meshArtifact.digest ?? null,
+    derivedFromRasterDigest: meshArtifact.derivedFromRasterDigest ?? null,
+    bounds: cloneJsonForSceneStart(meshArtifact.bounds ?? null),
+    meshRows: Number(meshArtifact.meshRows ?? descriptor.meshRows ?? 0),
+    meshColumns: Number(meshArtifact.meshColumns ?? descriptor.meshColumns ?? 0),
+    vertexCount: Number(meshArtifact.vertexCount ?? descriptor.vertexCount ?? 0),
+    triangleCount: Number(meshArtifact.triangleCount ?? descriptor.triangleCount ?? 0),
+    isAuthoritativeForSimulation: false
   };
 }
 
@@ -1134,6 +1281,66 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.render();
   }
 
+  async continueToRegionalBathymetry() {
+    const actionState = referenceAtlasStageActionState(this.session);
+    if (!actionState.continueToBathymetryEnabled) {
+      this.statusMessage = actionState.selected
+        ? 'Continue to 3D Bathymetry is available only for hosted mission-ready tile selections.'
+        : 'Select a hosted mission-ready boundary before continuing to 3D bathymetry.';
+      this.lastError = actionState.multiTileRequestEnabled
+        ? REFERENCE_ATLAS_MULTITILE_MESSAGE
+        : actionState.patchRequestEnabled
+          ? 'This operational window is valid, but no app-hosted mission-ready tile is staged yet. Export a patch request.'
+          : null;
+      this.render();
+      return;
+    }
+    try {
+      const tileSetId = actionState.tileSetId;
+      const tileSet = await loadTileSet(tileSetId, { library: this.referenceTileLibrary });
+      const tileMetadata = compactTileSetForSceneStart(tileSet);
+      const meshDescriptor = preferredMeshLodDescriptor(tileSet.metadata?.meshLods ?? tileSet.meshLods ?? []);
+      let meshLodMetadata = meshDescriptor ? compactMeshLodForSceneStart({}, meshDescriptor) : null;
+      if (meshDescriptor?.lod) {
+        try {
+          const meshArtifact = await loadMeshLod(tileSetId, meshDescriptor.lod, { library: this.referenceTileLibrary });
+          meshLodMetadata = compactMeshLodForSceneStart(meshArtifact, meshDescriptor);
+        } catch (meshError) {
+          this.referenceTileLibraryWarning = `Mesh LOD metadata could not be loaded before transition: ${meshError?.message ?? String(meshError)}`;
+        }
+      }
+      this.scene.start('RegionalBathymetryScene', {
+        source: 'environmentStudioAtlas',
+        session: cloneJsonForSceneStart(this.session),
+        selectedBounds: cloneJsonForSceneStart(actionState.selectedBounds),
+        tileSetId,
+        tileSetRole: tileSet.role ?? actionState.tileSetRole,
+        rasterPath: tileSet.rasterTiles?.path ?? tileSet.metadata?.rasterTiles?.path ?? null,
+        rasterDigest: tileSet.rasterTiles?.digest ?? tileSet.metadata?.rasterTiles?.digest ?? tileSet.digests?.raster ?? null,
+        meshLodPath: meshDescriptor?.path ?? null,
+        meshLodDigest: meshDescriptor?.digest ?? null,
+        preferredMeshLod: meshDescriptor?.lod ?? 'medium',
+        tileSetMetadata: tileMetadata,
+        meshLodMetadata,
+        rasterAuthoritativeForSimulation: true,
+        meshAuthoritativeForSimulation: false
+      });
+    } catch (error) {
+      this.statusMessage = 'Could not open Regional 3D Bathymetry Workspace.';
+      this.lastError = error?.message ?? String(error);
+      this.render();
+    }
+  }
+
+  inspectLowResolutionFallback() {
+    const actionState = referenceAtlasStageActionState(this.session);
+    this.statusMessage = actionState.inspectFallbackEnabled
+      ? 'Low-resolution fallback is staged for inspection only. Continue to 3D Bathymetry requires a mission-ready hosted tile.'
+      : 'No low-resolution fallback is selected for inspection.';
+    this.lastError = actionState.inspectFallbackEnabled ? null : 'Select a low-resolution fallback region first.';
+    this.render();
+  }
+
   exportReferencePatchRequest() {
     const selectedBounds = this.session.selectedReferenceWindow?.bounds;
     const budget = this.session.selectedReferenceBoundaryBudget ?? this.session.selectedReferenceAvailability?.boundaryBudget ?? null;
@@ -1956,6 +2163,7 @@ export class EnvironmentStudioScene extends PhaserScene {
       rectangleEditor: this.referenceAtlasRectangleEditorDebugPayload(),
       generationBudget: debug.generationBudget ?? this.session.selectedReferenceGenerationBudget ?? this.session.selectedReferenceBoundaryBudget ?? null,
       referenceAtlasMaxZoom: REFERENCE_ATLAS_MAX_ZOOM,
+      atlasStage: referenceAtlasStageDebugPayload(this.session),
       lastPatchRequestType: this.lastPatchRequestType,
       lastPatchRequestDigest: this.lastPatchRequestDigest,
       oversizeGenerationBlockedCount: this.oversizeGenerationBlockedCount,
@@ -2049,7 +2257,17 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
   const multiTileRequired = boundaryBudget?.budgetStatus === 'MULTI_TILE_REQUIRED' || boundaryBudget?.multiTileRecommended === true;
   const canLoadPatch = availability?.available === true && generationBudget?.generationAllowed !== false;
   const canExportRequest = Boolean(selected && boundaryBudget?.patchRequestAllowed !== false && (!availability?.available || budgetBlocked || multiTileRequired));
+  const atlasStageAction = referenceAtlasStageActionState(session);
   const exportRequestLabel = multiTileRequired ? 'Export Multi-Tile Patch Request' : 'Export Patch Request';
+  const nextStepDescription = atlasStageAction.selectedRegionNextAction === 'continueTo3DBathymetry'
+    ? 'Hosted mission-ready tile available. Continue into the local 3D bathymetry workspace.'
+    : atlasStageAction.selectedRegionNextAction === 'exportMultiTilePatchRequest'
+      ? 'This Gulf-scale operational window is valid, but requires offline multi-tile preprocessing before browser loading.'
+      : atlasStageAction.selectedRegionNextAction === 'exportPatchRequest'
+        ? 'This operational window is valid, but no app-hosted mission-ready tile is staged yet.'
+        : atlasStageAction.selectedRegionNextAction === 'inspectLowResolutionFallback'
+          ? 'A staged low-resolution fallback exists for inspection, but it is not the mission-ready tile path.'
+          : 'Select a boundary or click a hosted patch to choose the next action.';
   const budgetStatusLabel = boundaryBudget?.budgetStatus ?? 'none selected';
   const budgetStatusMessage = boundaryBudget
     ? (multiTileRequired
@@ -2082,8 +2300,8 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
   return `
     <section class="console-header">
       <div class="console-kicker">Simulation Lab / Environment Studio</div>
-      <h1>Reference Bathymetry Atlas</h1>
-      <p>Select an operational lon/lat window from the global reference overview. Live generation is budget-gated separately from valid large-region selection.</p>
+      <h1>Global Reference Bathymetry Atlas</h1>
+      <p>Select an operational lon/lat window from the global reference overview. Continue to 3D bathymetry only when a hosted mission-ready tile is available.</p>
     </section>
     <section class="console-status">
       <span>Stage</span>
@@ -2092,8 +2310,9 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
     </section>
     ${scene.lastError ? `<section class="console-section" data-keep-title="true"><h2>Warning</h2><div class="hud-muted">${escapeHtml(scene.lastError)}</div></section>` : ''}
     ${scene.referenceTileLibraryWarning ? `<section class="console-section" data-keep-title="true"><h2>Tile Library</h2><div class="hud-muted">${escapeHtml(scene.referenceTileLibraryWarning)}</div></section>` : ''}
-    <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-studio-stage="globalAtlasSelector">
-      <h2>Bathymetry Source</h2>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-studio-stage="globalAtlasSelector" data-env-stage-section="reference-bathymetry-atlas">
+      <h2>Reference Bathymetry Atlas</h2>
+      <p class="hud-muted">Bathymetry Source: app-hosted static reference bathymetry atlas. The browser does not download NOAA/GEBCO data at runtime.</p>
       <label class="compact-field">
         Source Mode
         <select id="env-reference-source-mode" data-env-reference-source-mode>
@@ -2117,8 +2336,9 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         ${metricHtml('Atlas Digest', shortDigest(atlas.atlasDigest))}
       </div>
     </section>
-    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
-      <h2>Map Controls</h2>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-stage-section="atlas-tools">
+      <h2>Atlas Tools</h2>
+      <p class="hud-muted">Pan/select, draw a boundary, move or resize the selected boundary on the map, reset view, or focus the selected region.</p>
       <div class="environment-studio-camera-row" aria-label="Reference atlas view controls">
         <button type="button" data-env-reference-view-action="left">Pan Left</button>
         <button type="button" data-env-reference-view-action="right">Pan Right</button>
@@ -2129,12 +2349,14 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         <button type="button" data-env-reference-view-action="reset">Reset</button>
         <button type="button" data-action="env-reference-focus-patch" ${disabledAttr}>Focus Patch</button>
       </div>
+      <div class="console-kicker environment-studio-panel-kicker">Map Layers</div>
       <div class="environment-studio-camera-row" aria-label="Reference layer controls">
         ${REFERENCE_BATHYMETRY_LAYER_OPTIONS.map((layer) => `<button type="button" class="${layer.id === session.referenceLayer ? 'active' : ''}" data-env-reference-layer="${escapeAttr(layer.id)}">${escapeHtml(layer.label)}</button>`).join('')}
       </div>
     </section>
-    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
-      <h2>Region Selection</h2>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-stage-section="operational-window">
+      <h2>Operational Window</h2>
+      <p class="hud-muted">Region Selection controls define the operational boundary. Large regions remain selectable even when live browser generation is blocked.</p>
       <div class="environment-studio-camera-row" aria-label="Reference boundary controls">
         <button type="button" class="${scene.referenceBoundaryDrawing ? 'active' : ''}" data-action="env-reference-draw-boundary" ${disabledAttr}>Draw Bounding Box</button>
         <button type="button" data-action="env-reference-select-boundary" ${disabledAttr}>Select Monterey Patch</button>
@@ -2223,11 +2445,24 @@ function referenceAtlasConsoleHtml(scene, summary = {}) {
         </div>
       </details>
     </section>
-    <section class="console-section environment-studio-basic-panel" data-keep-title="true">
-      <h2>Actions</h2>
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-stage-section="boundary-actions">
+      <h2>Boundary Actions</h2>
+      <p class="hud-muted">${escapeHtml(nextStepDescription)}</p>
+      <button class="console-button primary" type="button" data-action="env-reference-continue-bathymetry" ${atlasStageAction.continueToBathymetryEnabled ? '' : 'disabled'}>Continue to 3D Bathymetry</button>
       <button class="console-button primary" type="button" data-action="env-reference-load-patch" ${canLoadPatch ? '' : 'disabled'}>Load Mission Patch</button>
       <button class="console-button secondary" type="button" data-action="env-reference-export-patch-request" ${canExportRequest ? '' : 'disabled'}>${escapeHtml(exportRequestLabel)}</button>
+      <button class="console-button secondary" type="button" data-action="env-reference-inspect-fallback" ${atlasStageAction.inspectFallbackEnabled ? '' : 'disabled'}>Inspect Low-Resolution Fallback</button>
       ${canExportRequest ? `<code>${escapeHtml(session.referencePatchRequest?.downloadCommand ?? session.referencePatchRequest?.downloadCommands?.[0] ?? '')}</code><code>${escapeHtml(session.referencePatchRequest?.preprocessCommand ?? session.referencePatchRequest?.preprocessCommands?.[0] ?? 'npm.cmd run preprocess:reference-bathy')}</code>` : ''}
+      <details class="environment-studio-collapsible">
+        <summary>Advanced</summary>
+        <div class="hud-muted">Dataset provenance, tile-library digests, claim boundary, and selected-region export remain browser-safe metadata. Runtime does not fetch NOAA/GEBCO or expose raw external_data paths.</div>
+        <div class="cell-inspector-metrics">
+          ${metricHtml('Tile set ID', atlasStageAction.tileSetId ?? 'n/a')}
+          ${metricHtml('Tile set role', atlasStageAction.tileSetRole ?? 'n/a')}
+          ${metricHtml('Next action', atlasStageAction.selectedRegionNextAction)}
+          ${metricHtml('Manifest digest', shortDigest(manifest.manifestDigest))}
+        </div>
+      </details>
       <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project</button>
       <label class="console-button secondary" for="env-studio-import-file">Import Project</label>
       <input id="env-studio-import-file" type="file" accept="application/json,.json" hidden data-env-studio-import />
@@ -2332,6 +2567,8 @@ function bindEnvironmentStudioReferenceAtlasControls(scene, root) {
     button.addEventListener('click', () => scene.adjustReferenceWindow(button.getAttribute('data-env-reference-window-action')));
   });
   root?.querySelector?.('[data-action="env-reference-load-patch"]')?.addEventListener('click', () => scene.loadSelectedReferencePatch());
+  root?.querySelector?.('[data-action="env-reference-continue-bathymetry"]')?.addEventListener('click', () => scene.continueToRegionalBathymetry());
+  root?.querySelector?.('[data-action="env-reference-inspect-fallback"]')?.addEventListener('click', () => scene.inspectLowResolutionFallback());
   root?.querySelectorAll?.('[data-action="env-reference-export-patch-request"]')?.forEach((button) => {
     button.addEventListener('click', () => scene.exportReferencePatchRequest());
   });
@@ -2358,7 +2595,7 @@ function referenceAtlasRightPanelHtml(session = {}) {
   if (!selected) {
     return `
       <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
-        <div class="console-kicker">Reference Atlas Summary</div>
+        <div class="console-kicker">Selected Operational Window</div>
         <h2>${escapeHtml(atlas.label ?? 'Reference Bathymetry Atlas')}</h2>
         <p class="hud-muted">${referenceAvailable ? 'Draw a bounding box or click an available patch. The overview is for region selection and patch availability, not mission-resolution bathymetry.' : 'Reference bathymetry generation is blocked because no preprocessed public fixture is available. The app is not displaying a placeholder as reference data.'}</p>
         <div class="cell-inspector-metrics">
@@ -2383,6 +2620,7 @@ function referenceAtlasRightPanelHtml(session = {}) {
     `;
   }
   const availability = session.selectedReferenceAvailability ?? selected.availability ?? {};
+  const atlasStageAction = referenceAtlasStageActionState(session);
   const loaded = session.loadedReferenceFixture ?? null;
   const stats = selected.sampledStats ?? {};
   const bounds = selected.bounds ?? {};
@@ -2400,6 +2638,24 @@ function referenceAtlasRightPanelHtml(session = {}) {
           ${metricHtml('Budget source grid', `${formatInteger(boundaryBudget.estimatedColumns)} x ${formatInteger(boundaryBudget.estimatedRows)}`)}
           ${metricHtml('Field samples', formatInteger(boundaryBudget.estimatedFieldSampleCount))}
         ` : '';
+  const nextStepLabel = atlasStageAction.selectedRegionNextAction === 'continueTo3DBathymetry'
+    ? 'Continue to 3D Bathymetry'
+    : atlasStageAction.selectedRegionNextAction === 'exportMultiTilePatchRequest'
+      ? 'Export Multi-Tile Patch Request'
+      : atlasStageAction.selectedRegionNextAction === 'inspectLowResolutionFallback'
+        ? 'Inspect Low-Resolution Fallback'
+        : atlasStageAction.selectedRegionNextAction === 'exportPatchRequest'
+          ? 'Export Patch Request'
+          : 'Inspect Selection';
+  const nextStepExplanation = atlasStageAction.selectedRegionNextAction === 'continueTo3DBathymetry'
+    ? 'A hosted mission-ready tile set is staged for this boundary and can be loaded into the Regional 3D Bathymetry Workspace.'
+    : atlasStageAction.selectedRegionNextAction === 'exportMultiTilePatchRequest'
+      ? 'This Gulf-scale operational window is valid, but requires offline multi-tile preprocessing before browser loading.'
+      : atlasStageAction.selectedRegionNextAction === 'inspectLowResolutionFallback'
+        ? 'A low-resolution fallback is staged for inspection, but it is not the mission-ready 3D bathymetry path.'
+        : atlasStageAction.selectedRegionNextAction === 'exportPatchRequest'
+          ? 'This operational window is valid, but no app-hosted mission-ready tile is staged yet.'
+          : 'Review the selected operational window and tile availability.';
   if (loaded) {
     return `
       <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
@@ -2427,18 +2683,27 @@ function referenceAtlasRightPanelHtml(session = {}) {
   }
   return `
     <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
-      <div class="console-kicker">Selected Atlas Region</div>
+      <div class="console-kicker">Selected Operational Window</div>
       <h2>${escapeHtml(availability.matchedFixtureId ?? 'Selected Atlas Region')}</h2>
-      <p class="hud-muted">${boundaryBudget?.budgetStatus === 'MULTI_TILE_REQUIRED' ? 'This is a valid large operational window. Export a multi-tile patch request and preprocess it offline before generation.' : availability.available ? 'This region overlaps a staged reference fixture. Load it before generating regional bathymetry.' : 'This region is not staged. Export a patch request and preprocess it offline before use.'}</p>
+      <p class="hud-muted">${escapeHtml(nextStepExplanation)}</p>
       <div class="cell-inspector-metrics">
         ${metricHtml('Patch Digest', shortDigest(selected.patchDigest))}
         ${metricHtml('West / East lon', `${formatNumber(bounds.westLon)} / ${formatNumber(bounds.eastLon)}`)}
         ${metricHtml('South / North lat', `${formatNumber(bounds.southLat)} / ${formatNumber(bounds.northLat)}`)}
+        ${metricHtml('Center lon / lat', operationalWindow ? `${formatNumber(operationalWindow.centerLon)} / ${formatNumber(operationalWindow.centerLat)}` : 'n/a')}
+        ${metricHtml('Width / Height km', operationalWindow ? `${formatNumber(operationalWindow.widthKm)} / ${formatNumber(operationalWindow.heightKm)}` : 'n/a')}
+        ${metricHtml('Area km2', formatInteger(operationalWindow?.areaKm2))}
+        ${metricHtml('Scale class', operationalWindow?.scaleClass ?? 'n/a')}
         ${metricHtml('Availability', availability.status ?? 'notStaged')}
         ${metricHtml('Matching fixture', availability.matchedFixtureId ?? 'none')}
         ${metricHtml('Matching role', availability.matchedFixtureRole ?? 'n/a')}
         ${metricHtml('Hosted Tile Set', availability.matchedFixture?.tileLibraryTileSetId ?? availability.matchedFixture?.tileSetId ?? 'n/a')}
+        ${metricHtml('Tile set role', atlasStageAction.tileSetRole ?? 'n/a')}
+        ${metricHtml('Source dataset', availability.matchedFixture?.sourceDataset ?? 'ETOPO_2022')}
+        ${metricHtml('Resolution', availability.matchedFixture?.sourceResolution ?? 'request only')}
+        ${metricHtml('Raster status', availability.available ? 'hosted' : 'not staged')}
         ${metricHtml('Preview Mesh', availability.matchedFixture?.meshLods?.length ? 'available' : 'n/a')}
+        ${metricHtml('Coverage status', availability.coverageStatus ?? availability.matchedFixture?.coverageRole ?? 'n/a')}
         ${metricHtml('Depth min / mean / max', `${formatNumber(stats.minDepthMeters)} / ${formatNumber(stats.meanDepthMeters)} / ${formatNumber(stats.maxDepthMeters)} m`)}
         ${metricHtml('Land / Ocean', `${formatNumber(stats.landFraction)} / ${formatNumber(stats.oceanFraction)}`)}
         ${metricHtml('Wet connectivity', formatNumber(stats.wetConnectedFraction))}
@@ -2450,13 +2715,19 @@ function referenceAtlasRightPanelHtml(session = {}) {
       ${boundaryBudget?.budgetStatus === 'BLOCKED' ? `<p class="hud-muted">${escapeHtml(REFERENCE_ATLAS_BUDGET_BLOCKED_MESSAGE)}</p>` : ''}
       <table class="environment-studio-table">
         <tbody>
-          <tr><td>Recommended next action</td><td>${escapeHtml(boundaryBudget?.recommendedAction ?? availability.recommendedAction ?? 'exportPatchRequest')}</td></tr>
+          <tr><td>Next Step</td><td>${escapeHtml(nextStepLabel)} - ${escapeHtml(nextStepExplanation)}</td></tr>
+          <tr><td>Recommended next action</td><td>${escapeHtml(boundaryBudget?.recommendedAction ?? availability.recommendedAction ?? atlasStageAction.selectedRegionNextAction)}</td></tr>
           <tr><td>Preprocess command</td><td>${escapeHtml(session.referencePatchRequest?.downloadCommand ?? session.referencePatchRequest?.downloadCommands?.[0] ?? 'Patch is staged; load it from the atlas.')}</td></tr>
-          <tr><td>Expected artifacts after load</td><td>Bathymetry artifact, wet/land masks, coastline summary, validation report, and FIELD-REGEN inputs.</td></tr>
-          <tr><td>Current Artifact</td><td>REQUIRES_REGENERATION</td></tr>
-          <tr><td>Scalar Artifact</td><td>REQUIRES_REGENERATION</td></tr>
+          <tr><td>Bathymetry Raster</td><td>${atlasStageAction.continueToBathymetryEnabled ? 'LOADABLE_HOSTED_TILE' : 'REQUIRES_STAGED_PATCH'}</td></tr>
+          <tr><td>3D Preview Mesh</td><td>${availability.matchedFixture?.meshLods?.length ? 'LOADABLE_NON_AUTHORITATIVE_LOD' : 'REQUIRES_REGENERATION'}</td></tr>
+          <tr><td>Wet/Land Mask</td><td>REQUIRES_GENERATION</td></tr>
+          <tr><td>Coastline</td><td>REQUIRES_GENERATION</td></tr>
+          <tr><td>Current Field</td><td>REQUIRES_REGENERATION</td></tr>
+          <tr><td>Scalar Field</td><td>REQUIRES_REGENERATION</td></tr>
           <tr><td>Hotspots</td><td>REQUIRES_REGENERATION</td></tr>
+          <tr><td>Hazards</td><td>REQUIRES_REGENERATION</td></tr>
           <tr><td>Starts / Drop Zones</td><td>NEEDS_VALIDATION</td></tr>
+          <tr><td>Environment Artifact</td><td>REQUIRES_COMPOSITION</td></tr>
           <tr><td>Benchmark Bundle</td><td>REQUIRES_REGENERATION</td></tr>
           <tr><td>Claim boundary</td><td>Not certified navigation data, not calibrated ocean forecast, no hidden truth.</td></tr>
         </tbody>

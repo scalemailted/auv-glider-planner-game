@@ -1777,6 +1777,79 @@
   stroke-width: 2;
 }
 
+.regional-bathymetry-route {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.regional-bathymetry-mesh-shell {
+  min-height: min(54vh, 34rem);
+  display: grid;
+  gap: .75rem;
+  padding: .85rem;
+  border: 1px solid rgba(141, 220, 242, .18);
+  border-radius: 8px;
+  background: rgba(8, 17, 31, .76);
+}
+
+.regional-bathymetry-mesh-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, .65fr);
+  gap: .8rem;
+  align-items: start;
+}
+
+.regional-bathymetry-mesh-header h2 {
+  margin: .1rem 0 .2rem;
+  font-size: 1.05rem;
+}
+
+.regional-bathymetry-inline-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.regional-bathymetry-mesh-svg {
+  width: 100%;
+  min-height: 18rem;
+  border: 1px solid rgba(141, 220, 242, .18);
+  border-radius: 8px;
+  background: #061521;
+}
+
+.regional-bathymetry-grid line {
+  stroke: rgba(255, 255, 255, .08);
+  stroke-width: 1;
+}
+
+.regional-bathymetry-ridges polyline {
+  fill: none;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  opacity: .88;
+}
+
+.regional-bathymetry-selected-window {
+  fill: rgba(249, 225, 108, .13);
+  stroke: var(--warning);
+  stroke-width: 3;
+  stroke-dasharray: 8 5;
+}
+
+.regional-bathymetry-mesh-svg text {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.regional-bathymetry-layer-list label {
+  min-height: 1.9rem;
+}
+
+@media (max-width: 900px) {
+  .regional-bathymetry-mesh-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .environment-studio-depth-ramp {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
