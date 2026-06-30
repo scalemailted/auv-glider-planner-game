@@ -40,10 +40,12 @@ export class RegionalBathymetryScene extends PhaserScene {
     this.statusMessage = 'Loading hosted reference bathymetry tile metadata.';
     this.lastError = null;
     this.previewHost = null;
+    this.mode = 'singleTile';
   }
 
   init(data = {}) {
     this.startData = cloneJson(data) ?? {};
+    this.mode = String(this.startData.mode ?? 'singleTile');
     this.session = cloneJson(data.session)
       ?? createEnvironmentStudioSession({ sourceMode: 'referenceBathymetryAtlas', studioStage: 'regionalPatchWorkspace' });
   }
@@ -90,10 +92,27 @@ export class RegionalBathymetryScene extends PhaserScene {
         previewResolutionMeters: 6000
       }, { selectedReferenceFixtureId: this.startData.tileSetId });
     }
+    if (this.isCoarsePreview()) {
+      return refreshEnvironmentStudioSession({
+        ...session,
+        loadedReferenceFixtureId: null,
+        loadedReferenceFixtureRole: null,
+        loadedReferenceFixture: null,
+        launchValidationResult: null,
+        planningLaunchResult: null,
+        benchmarkBundleResult: null,
+        lastAction: 'coarse-regional-preview-opened'
+      });
+    }
     return this.markHostedTileLoaded(session);
   }
 
+  isCoarsePreview() {
+    return this.mode === 'coarsePreview' || this.startData.mode === 'coarsePreview';
+  }
+
   markHostedTileLoaded(sessionInput = {}) {
+    if (this.isCoarsePreview()) return sessionInput;
     const tile = this.tileSetRecord ?? this.startData.tileSetMetadata ?? {};
     const tileSetId = this.startData.tileSetId ?? tile.tileSetId ?? sessionInput.selectedReferenceFixtureId ?? 'monterey_canyon_15s';
     const role = this.startData.tileSetRole ?? tile.role ?? 'missionReadyTileSet';
@@ -128,6 +147,13 @@ export class RegionalBathymetryScene extends PhaserScene {
   async loadRegionalArtifacts() {
     try {
       this.referenceTileLibrary = await loadReferenceTileLibrary();
+      if (this.isCoarsePreview()) {
+        this.statusMessage = 'Opened coarse regional preview. This is not mission-ready; staged multi-tile bathymetry is required before Planning launch.';
+        this.lastError = null;
+        this.session = this.prepareRegionalSession(this.session);
+        this.render();
+        return;
+      }
       const tileSetId = this.startData.tileSetId ?? 'monterey_canyon_15s';
       const tileSet = await loadTileSet(tileSetId, { library: this.referenceTileLibrary });
       this.tileSetRecord = tileSet;
@@ -148,7 +174,9 @@ export class RegionalBathymetryScene extends PhaserScene {
 
   render() {
     if (!this.app) return;
-    this.session = this.markHostedTileLoaded(this.session);
+    this.session = this.isCoarsePreview()
+      ? this.prepareRegionalSession(this.session)
+      : this.markHostedTileLoaded(this.session);
     this.renderConsole();
     this.renderRightPanel();
     this.renderPreview();
@@ -215,7 +243,17 @@ export class RegionalBathymetryScene extends PhaserScene {
     this.render();
   }
 
+  blockCoarsePreviewAction(actionLabel) {
+    if (!this.isCoarsePreview()) return false;
+    this.lastError = `${actionLabel} is disabled in coarse preview. Stage browser-safe multi-tile bathymetry before generating fields or launching Planning.`;
+    this.statusMessage = this.lastError;
+    this.app?.toast?.(this.lastError, 'warning');
+    this.render();
+    return true;
+  }
+
   confirmBathymetry() {
+    if (this.blockCoarsePreviewAction('Generate 3D Bathymetry / Confirm Bathymetry')) return;
     try {
       this.session = this.markHostedTileLoaded(this.session);
       this.session = generateEnvironmentStudioRegionFromReferenceWindow(this.session, { seed: this.readSeed() });
@@ -229,6 +267,7 @@ export class RegionalBathymetryScene extends PhaserScene {
   }
 
   generateFields() {
+    if (this.blockCoarsePreviewAction('Generate Currents & Science Fields')) return;
     try {
       if (!this.session.bathymetryArtifactDigest) {
         throw new Error('Confirm or generate 3D bathymetry before generating currents and science fields.');
@@ -244,6 +283,7 @@ export class RegionalBathymetryScene extends PhaserScene {
   }
 
   composeEnvironmentArtifact() {
+    if (this.blockCoarsePreviewAction('Compose Environment Artifact')) return;
     try {
       this.session = composeEnvironmentStudioReferenceEnvironment(this.session, { seed: this.readSeed() });
       this.statusMessage = 'Composed package-backed EnvironmentArtifact from reference bathymetry and generated fields.';
@@ -256,6 +296,7 @@ export class RegionalBathymetryScene extends PhaserScene {
   }
 
   validateLaunch() {
+    if (this.blockCoarsePreviewAction('Validate Launch')) return;
     try {
       this.session = validateEnvironmentStudioReferenceLaunch(this.session, { seed: this.readSeed() });
       const launch = this.session.launchValidationResult;
@@ -271,6 +312,7 @@ export class RegionalBathymetryScene extends PhaserScene {
   }
 
   launchToPlanning() {
+    if (this.blockCoarsePreviewAction('Launch to Planning')) return;
     try {
       const result = buildEnvironmentStudioReferencePlanningLaunch(this.session, { seed: this.readSeed() });
       this.session = result.session;
@@ -315,6 +357,7 @@ export class RegionalBathymetryScene extends PhaserScene {
   }
 
   exportBenchmarkBundle() {
+    if (this.blockCoarsePreviewAction('Export Public Benchmark Bundle')) return;
     try {
       const result = buildEnvironmentStudioReferenceBenchmarkBundle(this.session, { seed: this.readSeed() });
       this.session = result.session;
@@ -338,6 +381,7 @@ export class RegionalBathymetryScene extends PhaserScene {
   }
 
   exportBathymetryArtifact() {
+    if (this.blockCoarsePreviewAction('Export Bathymetry Artifact')) return;
     if (!this.session.tiles?.length) {
       this.lastError = 'Generate regional bathymetry before exporting a bathymetry artifact.';
       this.statusMessage = 'Bathymetry artifact export skipped.';
@@ -393,6 +437,11 @@ export class RegionalBathymetryScene extends PhaserScene {
   publishDebug(active = true) {
     const tile = this.tileSetRecord ?? this.startData.tileSetMetadata ?? {};
     const mesh = this.meshArtifact ?? this.startData.meshLodMetadata ?? {};
+    const mode = this.isCoarsePreview()
+      ? 'coarsePreview'
+      : this.startData.mode === 'multiTile' || tile.budgetClass === 'multiTileStaged' || tile.rasterTiles?.kind === 'multiRasterJson'
+        ? 'multiTile'
+        : 'singleTile';
     const rasterDigest = this.startData.rasterDigest
       ?? tile.rasterTiles?.digest
       ?? tile.metadata?.rasterTiles?.digest
@@ -403,17 +452,27 @@ export class RegionalBathymetryScene extends PhaserScene {
       ?? this.meshLodRecord?.digest
       ?? mesh.digest
       ?? null;
-    globalThis.ANCHOR_REGIONAL_BATHYMETRY_DEBUG = {
+    const planningLaunchEnabled = mode !== 'coarsePreview'
+      && this.session.launchValidationResult?.planningLaunchReady === true;
+    const loadedTileCount = mode === 'multiTile'
+      ? Number(tile.tileGrid?.tileCount ?? tile.rasterTiles?.tiles?.length ?? 0)
+      : mode === 'singleTile' && (this.startData.tileSetId ?? tile.tileSetId ?? this.session.loadedReferenceFixtureId)
+        ? 1
+        : 0;
+    const regionalBathymetryDebug = {
       version: REGIONAL_BATHYMETRY_SCENE_VERSION,
       stage: 'regionalBathymetryWorkspace',
+      mode,
       routeActive: Boolean(active),
       openedFromAtlasBoundary: this.startData.source === 'environmentStudioAtlas',
       selectedBounds: cloneJson(this.startData.selectedBounds ?? this.session.selectedReferenceWindow?.bounds ?? null),
       loadedTileSetId: this.startData.tileSetId ?? tile.tileSetId ?? this.session.loadedReferenceFixtureId ?? null,
+      loadedTileCount,
+      loadedMeshLod: this.meshArtifact?.lod ?? this.meshLodRecord?.lod ?? this.startData.preferredMeshLod ?? null,
       loadedTileSetRole: this.startData.tileSetRole ?? tile.role ?? null,
       loadedRasterDigest: rasterDigest,
       loadedMeshLodDigest: meshDigest,
-      rasterAuthoritativeForSimulation: true,
+      rasterAuthoritativeForSimulation: mode !== 'coarsePreview',
       meshAuthoritativeForSimulation: false,
       meshLodLoaded: Boolean(this.meshArtifact ?? this.startData.meshLodMetadata),
       renderedMeshVertexCount: Number(mesh.vertexCount ?? this.meshLodRecord?.vertexCount ?? 0),
@@ -430,7 +489,8 @@ export class RegionalBathymetryScene extends PhaserScene {
       activeRendererCount: 0,
       activeRafCount: 0,
       activeCanvasCount: 0,
-      planningLaunchReady: this.session.launchValidationResult?.planningLaunchReady === true,
+      planningLaunchEnabled,
+      planningLaunchReady: planningLaunchEnabled,
       bathymetryArtifactDigest: this.session.bathymetryArtifactDigest ?? null,
       fieldGenerationStatus: this.session.fieldRegenerationResult?.fieldGenerationStatus ?? null,
       currentArtifactDigest: this.session.fieldRegenerationResult?.currentArtifactDigest ?? null,
@@ -440,23 +500,31 @@ export class RegionalBathymetryScene extends PhaserScene {
       statusMessage: this.statusMessage,
       lastError: this.lastError
     };
+    globalThis.ANCHOR_REGIONAL_BATHYMETRY_DEBUG = regionalBathymetryDebug;
+    globalThis.ANCHOR_ENVIRONMENT_STUDIO_DEBUG = {
+      ...(globalThis.ANCHOR_ENVIRONMENT_STUDIO_DEBUG ?? {}),
+      regionalBathymetryDebug
+    };
   }
 }
 
 function regionalBathymetryConsoleHtml(scene) {
   const session = scene.session;
+  const coarsePreview = scene.isCoarsePreview();
   const bathymetryReady = Boolean(session.bathymetryArtifactDigest);
   const fieldsReady = Boolean(session.fieldRegenerationResult?.currentArtifactDigest && session.fieldRegenerationResult?.scalarArtifactDigest);
-  const canCompose = fieldsReady;
-  const canValidate = fieldsReady;
-  const canLaunch = session.launchValidationResult?.planningLaunchReady === true;
-  const canExportBenchmark = canCompose;
+  const canCompose = !coarsePreview && fieldsReady;
+  const canValidate = !coarsePreview && fieldsReady;
+  const canLaunch = !coarsePreview && session.launchValidationResult?.planningLaunchReady === true;
+  const canExportBenchmark = !coarsePreview && canCompose;
   const camera = session.previewCameraState ?? {};
   return `
     <section class="console-header">
       <div class="console-kicker">Simulation Lab / Environment Studio</div>
       <h1>Regional 3D Bathymetry Workspace</h1>
-      <p>Loaded from hosted reference bathymetry tile. 3D mesh is a decimated visualization; raster/grid remains authoritative.</p>
+      <p>${coarsePreview
+        ? 'Coarse preview only. This region is not mission-ready and is not suitable for official simulation or scoring.'
+        : 'Loaded from hosted reference bathymetry tile. 3D mesh is a decimated visualization; raster/grid remains authoritative.'}</p>
     </section>
     <section class="console-status">
       <span>Stage</span>
@@ -464,6 +532,11 @@ function regionalBathymetryConsoleHtml(scene) {
       <small>${escapeHtml(scene.statusMessage)}</small>
     </section>
     ${scene.lastError ? `<section class="console-section" data-keep-title="true"><h2>Warning</h2><div class="hud-muted">${escapeHtml(scene.lastError)}</div></section>` : ''}
+    ${coarsePreview ? `
+    <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-regional-panel-section="coarse-preview-warning">
+      <h2>Coarse Preview Only</h2>
+      <p class="hud-muted">Not mission-ready. Not suitable for official simulation/scoring. High-resolution tile staging is required before Planning launch.</p>
+    </section>` : ''}
     <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-regional-panel-section="view-controls">
       <h2>Region View Controls</h2>
       <div class="environment-studio-camera-row" aria-label="Regional view controls">
@@ -505,13 +578,14 @@ function regionalBathymetryConsoleHtml(scene) {
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-regional-panel-section="environment-build">
       <h2>Environment Build</h2>
-      <button class="console-button primary" type="button" data-action="regional-confirm-bathymetry">Generate 3D Bathymetry / Confirm Bathymetry</button>
-      <button class="console-button primary" type="button" data-action="regional-generate-fields" ${bathymetryReady ? '' : 'disabled'}>Generate Currents &amp; Science Fields</button>
+      ${coarsePreview ? '<p class="hud-muted">Generation, composition, launch validation, Planning launch, and benchmark export are disabled in coarse preview.</p>' : ''}
+      <button class="console-button primary" type="button" data-action="regional-confirm-bathymetry" ${coarsePreview ? 'disabled aria-disabled="true"' : ''}>Generate 3D Bathymetry / Confirm Bathymetry</button>
+      <button class="console-button primary" type="button" data-action="regional-generate-fields" ${!coarsePreview && bathymetryReady ? '' : 'disabled'}>Generate Currents &amp; Science Fields</button>
       <button class="console-button secondary" type="button" data-action="regional-compose-environment" ${canCompose ? '' : 'disabled'}>Compose Environment Artifact</button>
       <button class="console-button secondary" type="button" data-action="regional-validate-launch" ${canValidate ? '' : 'disabled'}>Validate Launch</button>
       <button class="console-button primary" type="button" data-action="regional-launch-planning" ${canLaunch ? '' : 'disabled'}>Launch to Planning</button>
       <button class="console-button secondary" type="button" data-action="regional-export-benchmark" ${canExportBenchmark ? '' : 'disabled'}>Export Public Benchmark Bundle</button>
-      <button class="console-button secondary" type="button" data-action="regional-export-bathymetry">Export Bathymetry Artifact</button>
+      <button class="console-button secondary" type="button" data-action="regional-export-bathymetry" ${coarsePreview ? 'disabled aria-disabled="true"' : ''}>Export Bathymetry Artifact</button>
       <button class="console-button secondary" type="button" data-action="regional-export-project">Export Project</button>
       <label class="console-button secondary" for="regional-import-project-file">Import Project</label>
       <input id="regional-import-project-file" type="file" accept="application/json,.json" hidden data-regional-import-project />
@@ -538,6 +612,7 @@ function bindRegionalBathymetryControls(scene, root) {
 }
 
 function regionalBathymetryRightPanelHtml(scene) {
+  if (scene.isCoarsePreview()) return coarsePreviewRightPanelHtml(scene);
   const tile = scene.tileSetRecord ?? scene.startData.tileSetMetadata ?? {};
   const metadata = tile.metadata ?? tile;
   const raster = tile.rasterTiles ?? metadata.rasterTiles ?? {};
@@ -595,6 +670,7 @@ function regionalBathymetryRightPanelHtml(scene) {
 }
 
 function regionalBathymetryPreviewHtml(scene) {
+  if (scene.isCoarsePreview()) return coarsePreviewHtml(scene);
   const tile = scene.tileSetRecord ?? scene.startData.tileSetMetadata ?? {};
   const metadata = tile.metadata ?? tile;
   const mesh = scene.meshArtifact ?? scene.startData.meshLodMetadata ?? {};
@@ -641,6 +717,124 @@ function regionalBathymetryPreviewHtml(scene) {
         <span>Raster/grid bathymetry is authoritative. Preview mesh, color ramp, and selected-boundary overlay are display artifacts only.</span>
       </section>
     </main>
+  `;
+}
+
+function coarsePreviewRightPanelHtml(scene) {
+  const overview = scene.startData.overviewMetadata ?? {};
+  const selectedBounds = scene.startData.selectedBounds ?? scene.session.selectedReferenceWindow?.bounds ?? null;
+  const budget = scene.startData.boundaryBudget ?? scene.session.selectedReferenceBoundaryBudget ?? {};
+  return `
+    <section class="waypoint-shell environment-studio-right-panel regional-bathymetry-right-panel" id="regional-bathymetry-status-panel">
+      <div class="console-kicker">Coarse Regional Preview</div>
+      <h2>${escapeHtml(overview.label ?? 'Global Reference Overview')}</h2>
+      <p class="hud-muted">Coarse preview only. Not mission-ready, not suitable for official simulation/scoring, and high-resolution tile staging is required before Planning launch.</p>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Mode', 'coarsePreview')}
+        ${metricHtml('Selected bounds', boundsLabel(selectedBounds))}
+        ${metricHtml('Source dataset', overview.sourceDataset ?? 'ETOPO_2022')}
+        ${metricHtml('Source resolution', overview.sourceResolution ?? '60 arc-second overview')}
+        ${metricHtml('Generation budget', budget.budgetStatus ?? 'n/a')}
+        ${metricHtml('Source cells', formatInteger(budget.sourceCellCount))}
+        ${metricHtml('Preview grid cap', '300 x 200')}
+        ${metricHtml('Field grid cap', '200 x 140')}
+        ${metricHtml('Planning launch', 'disabled')}
+      </div>
+      <table class="environment-studio-table">
+        <tbody>
+          <tr><td>Bathymetry Raster</td><td>${statusTag('coarse_preview_only')}</td></tr>
+          <tr><td>Preview Mesh</td><td>${statusTag('overview_preview')}</td></tr>
+          <tr><td>Generate Fields</td><td>${statusTag('disabled_until_staged')}</td></tr>
+          <tr><td>Compose Environment</td><td>${statusTag('disabled_until_staged')}</td></tr>
+          <tr><td>Launch Planning</td><td>${statusTag('disabled')}</td></tr>
+          <tr><td>Claim boundary</td><td>Overview inspection only; no NOAA/GEBCO runtime fetch; no raw external_data path; no hidden truth.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
+function coarsePreviewHtml(scene) {
+  const overview = scene.startData.overviewMetadata ?? {};
+  const selectedBounds = scene.startData.selectedBounds ?? scene.session.selectedReferenceWindow?.bounds ?? null;
+  const budget = scene.startData.boundaryBudget ?? scene.session.selectedReferenceBoundaryBudget ?? {};
+  return `
+    <main id="regional-bathymetry-route" class="environment-studio-route regional-bathymetry-route" data-regional-bathymetry-route data-regional-bathymetry-mode="coarsePreview">
+      <header class="environment-studio-route-header">
+        <div>
+          <p class="console-kicker">Regional 3D Bathymetry Workspace</p>
+          <h1>Coarse Regional Preview</h1>
+          <p>Coarse preview only. This selected operational area is valid, but not mission-ready until staged multi-tile bathymetry is available.</p>
+        </div>
+        <div class="environment-studio-digest">
+          <span>Overview</span>
+          <strong>${escapeHtml(shortDigest(overview.digest ?? overview.previewRasterDigest))}</strong>
+          <span>Budget</span>
+          <strong>${escapeHtml(budget.budgetStatus ?? 'n/a')}</strong>
+        </div>
+      </header>
+      <section class="environment-studio-preview-grid" aria-label="Coarse regional bathymetry preview">
+        <section class="regional-bathymetry-mesh-shell" data-regional-bathymetry-mesh-preview data-regional-coarse-preview>
+          <div class="regional-bathymetry-mesh-header">
+            <div>
+              <h2>Coarse Preview Only</h2>
+              <p class="hud-muted">Not mission-ready. Not suitable for official simulation/scoring. High-resolution tile staging is required before Planning launch.</p>
+            </div>
+            <div class="cell-inspector-metrics regional-bathymetry-inline-metrics">
+              ${metricHtml('Selected bounds', boundsLabel(selectedBounds))}
+              ${metricHtml('Source cells', formatInteger(budget.sourceCellCount))}
+              ${metricHtml('Field grid', budget.fieldGridEstimate ? `${formatInteger(budget.fieldGridEstimate.columns)} x ${formatInteger(budget.fieldGridEstimate.rows)}` : 'n/a')}
+              ${metricHtml('Planning launch', 'disabled')}
+            </div>
+          </div>
+          ${coarsePreviewSvg(selectedBounds, overview.bounds)}
+          <p class="hud-muted">This view uses global overview metadata or decimated atlas context. It does not create mission-ready bathymetry, currents, science fields, or launchable benchmark artifacts.</p>
+        </section>
+      </section>
+      <section class="environment-studio-boundary">
+        <strong>Coarse-preview boundary</strong>
+        <span>Overview visualization only. Stage app-hosted multi-tile bathymetry before Planning launch.</span>
+      </section>
+    </main>
+  `;
+}
+
+function coarsePreviewSvg(selectedBounds = null, overviewBounds = null) {
+  const width = 920;
+  const height = 430;
+  const pad = 44;
+  const boundsRect = selectedBounds && overviewBounds
+    ? selectedBoundsRect(selectedBounds, overviewBounds, pad, width - pad * 2, height - pad * 2)
+    : null;
+  const waveLines = Array.from({ length: 8 }, (_entry, index) => {
+    const y = pad + 30 + index * 38;
+    return `<path d="M${pad} ${roundForSvg(y)} C ${pad + 120} ${roundForSvg(y - 28)}, ${pad + 220} ${roundForSvg(y + 28)}, ${pad + 340} ${roundForSvg(y)} S ${pad + 610} ${roundForSvg(y - 20)}, ${width - pad} ${roundForSvg(y)}" />`;
+  }).join('');
+  return `
+    <svg class="regional-bathymetry-mesh-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Coarse regional overview preview">
+      <defs>
+        <linearGradient id="regionalCoarseBg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#071d2a" />
+          <stop offset="50%" stop-color="#124d72" />
+          <stop offset="100%" stop-color="#061521" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#regionalCoarseBg)" rx="8" />
+      <g class="regional-bathymetry-grid">
+        ${Array.from({ length: 7 }, (_entry, index) => {
+          const x = pad + (index / 6) * (width - pad * 2);
+          return `<line x1="${roundForSvg(x)}" y1="${pad}" x2="${roundForSvg(x)}" y2="${height - pad}" />`;
+        }).join('')}
+        ${Array.from({ length: 5 }, (_entry, index) => {
+          const y = pad + (index / 4) * (height - pad * 2);
+          return `<line x1="${pad}" y1="${roundForSvg(y)}" x2="${width - pad}" y2="${roundForSvg(y)}" />`;
+        }).join('')}
+      </g>
+      <g class="regional-bathymetry-ridges coarse-preview-ridges">${waveLines}</g>
+      ${boundsRect ? `<rect class="regional-bathymetry-selected-window" x="${roundForSvg(boundsRect.x)}" y="${roundForSvg(boundsRect.y)}" width="${roundForSvg(boundsRect.width)}" height="${roundForSvg(boundsRect.height)}" />` : ''}
+      <text x="${pad}" y="${height - 18}">coarse overview inspection only</text>
+      <text x="${width - pad}" y="${height - 18}" text-anchor="end">staged tiles required for Planning</text>
+    </svg>
   `;
 }
 

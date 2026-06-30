@@ -1,6 +1,7 @@
 export const REFERENCE_BATHYMETRY_TILE_LIBRARY_TYPE = 'anchor.reference-bathymetry-tile-library';
 export const REFERENCE_BATHYMETRY_TILE_LIBRARY_VERSION = 'reference-tile-library-r1a';
 export const REFERENCE_BATHYMETRY_TILE_SET_TYPE = 'anchor.reference-bathymetry-tile-set';
+export const REFERENCE_BATHYMETRY_MULTITILE_TILE_SET_TYPE = 'anchor.reference-bathymetry-multitile-tileset';
 export const REFERENCE_BATHYMETRY_TILE_LIBRARY_MANIFEST_PATH = 'assets/reference_bathymetry/tile-library-manifest.json';
 
 let cachedTileLibrary = null;
@@ -172,8 +173,21 @@ export function validateReferenceTileLibraryStaticSafety(input = {}) {
 }
 
 function normalizeTileSet(input = {}) {
+  const rasterKind = input.rasterTiles?.kind ?? (Array.isArray(input.rasterTiles?.tiles) ? 'multiRasterJson' : 'singleRasterJson');
+  const tileGrid = input.tileGrid && typeof input.tileGrid === 'object'
+    ? {
+        rows: finiteOrNull(input.tileGrid.rows),
+        columns: finiteOrNull(input.tileGrid.columns),
+        tileCount: finiteOrNull(input.tileGrid.tileCount),
+        maxTileRows: finiteOrNull(input.tileGrid.maxTileRows),
+        maxTileColumns: finiteOrNull(input.tileGrid.maxTileColumns)
+      }
+    : null;
   return {
-    artifactType: input.artifactType ?? REFERENCE_BATHYMETRY_TILE_SET_TYPE,
+    artifactType: input.artifactType
+      ?? (input.budgetClass === 'multiTileStaged' || rasterKind === 'multiRasterJson'
+        ? REFERENCE_BATHYMETRY_MULTITILE_TILE_SET_TYPE
+        : REFERENCE_BATHYMETRY_TILE_SET_TYPE),
     artifactVersion: String(input.artifactVersion ?? '1.0.0'),
     tileSetId: String(input.tileSetId ?? input.id ?? ''),
     label: String(input.label ?? input.tileSetId ?? input.id ?? 'Reference Tile Set'),
@@ -186,11 +200,31 @@ function normalizeTileSet(input = {}) {
     actualRasterResolutionArcSeconds: finiteOrNull(input.actualRasterResolutionArcSeconds),
     bounds: normalizeBounds(input.bounds),
     rasterTiles: input.rasterTiles ? {
-      kind: input.rasterTiles.kind ?? 'singleRasterJson',
+      kind: rasterKind,
       path: input.rasterTiles.path ?? null,
       rows: finiteOrNull(input.rasterTiles.rows),
       columns: finiteOrNull(input.rasterTiles.columns),
-      digest: input.rasterTiles.digest ?? null
+      digest: input.rasterTiles.digest ?? null,
+      tiles: Array.isArray(input.rasterTiles.tiles)
+        ? input.rasterTiles.tiles.map((entry) => ({
+            tileId: String(entry.tileId ?? entry.id ?? ''),
+            path: entry.path ?? null,
+            bounds: normalizeBounds(entry.bounds ?? {}),
+            rows: finiteOrNull(entry.rows),
+            columns: finiteOrNull(entry.columns),
+            digest: entry.digest ?? null
+          }))
+        : []
+    } : null,
+    tileGrid,
+    overviewMesh: input.overviewMesh ? {
+      path: input.overviewMesh.path ?? null,
+      digest: input.overviewMesh.digest ?? null,
+      meshRows: finiteOrNull(input.overviewMesh.meshRows),
+      meshColumns: finiteOrNull(input.overviewMesh.meshColumns),
+      vertexCount: finiteOrNull(input.overviewMesh.vertexCount),
+      triangleCount: finiteOrNull(input.overviewMesh.triangleCount),
+      isAuthoritativeForSimulation: input.overviewMesh.isAuthoritativeForSimulation === true ? true : false
     } : null,
     meshLods: Array.isArray(input.meshLods) ? input.meshLods.map((entry) => ({
       lod: String(entry.lod ?? entry.id ?? 'coarse'),
@@ -339,4 +373,3 @@ async function defaultFetchJson(path) {
   if (!response.ok) throw new Error(`Reference bathymetry tile library fetch failed for ${path}: HTTP ${response.status}.`);
   return response.json();
 }
-

@@ -45,8 +45,12 @@ const gulfBounds = {
 };
 assert.equal(findTileSetsForBounds(gulfBounds, library).length, 0, 'Gulf has no staged browser tile set');
 const gulfRequests = findTileSetsForBounds(gulfBounds, library, { includeRequestOnly: true });
-assert.equal(gulfRequests.length, 1, 'Gulf request-only tile set is discoverable when requested');
-assert.equal(gulfRequests[0].coverageRole, 'requestOnly', 'Gulf remains request-only');
+assert.ok(gulfRequests.length >= 1, 'Gulf request-only tile sets are discoverable when requested');
+assert.ok(gulfRequests.some((entry) => entry.tileSetId === 'gulf_segment_15s'), 'base Gulf request-only tile set remains discoverable');
+assert.ok(gulfRequests.every((entry) => entry.coverageRole === 'requestOnly'), 'Gulf matches remain request-only');
+const gulfDemo = library.tileSets.find((tileSet) => tileSet.tileSetId === 'gulf_segment_demo_15s');
+assert.ok(gulfDemo, 'Gulf demo request-only tile set is registered');
+assert.equal(gulfDemo.coverageRole, 'requestOnly', 'Gulf demo remains request-only');
 
 const loaded = await loadTileSet('monterey_canyon_15s', { library, fetchJson: readJson });
 assert.equal(loaded.rasterArtifact?.artifactType, 'anchor.reference-bathymetry-raster', 'loader fetches raster artifact');
@@ -58,10 +62,9 @@ assert.equal(coarse.isAuthoritativeForSimulation, false, 'mesh is non-authoritat
 console.log('smoke_reference_tile_library_loader: ok', {
   digest: library.digest,
   bestTileSet: best.tileSetId,
-  gulfCoverageRole: gulfRequests[0].coverageRole
+  gulfRequestOnlyMatches: gulfRequests.map((entry) => entry.tileSetId)
 });
 
 async function readJson(relativePath) {
   return JSON.parse(await fs.readFile(path.resolve(ROOT, String(relativePath).replaceAll('/', path.sep)), 'utf8'));
 }
-

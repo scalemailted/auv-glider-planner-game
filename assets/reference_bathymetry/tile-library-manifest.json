@@ -26,25 +26,25 @@
     "hiddenTruthExposed": false
   },
   "globalOverview": {
-    "previewKind": "compactRasterJson",
-    "sourceDataset": "ETOPO_2022",
-    "sourceVariant": "bedrock elevation overview",
-    "overviewId": "etopo2022_global_overview_60s",
-    "sourceResolution": "60 arc-second",
     "previewRasterDigest": "sha256:44486b1db75ed28f52f103c443894960665b450ad4a7dc29b17db8886cbfe4a4",
-    "actualRasterResolutionArcSeconds": 60.0,
-    "role": "globalOverview",
-    "overviewPath": "assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-overview.json",
+    "previewKind": "compactRasterJson",
     "label": "ETOPO 2022 Global 60s Overview",
+    "provider": "NOAA NCEI",
+    "sourceDataset": "ETOPO_2022",
+    "sourceResolution": "60 arc-second",
+    "actualRasterResolutionArcSeconds": 60.0,
+    "overviewPath": "assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-overview.json",
     "digest": "sha256:9e85af126e892254bdfd9860ed2215d9c99f75c7f0a012bcc90ca6d567afea79",
+    "overviewId": "etopo2022_global_overview_60s",
+    "role": "globalOverview",
+    "sourceVariant": "bedrock elevation overview",
     "previewPath": "assets/reference_bathymetry/etopo2022_global_overview_60s.reference-bathymetry-raster.json",
     "bounds": {
       "westLon": -180,
       "eastLon": 180,
       "southLat": -90,
       "northLat": 90
-    },
-    "provider": "NOAA NCEI"
+    }
   },
   "tileSets": [
     {
@@ -72,6 +72,8 @@
         "columns": 360,
         "digest": "sha256:e246e8dd8100a46c553f6a4bf9d42213afe303d6f1d308dadf79e016cd28db1f"
       },
+      "tileGrid": null,
+      "overviewMesh": null,
       "meshLods": [
         {
           "lod": "coarse",
@@ -103,7 +105,7 @@
         "raster": "sha256:e246e8dd8100a46c553f6a4bf9d42213afe303d6f1d308dadf79e016cd28db1f",
         "meshCoarse": "sha256:99f47f612cdd1fc556592a72e1becb6bd4edd2cec683ead4dd0855a2ed98ad56",
         "meshMedium": "sha256:99c4491fa16b151c6a911e2f35c5c7d50015165b99d3161531698d3f8d769436",
-        "metadata": "sha256:ae3b80af885bc38d06b847b9fa6d82c6526f58746a5d526ab4a383f0bceeb3a5"
+        "metadata": "sha256:e8988c14eefa65fe9d5995c26dbc5489acc227bedc0581d111e52aadc0358a3a"
       },
       "tags": [
         "app-hosted-tile-library",
@@ -133,7 +135,7 @@
         "hiddenTruthExposed": false
       },
       "metadataPath": "assets/reference_bathymetry/tiles/monterey_canyon_15s/monterey_canyon_15s.tile-set.json",
-      "digest": "sha256:ae3b80af885bc38d06b847b9fa6d82c6526f58746a5d526ab4a383f0bceeb3a5"
+      "digest": "sha256:e8988c14eefa65fe9d5995c26dbc5489acc227bedc0581d111e52aadc0358a3a"
     },
     {
       "artifactType": "anchor.reference-bathymetry-tile-set",
@@ -160,6 +162,8 @@
         "columns": 90,
         "digest": "sha256:f19c402408569d73744e43f08a27981cf74398558122995ba206ff53265e0d81"
       },
+      "tileGrid": null,
+      "overviewMesh": null,
       "meshLods": [
         {
           "lod": "coarse",
@@ -191,7 +195,7 @@
         "raster": "sha256:f19c402408569d73744e43f08a27981cf74398558122995ba206ff53265e0d81",
         "meshCoarse": "sha256:7106da0661f412ba3a833c8dad7d8b209c0dbc63182ecd8b19cb67386257fdf8",
         "meshMedium": "sha256:0079e07062d3952af99a89d7132bab57644c3e84c652f614fbdc4160d38ecda2",
-        "metadata": "sha256:e8c70135ddab9aedcf2008a968ac18acf65496b2bffce1715cd2cc4bd1c5b289"
+        "metadata": "sha256:424e354e092fb2a9b32f20eab105c6cc39ddd6907e8cff491f35b4451fa5a375"
       },
       "tags": [
         "app-hosted-tile-library",
@@ -220,10 +224,10 @@
         "hiddenTruthExposed": false
       },
       "metadataPath": "assets/reference_bathymetry/tiles/monterey_canyon/monterey_canyon.tile-set.json",
-      "digest": "sha256:e8c70135ddab9aedcf2008a968ac18acf65496b2bffce1715cd2cc4bd1c5b289"
+      "digest": "sha256:424e354e092fb2a9b32f20eab105c6cc39ddd6907e8cff491f35b4451fa5a375"
     },
     {
-      "artifactType": "anchor.reference-bathymetry-tile-set",
+      "artifactType": "anchor.reference-bathymetry-multitile-tileset",
       "artifactVersion": "1.0.0",
       "tileSetId": "gulf_segment_15s",
       "label": "Gulf Segment 15s",
@@ -241,6 +245,14 @@
         "northLat": 30.0
       },
       "rasterTiles": null,
+      "tileGrid": {
+        "rows": null,
+        "columns": null,
+        "tileCount": 2,
+        "maxTileRows": 512,
+        "maxTileColumns": 512
+      },
+      "overviewMesh": null,
       "meshLods": [],
       "coverageRole": "requestOnly",
       "recommendedUse": "Offline tile request only; not staged for browser mission loading.",
@@ -294,21 +306,124 @@
         "operationalOceanForecast": false,
         "hiddenTruthExposed": false
       },
-      "digest": "sha256:264f31d1728869304f7deb81b4f93bcd2d7c879e59192d2ca424f37ac25189a0"
+      "digest": "sha256:ae3323159a872ba9c1e861653a87441b37f17284ab74d77b0dc205569ce8667b"
+    },
+    {
+      "artifactType": "anchor.reference-bathymetry-multitile-tileset",
+      "artifactVersion": "1.0.0",
+      "tileSetId": "gulf_segment_demo_15s",
+      "label": "Gulf Segment Demo 15s",
+      "role": "previewOnlyTileSet",
+      "staged": false,
+      "sourceDataset": "ETOPO_2022",
+      "provider": "NOAA NCEI",
+      "sourceVariant": "15s_surface_elevation",
+      "sourceResolution": "15 arc-second",
+      "actualRasterResolutionArcSeconds": 15.0,
+      "bounds": {
+        "westLon": -90.5,
+        "eastLon": -83.8,
+        "southLat": 26.7,
+        "northLat": 30.7
+      },
+      "rasterTiles": null,
+      "tileGrid": {
+        "rows": null,
+        "columns": null,
+        "tileCount": 4,
+        "maxTileRows": 512,
+        "maxTileColumns": 512
+      },
+      "overviewMesh": null,
+      "meshLods": [],
+      "coverageRole": "requestOnly",
+      "recommendedUse": "Offline tile request only; not staged for browser mission loading.",
+      "budgetClass": "multiTileRequest",
+      "requiredSourceTiles": [
+        {
+          "tileId": "N45W105",
+          "fileName": "ETOPO_2022_v1_15s_N45W105_surface.tif",
+          "bounds": {
+            "westLon": -105,
+            "eastLon": -90,
+            "southLat": 30,
+            "northLat": 45
+          }
+        },
+        {
+          "tileId": "N45W090",
+          "fileName": "ETOPO_2022_v1_15s_N45W090_surface.tif",
+          "bounds": {
+            "westLon": -90,
+            "eastLon": -75,
+            "southLat": 30,
+            "northLat": 45
+          }
+        },
+        {
+          "tileId": "N30W105",
+          "fileName": "ETOPO_2022_v1_15s_N30W105_surface.tif",
+          "bounds": {
+            "westLon": -105,
+            "eastLon": -90,
+            "southLat": 15,
+            "northLat": 30
+          }
+        },
+        {
+          "tileId": "N30W090",
+          "fileName": "ETOPO_2022_v1_15s_N30W090_surface.tif",
+          "bounds": {
+            "westLon": -90,
+            "eastLon": -75,
+            "southLat": 15,
+            "northLat": 30
+          }
+        }
+      ],
+      "offlineCommands": {
+        "dryRun": "python tools/python/download_reference_bathymetry_tiles.py dry-run --region gulf_segment_demo_15s",
+        "download": "python tools/python/download_reference_bathymetry_tiles.py download --region gulf_segment_demo_15s",
+        "preprocess": "python tools/python/preprocess_reference_tile_library.py --region gulf_segment_demo_15s"
+      },
+      "digests": {},
+      "tags": [
+        "reference-bathymetry",
+        "request-only",
+        "requires-offline-download"
+      ],
+      "artifactStatus": "REQUIRES_REGENERATION",
+      "localAbsolutePathsIncluded": false,
+      "rawExternalDataPathsIncluded": false,
+      "externalRuntimeFetchRequired": false,
+      "hiddenTruthExposed": false,
+      "claimBoundary": {
+        "referenceBathymetryTileSet": true,
+        "rasterGridAuthoritativeForBathymetrySampling": false,
+        "derivedMeshLodsVisualizationOnly": true,
+        "browserDownloadsPublicSourceData": false,
+        "currentField4DGenerated": false,
+        "scalarField4DGenerated": false,
+        "certifiedForNavigation": false,
+        "operationalOceanForecast": false,
+        "hiddenTruthExposed": false
+      },
+      "digest": "sha256:43c064cd34410c03d7c23cc30391a3049c70bee0f9593a1a972046d6af911cf9"
     }
   ],
   "coverageSummary": {
-    "tileSetCount": 3,
+    "tileSetCount": 4,
     "stagedTileSetCount": 2,
     "missionReadyTileSetCount": 1,
     "fallbackTileSetCount": 1,
-    "requestOnlyTileSetCount": 1,
+    "requestOnlyTileSetCount": 2,
     "stagedRegionIds": [
       "monterey_canyon_15s",
       "monterey_canyon"
     ],
     "requestOnlyRegionIds": [
-      "gulf_segment_15s"
+      "gulf_segment_15s",
+      "gulf_segment_demo_15s"
     ]
   },
   "provenance": {
@@ -323,5 +438,5 @@
   "localAbsolutePathsIncluded": false,
   "rawExternalDataPathsIncluded": false,
   "externalRuntimeFetchRequired": false,
-  "digest": "sha256:c56f48d612f654da7192806774ca466447588f13e63e3df63341d1828dfeb348"
+  "digest": "sha256:ef89654eccb04949d6a1a18b07d321baaba9f411c171ccb843232f84de81824f"
 }

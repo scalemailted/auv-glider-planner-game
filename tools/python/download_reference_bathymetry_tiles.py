@@ -110,6 +110,9 @@ def plan_for_args(args: argparse.Namespace) -> dict:
             "cached": output_path.exists(),
         })
 
+    resolution_degrees = 15 / 3600
+    estimated_columns = max(1, round((bounds["eastLon"] - bounds["westLon"]) / resolution_degrees))
+    estimated_rows = max(1, round((bounds["northLat"] - bounds["southLat"]) / resolution_degrees))
     return {
         "type": "anchor.reference-bathymetry-download-plan",
         "phase": "REF-TILE-LIB-R1A",
@@ -119,6 +122,9 @@ def plan_for_args(args: argparse.Namespace) -> dict:
         "sourceDataset": "ETOPO_2022",
         "sourceVariant": "15s_surface_elevation",
         "sourceResolution": "15 arc-second",
+        "estimatedColumns": estimated_columns,
+        "estimatedRows": estimated_rows,
+        "estimatedSourceCells": estimated_columns * estimated_rows,
         "tileCount": len(tiles),
         "tiles": tiles,
         "downloadRoot": rel(RAW_TILE_ROOT),
@@ -239,4 +245,3 @@ def safe_id(value: str) -> str:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

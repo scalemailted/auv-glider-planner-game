@@ -21,10 +21,13 @@ for (const requiredText of [
   'Boundary Actions',
   'Map Layers',
   'Continue to 3D Bathymetry',
+  'Open Coarse Regional Preview',
   'Inspect Low-Resolution Fallback',
   'env-reference-continue-bathymetry',
+  'env-reference-open-coarse-preview',
   'atlasStage',
-  'Bathymetry Source'
+  'Bathymetry Source',
+  'This is a valid operational area. High-resolution browser loading requires staged multi-tile bathymetry.'
 ]) {
   assert.ok(source.includes(requiredText), `EnvironmentStudioScene missing ${requiredText}`);
 }
@@ -33,6 +36,7 @@ const noSelection = referenceAtlasStageActionState({});
 assert.equal(noSelection.stage, 'globalAtlasSelector');
 assert.equal(noSelection.selected, false);
 assert.equal(noSelection.continueToBathymetryEnabled, false);
+assert.equal(noSelection.openCoarsePreviewEnabled, false);
 assert.equal(noSelection.patchRequestEnabled, false);
 assert.equal(noSelection.multiTileRequestEnabled, false);
 assert.equal(noSelection.loadMissionPatchEnabled, false);
@@ -67,6 +71,7 @@ const montereySelection = referenceAtlasStageActionState({
   }
 });
 assert.equal(montereySelection.continueToBathymetryEnabled, true);
+assert.equal(montereySelection.openCoarsePreviewEnabled, true);
 assert.equal(montereySelection.patchRequestEnabled, false);
 assert.equal(montereySelection.multiTileRequestEnabled, false);
 assert.equal(montereySelection.tileSetId, 'monterey_canyon_15s');
@@ -93,6 +98,7 @@ const unstagedSelection = referenceAtlasStageActionState({
   }
 });
 assert.equal(unstagedSelection.continueToBathymetryEnabled, false);
+assert.equal(unstagedSelection.openCoarsePreviewEnabled, true);
 assert.equal(unstagedSelection.patchRequestEnabled, true);
 assert.equal(unstagedSelection.multiTileRequestEnabled, false);
 assert.equal(unstagedSelection.loadMissionPatchEnabled, false);
@@ -119,6 +125,7 @@ const gulfSelection = referenceAtlasStageActionState({
   }
 });
 assert.equal(gulfSelection.continueToBathymetryEnabled, false);
+assert.equal(gulfSelection.openCoarsePreviewEnabled, true);
 assert.equal(gulfSelection.patchRequestEnabled, false);
 assert.equal(gulfSelection.multiTileRequestEnabled, true);
 assert.equal(gulfSelection.loadMissionPatchEnabled, false);
@@ -128,6 +135,10 @@ assert.equal(gulfSelection.actionState.continueToBathymetry.variant, 'disabled')
 assert.equal(gulfSelection.actionState.loadMissionPatch.variant, 'disabled');
 assert.equal(gulfSelection.actionState.exportMultiTileRequest.variant, 'warning');
 assert.equal(gulfSelection.selectedRegionNextAction, 'exportMultiTilePatchRequest');
+assert.equal(gulfSelection.selectedRegionScale.operationalSelectionStatus, 'VALID');
+assert.equal(gulfSelection.selectedRegionScale.generationBudgetStatus, 'MULTI_TILE_REQUIRED');
+assert.equal(gulfSelection.selectedRegionScale.multiTileRequired, true);
+assert.equal(gulfSelection.selectedRegionScale.coarsePreviewAvailable, true);
 
 const gulfActions = deriveAtlasBoundaryActions({
   selectedReferenceWindow: {
@@ -146,6 +157,7 @@ const gulfActions = deriveAtlasBoundaryActions({
   }
 });
 assert.equal(gulfActions.primaryAction, 'exportMultiTileRequest');
+assert.equal(gulfActions.openCoarsePreview.enabled, true);
 assert.equal(gulfActions.exportMultiTileRequest.enabled, true);
 
 console.log('smoke_environment_studio_stage_contract: ok', {

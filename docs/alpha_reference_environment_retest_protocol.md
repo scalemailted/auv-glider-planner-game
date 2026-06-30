@@ -18,9 +18,9 @@ This is not an operational ocean forecast. It is not certified navigation. It is
 
 Workflow path:
 
-Product Hub -> Simulation Lab -> Environment Studio -> Global Reference Bathymetry Atlas -> verify hosted tile-library status -> draw an operational window -> move it by dragging inside the rectangle -> resize it from an edge and a corner -> verify bounds/budget sync -> select Monterey Canyon mission-ready overlay -> confirm mesh LOD is available and non-authoritative -> Continue to 3D Bathymetry -> Regional 3D Bathymetry Workspace -> Generate 3D Bathymetry -> Generate Currents & Science Fields -> Compose Environment Artifact -> Review Launch Warnings -> Launch to Planning -> Place waypoints -> Execute Mission -> Debrief -> Export Public Benchmark Bundle -> return to atlas -> select Gulf Segment -> verify requestOnly / multi-tile request behavior -> export multi-tile patch request
+Product Hub -> Simulation Lab -> Environment Studio -> Global Reference Bathymetry Atlas -> verify hosted tile-library status -> draw an operational window -> move it by dragging inside the rectangle -> resize it from an edge and a corner -> verify bounds/budget sync -> select Monterey Canyon mission-ready overlay -> confirm mesh LOD is available and non-authoritative -> Continue to 3D Bathymetry -> Regional 3D Bathymetry Workspace -> Generate 3D Bathymetry -> Generate Currents & Science Fields -> Compose Environment Artifact -> Review Launch Warnings -> Launch to Planning -> Place waypoints -> Execute Mission -> Debrief -> Export Public Benchmark Bundle -> return to atlas -> select Gulf Segment -> verify requestOnly / multi-tile request behavior, valid operational-area status, and MULTI_TILE_REQUIRED budget -> open coarse regional preview -> verify preview is not mission-ready -> export multi-tile patch request
 
-The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Continue to 3D Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Request-only and Gulf-scale regions route to patch request or multi-tile request export instead. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests. The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the app-hosted ETOPO 2022 15 arc-second Monterey Canyon fixture.
+The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Continue to 3D Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Request-only and Gulf-scale regions can open a coarse regional preview and route to patch request or multi-tile request export instead. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests. The global overview is a selection layer, not mission-resolution bathymetry. Coarse preview is not mission-ready and disables Generate Fields, Compose Environment, Launch Planning, and benchmark export. Mission-ready generation uses staged regional patches such as the app-hosted ETOPO 2022 15 arc-second Monterey Canyon fixture.
 
 The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts staged tile artifacts under `assets/reference_bathymetry/`; raw source data remains outside the app under ignored local preprocessing paths. Mesh LODs are visualization and inspection artifacts only. The raster/grid bathymetry artifact remains authoritative for sampling and environment generation.
 
@@ -47,9 +47,12 @@ The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts st
 21. Export Public Benchmark Bundle.
 22. Return to the Global Reference Bathymetry Atlas.
 23. Select Gulf Segment.
-24. Verify requestOnly / multi-tile request behavior and that Continue to 3D Bathymetry is disabled.
-25. Export multi-tile patch request.
-26. Export diagnostic feedback bundle if confused or blocked.
+24. Verify it is a valid operational area with `MULTI_TILE_REQUIRED` generation budget and that Continue to 3D Bathymetry is disabled.
+25. Open Coarse Regional Preview.
+26. Verify the preview states that it is not mission-ready, not suitable for official simulation/scoring, and requires staged multi-tile bathymetry before Planning launch.
+27. Verify Generate Fields, Compose Environment, Launch Planning, and benchmark export are disabled from coarse preview.
+28. Return to the atlas and export a multi-tile patch request.
+29. Export diagnostic feedback bundle if confused or blocked.
 
 ## Questions For Testers
 
@@ -65,6 +68,7 @@ The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts st
 - Did you understand the difference between global overview and mission-ready patch?
 - Did you understand that non-staged regions need offline preprocessing?
 - Was Gulf requestOnly behavior clear?
+- Did coarse preview make large operational areas feel inspectable without implying they are mission-ready?
 - Was the multi-tile request workflow understandable?
 - Was the patch request export clear?
 - Did the regional patch workflow make sense after loading Monterey?
@@ -83,6 +87,6 @@ The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts st
 - Non-blocking `WARN` status may appear.
 - Currents and scalars are synthetic benchmark fields, not forecasts.
 - Only the Monterey Canyon reference patch is currently mission-ready.
-- Gulf-scale regions are requestOnly / multi-tile request workflows until owner-approved offline download and preprocessing stages those tiles.
+- Gulf-scale regions are requestOnly / coarse-preview / multi-tile request workflows until owner-approved offline download and preprocessing stages those tiles.
 - The procedural world/globe editor is deprecated/experimental.
 - Browser automation is mostly Chromium-focused unless otherwise recorded.

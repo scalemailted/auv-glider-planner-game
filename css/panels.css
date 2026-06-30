@@ -1854,6 +1854,14 @@
   opacity: .88;
 }
 
+.regional-bathymetry-ridges path {
+  fill: none;
+  stroke: rgba(85, 214, 190, .7);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: .72;
+}
+
 .regional-bathymetry-selected-window {
   fill: rgba(249, 225, 108, .13);
   stroke: var(--warning);

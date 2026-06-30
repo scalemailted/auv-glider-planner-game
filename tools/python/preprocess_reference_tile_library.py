@@ -32,12 +32,14 @@ TILE_LIBRARY_VERSION = "reference-tile-library-r1a"
 RASTER_TYPE = "anchor.reference-bathymetry-raster"
 MESH_TYPE = "anchor.reference-bathymetry-mesh-lod"
 TILE_SET_TYPE = "anchor.reference-bathymetry-tile-set"
+MULTITILE_TILE_SET_TYPE = "anchor.reference-bathymetry-multitile-tileset"
 TILE_LIBRARY_TYPE = "anchor.reference-bathymetry-tile-library"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Create app-hosted reference bathymetry tile-library assets.")
     parser.add_argument("--region", action="append", default=[], help="Optional curated region ID to preprocess/register.")
+    parser.add_argument("--request-json", action="append", default=[], help="Optional exported anchor.reference-bathymetry-multitile-patch-request JSON to register/preprocess.")
     parser.add_argument("--coarse-columns", type=int, default=64)
     parser.add_argument("--coarse-rows", type=int, default=48)
     parser.add_argument("--medium-columns", type=int, default=128)
@@ -48,6 +50,8 @@ def main() -> int:
     TILE_ROOT.mkdir(parents=True, exist_ok=True)
 
     curated = read_json(REGION_CONFIG)
+    request_regions = [region_from_request_json(Path(request_path)) for request_path in args.request_json]
+    curated = [*curated, *request_regions]
     selected_region_ids = set(args.region)
     legacy_manifest = read_json(LEGACY_MANIFEST) if LEGACY_MANIFEST.exists() else {}
     legacy_fixtures = legacy_manifest.get("fixtures") if isinstance(legacy_manifest.get("fixtures"), list) else []
@@ -152,6 +156,10 @@ def stage_existing_fixture(fixture: dict, source_path: Path, *, coarse_shape: tu
 
 def stage_region_from_raw_tiles(region: dict, args: argparse.Namespace) -> dict | None:
     required_tiles = resolve_etopo_2022_15s_tiles(region["bounds"], variant="surface")
+    if len(required_tiles) > 1:
+        # MULTITILE-OPAREA-R1 defines the staged contract, but this preprocessor
+        # must not collapse a large region into one browser-hosted raster.
+        return None
     raw_paths = [RAW_TILE_ROOT / tile["fileName"] for tile in required_tiles]
     if not raw_paths or not all(path.exists() for path in raw_paths):
         return None
@@ -235,6 +243,37 @@ def stage_region_from_raw_tiles(region: dict, args: argparse.Namespace) -> dict 
     return metadata
 
 
+def region_from_request_json(request_path: Path) -> dict:
+    request = read_json(request_path)
+    artifact_type = request.get("artifactType")
+    if artifact_type not in {
+        "anchor.reference-bathymetry-multitile-patch-request",
+        "anchor.reference-bathymetry-patch-request",
+    }:
+        raise ValueError(f"{request_path} is not a supported reference bathymetry patch request.")
+    bounds = request.get("bounds") or request.get("typedBounds")
+    if not isinstance(bounds, dict):
+        raise ValueError(f"{request_path} does not include request bounds.")
+    region_id = safe_id(
+        request.get("suggestedFixturePrefix")
+        or request.get("suggestedFixtureId")
+        or request_path.stem
+    )
+    return {
+        "regionId": region_id,
+        "label": request.get("label") or label_from_id(region_id),
+        "sourceDataset": request.get("sourceDataset") or "ETOPO_2022",
+        "sourceVariant": request.get("sourceVariant") or "15s_surface_elevation",
+        "role": "requestOrStagedTileSet",
+        "bounds": {
+            "westLon": float(bounds["westLon"]),
+            "eastLon": float(bounds["eastLon"]),
+            "southLat": float(bounds["southLat"]),
+            "northLat": float(bounds["northLat"]),
+        },
+    }
+
+
 def request_only_tile_set(region: dict) -> dict:
     required_tiles = resolve_etopo_2022_15s_tiles(region["bounds"], variant="surface")
     tile_set = build_tile_set_metadata({
@@ -252,6 +291,13 @@ def request_only_tile_set(region: dict) -> dict:
         "coverageRole": "requestOnly",
         "recommendedUse": "Offline tile request only; not staged for browser mission loading.",
         "budgetClass": "multiTileRequest" if len(required_tiles) > 1 else "singleTileRequest",
+        "tileGrid": {
+            "rows": None,
+            "columns": None,
+            "tileCount": len(required_tiles),
+            "maxTileRows": 512,
+            "maxTileColumns": 512,
+        } if len(required_tiles) > 1 else None,
         "requiredSourceTiles": [
             {
                 "tileId": tile["tileId"],
@@ -496,8 +542,9 @@ def approximation_errors(source: list[list[float]], sampled: list[list[float]]) 
 
 
 def build_tile_set_metadata(base: dict) -> dict:
+    budget_class = str(base.get("budgetClass") or "")
     return {
-        "artifactType": TILE_SET_TYPE,
+        "artifactType": MULTITILE_TILE_SET_TYPE if budget_class.startswith("multiTile") else TILE_SET_TYPE,
         "artifactVersion": "1.0.0",
         "tileSetId": base["tileSetId"],
         "label": base["label"],
@@ -510,6 +557,8 @@ def build_tile_set_metadata(base: dict) -> dict:
         "actualRasterResolutionArcSeconds": base.get("actualRasterResolutionArcSeconds"),
         "bounds": base["bounds"],
         "rasterTiles": base.get("rasterTiles"),
+        "tileGrid": base.get("tileGrid"),
+        "overviewMesh": base.get("overviewMesh"),
         "meshLods": base.get("meshLods") or [],
         "coverageRole": base["coverageRole"],
         "recommendedUse": base["recommendedUse"],
@@ -738,6 +787,13 @@ def rel(path: Path) -> str:
 
 def label_from_id(value: str) -> str:
     return str(value).replace("_", " ").replace("-", " ").title()
+
+
+def safe_id(value: Any) -> str:
+    text = str(value or "reference_region").strip().lower()
+    safe = "".join(char if char.isalnum() else "_" for char in text)
+    safe = "_".join(part for part in safe.split("_") if part)
+    return safe or "reference_region"
 
 
 def round_float(value: float, digits: int = 6) -> float:

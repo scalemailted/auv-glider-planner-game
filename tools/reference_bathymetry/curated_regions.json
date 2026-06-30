@@ -24,5 +24,18 @@
       "southLat": 24.0,
       "northLat": 30.0
     }
+  },
+  {
+    "regionId": "gulf_segment_demo_15s",
+    "label": "Gulf Segment Demo 15s",
+    "sourceDataset": "ETOPO_2022",
+    "sourceVariant": "15s_surface_elevation",
+    "role": "requestOrStagedTileSet",
+    "bounds": {
+      "westLon": -90.5,
+      "eastLon": -83.8,
+      "southLat": 26.7,
+      "northLat": 30.7
+    }
   }
 ]

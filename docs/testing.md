@@ -15,23 +15,26 @@ Run these after changing reference-bathymetry manifests, tile-library preprocess
 ```bash
 python tools/python/download_reference_bathymetry_tiles.py dry-run --region monterey_canyon_15s
 python tools/python/download_reference_bathymetry_tiles.py dry-run --region gulf_segment_15s
+python tools/python/download_reference_bathymetry_tiles.py dry-run --region gulf_segment_demo_15s
 python tools/python/preprocess_reference_tile_library.py
 node tools/js/audit_reference_tile_library_static_assets.mjs
 node tools/js/smoke_reference_tile_library_loader.mjs
 node tools/js/smoke_reference_bathymetry_mesh_lod.mjs
 node tools/js/smoke_reference_tile_library_atlas_coverage.mjs
+node tools/js/smoke_multitile_operational_area_contract.mjs
 node tools/js/smoke_environment_studio_stage_contract.mjs
 node tools/js/smoke_environment_studio_action_state.mjs
 node tools/js/smoke_regional_bathymetry_scene_contract.mjs
 node tools/js/audit_reference_tile_library_alpha_readiness.mjs
 node tools/js/audit_environment_studio_stage_flow.mjs
+node tools/js/audit_multitile_operational_area_flow.mjs
 npm.cmd run build:pages
 node tools/js/audit_reference_tile_library_pages_delivery.mjs
 npm.cmd run smoke:pages
 npm.cmd run audit:reference-bathy
 ```
 
-ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The browser does not download NOAA/GEBCO data at runtime. External public bathymetry data is downloaded and preprocessed offline, then registered as staged ANCHOR tile artifacts. Environment Studio is a staged workflow. The Global Atlas Staging Scene is used to select and inspect an operational boundary window. Continue to 3D Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Request-only and Gulf-scale regions route to patch request or multi-tile request export instead. The regional 3D mesh is a decimated visualization artifact. The reference raster/grid remains authoritative for bathymetry sampling, masks, environment generation, simulation, and benchmark export. The alpha-readiness audit writes `artifacts/owner-review/ref-tile-lib-r1a/qa-summary.json`; the staged-scene audit writes `artifacts/owner-review/env-staging-scene-r1-1/qa-summary.json`; the Pages delivery audit requires `_site` to include the tile-library manifest, staged Monterey rasters, Monterey mesh LODs, global overview artifacts, and loader files without raw `.tif`, `.tiff`, `.nc`, `.zip`, `external_data`, hidden truth, local absolute paths, or runtime NOAA/GEBCO URLs.
+ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The browser does not download NOAA/GEBCO data at runtime. External public bathymetry data is downloaded and preprocessed offline, then registered as staged ANCHOR tile artifacts. Environment Studio is a staged workflow. The Global Atlas Staging Scene is used to select and inspect an operational boundary window. Continue to 3D Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Request-only and Gulf-scale regions can open a coarse regional preview and export patch or multi-tile request artifacts; coarse preview disables field generation, environment composition, Planning launch, and benchmark export. The regional 3D mesh is a decimated visualization artifact. The reference raster/grid remains authoritative for bathymetry sampling, masks, environment generation, simulation, and benchmark export. The alpha-readiness audit writes `artifacts/owner-review/ref-tile-lib-r1a/qa-summary.json`; the staged-scene audit writes `artifacts/owner-review/env-staging-scene-r1-1/qa-summary.json`; the multi-tile operational-area audit writes `artifacts/owner-review/multitile-oparea-r1/qa-summary.json`; the Pages delivery audit requires `_site` to include the tile-library manifest, staged Monterey rasters, Monterey mesh LODs, global overview artifacts, and loader files without raw `.tif`, `.tiff`, `.nc`, `.zip`, `external_data`, hidden truth, local absolute paths, or runtime NOAA/GEBCO URLs.
 
 ## SCI-VALID-R2A Scientific Validation Checks
 

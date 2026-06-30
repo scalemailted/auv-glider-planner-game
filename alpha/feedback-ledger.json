@@ -750,6 +750,39 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-032",
+      "title": "Large valid Gulf-scale operational areas need an inspectable path before offline staging.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas",
+      "summary": "Alpha review found that a valid Gulf-scale operational area felt blocked when the only visible path was MULTI_TILE_REQUIRED and request export. Large selections should feel usable without pretending the browser can generate a giant mission-ready patch.",
+      "decision": "Accepted for MULTITILE-OPAREA-R1.",
+      "proposedPhase": "MULTITILE-OPAREA-R1",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/multitile-oparea-r1/qa-summary.json",
+        "tools/js/smoke_multitile_operational_area_contract.mjs",
+        "tools/js/audit_multitile_operational_area_flow.mjs"
+      ],
+      "acceptanceCriteria": [
+        "Large Gulf-style regions remain valid operational areas with operationalSelectionStatus=VALID and generationBudgetStatus=MULTI_TILE_REQUIRED.",
+        "Open Coarse Regional Preview is enabled for valid selected regions, including request-only and MULTI_TILE_REQUIRED regions.",
+        "Coarse preview clearly states that it is not mission-ready, not suitable for official simulation/scoring, and requires staged multi-tile bathymetry before Planning launch.",
+        "Generate Fields, Compose Environment, Launch Planning, and benchmark export stay disabled from coarse preview.",
+        "Gulf-scale request-only regions still export multi-tile patch requests, and Monterey 15 arc-second still opens as the mission-ready single-tile path.",
+        "No browser NOAA/GEBCO fetch, raw external_data path, hidden truth, simulation change, scoring change, planner change, or field-equation change is introduced."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

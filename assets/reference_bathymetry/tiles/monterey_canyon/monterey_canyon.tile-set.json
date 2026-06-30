@@ -23,6 +23,8 @@
     "columns": 90,
     "digest": "sha256:f19c402408569d73744e43f08a27981cf74398558122995ba206ff53265e0d81"
   },
+  "tileGrid": null,
+  "overviewMesh": null,
   "meshLods": [
     {
       "lod": "coarse",
@@ -54,7 +56,7 @@
     "raster": "sha256:f19c402408569d73744e43f08a27981cf74398558122995ba206ff53265e0d81",
     "meshCoarse": "sha256:7106da0661f412ba3a833c8dad7d8b209c0dbc63182ecd8b19cb67386257fdf8",
     "meshMedium": "sha256:0079e07062d3952af99a89d7132bab57644c3e84c652f614fbdc4160d38ecda2",
-    "metadata": "sha256:e8c70135ddab9aedcf2008a968ac18acf65496b2bffce1715cd2cc4bd1c5b289"
+    "metadata": "sha256:424e354e092fb2a9b32f20eab105c6cc39ddd6907e8cff491f35b4451fa5a375"
   },
   "tags": [
     "app-hosted-tile-library",
@@ -83,5 +85,5 @@
     "hiddenTruthExposed": false
   },
   "metadataPath": "assets/reference_bathymetry/tiles/monterey_canyon/monterey_canyon.tile-set.json",
-  "digest": "sha256:e8c70135ddab9aedcf2008a968ac18acf65496b2bffce1715cd2cc4bd1c5b289"
+  "digest": "sha256:424e354e092fb2a9b32f20eab105c6cc39ddd6907e8cff491f35b4451fa5a375"
 }

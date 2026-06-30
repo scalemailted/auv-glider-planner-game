@@ -7,6 +7,7 @@ import {
   referenceFixtureAvailabilityForBounds
 } from '../../src/core/editor/ReferenceBathymetryAtlas.js';
 import {
+  findTileSetsForBounds,
   normalizeReferenceTileLibraryManifest,
   referenceTileLibraryFixtures,
   selectBestTileSetForBounds
@@ -56,6 +57,18 @@ assert.equal(gulfAvailability.available, false, 'Gulf is not staged as a browser
 assert.equal(gulfAvailability.boundaryBudget?.multiTileRecommended, true, 'Gulf remains multi-tile request');
 assert.equal(gulfAvailability.recommendedAction, 'exportMultiTilePatchRequest', 'Gulf recommends multi-tile patch request');
 
+const gulfDemoBounds = {
+  westLon: -90.5,
+  eastLon: -83.8,
+  southLat: 26.7,
+  northLat: 30.7
+};
+const gulfDemoAvailability = referenceFixtureAvailabilityForBounds(atlas, gulfDemoBounds);
+assert.equal(gulfDemoAvailability.available, false, 'Gulf demo is not staged as a browser tile');
+assert.equal(gulfDemoAvailability.boundaryBudget?.budgetStatus, 'MULTI_TILE_REQUIRED', 'Gulf demo is multi-tile required');
+const gulfDemoRequests = findTileSetsForBounds(gulfDemoBounds, tileLibrary, { includeRequestOnly: true });
+assert.ok(gulfDemoRequests.some((tileSet) => tileSet.tileSetId === 'gulf_segment_demo_15s'), 'Gulf demo request-only tile set is discoverable');
+
 const overlays = referenceAtlasPatchOverlays(atlas, {}, { width: 900, height: 450 });
 const montereyOverlay = overlays.find((overlay) => overlay.fixtureId === 'monterey_canyon_15s');
 assert.ok(montereyOverlay, 'Monterey overlay exists');
@@ -78,4 +91,3 @@ function mergeFixtures(existing = [], tileFixtures = []) {
 async function readJson(relativePath) {
   return JSON.parse(await fs.readFile(path.resolve(ROOT, String(relativePath).replaceAll('/', path.sep)), 'utf8'));
 }
-

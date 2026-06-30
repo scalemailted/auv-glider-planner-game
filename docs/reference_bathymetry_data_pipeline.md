@@ -8,7 +8,7 @@ ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The 
 
 The raster/grid artifact remains authoritative for bathymetry sampling and environment generation. Derived low-poly meshes are visualization/inspection artifacts only.
 
-Environment Studio is a staged workflow. The Global Atlas Staging Scene is used to select and inspect an operational boundary window. If the selected window matches an app-hosted mission-ready tile set, the user can continue to the Regional 3D Bathymetry Workspace. If the region is not staged, the user exports a patch request or multi-tile patch request.
+Environment Studio is a staged workflow. The Global Atlas Staging Scene is used to select and inspect an operational boundary window. If the selected window matches an app-hosted mission-ready tile set, the user can continue to the Regional 3D Bathymetry Workspace. If the region is not staged, the user can open a coarse regional preview for inspection and export a patch request or multi-tile patch request. Coarse preview is not mission-ready and cannot generate fields, compose an environment, launch Planning, or produce official simulation/scoring artifacts.
 
 The regional 3D mesh is a decimated visualization artifact. The reference raster/grid remains authoritative for bathymetry sampling, masks, environment generation, simulation, and benchmark export.
 
@@ -34,19 +34,23 @@ REF-TILE-LIB-R1A adds the static tile-library pipeline:
 ```powershell
 python tools/python/download_reference_bathymetry_tiles.py dry-run --region monterey_canyon_15s
 python tools/python/download_reference_bathymetry_tiles.py dry-run --region gulf_segment_15s
+python tools/python/download_reference_bathymetry_tiles.py dry-run --region gulf_segment_demo_15s
 python tools/python/download_reference_bathymetry_tiles.py download --region gulf_segment_15s
 python tools/python/preprocess_reference_tile_library.py
+python tools/python/preprocess_reference_tile_library.py --request-json path/to/exported.reference-bathymetry-multitile-patch-request.json
 node tools/js/audit_reference_tile_library_static_assets.mjs
 node tools/js/smoke_reference_tile_library_loader.mjs
 node tools/js/smoke_reference_bathymetry_mesh_lod.mjs
 node tools/js/smoke_reference_tile_library_atlas_coverage.mjs
+node tools/js/smoke_multitile_operational_area_contract.mjs
 node tools/js/audit_reference_tile_library_alpha_readiness.mjs
+node tools/js/audit_multitile_operational_area_flow.mjs
 npm.cmd run build:pages
 node tools/js/audit_reference_tile_library_pages_delivery.mjs
 npm.cmd run smoke:pages
 ```
 
-`tools/reference_bathymetry/curated_regions.json` records curated operational regions. `download_reference_bathymetry_tiles.py` resolves ETOPO 2022 15 arc-second source tiles and downloads selected raw GeoTIFFs only into ignored `external_data/reference_bathymetry/`. `preprocess_reference_tile_library.py` creates staged browser artifacts under `assets/reference_bathymetry/tiles/<regionId>/` and registers them in `assets/reference_bathymetry/tile-library-manifest.json`.
+`tools/reference_bathymetry/curated_regions.json` records curated operational regions. `download_reference_bathymetry_tiles.py` resolves ETOPO 2022 15 arc-second source tiles and downloads selected raw GeoTIFFs only into ignored `external_data/reference_bathymetry/`. `preprocess_reference_tile_library.py` creates staged browser artifacts under `assets/reference_bathymetry/tiles/<regionId>/` and registers them in `assets/reference_bathymetry/tile-library-manifest.json`. It can also consume an exported `anchor.reference-bathymetry-multitile-patch-request` through `--request-json`; if the required source tiles are not cached, it registers honest request-only metadata rather than downloading or fabricating data.
 
 REF-TILE-LIB-R1A.1 adds readiness checks, not new data. `audit_reference_tile_library_alpha_readiness.mjs` opens Environment Studio in a browser, verifies hosted Monterey tile loading, exports a benchmark bundle, verifies Gulf requestOnly / multi-tile request behavior, and writes the owner-review package at `artifacts/owner-review/ref-tile-lib-r1a/`. `audit_reference_tile_library_pages_delivery.mjs` runs after `npm.cmd run build:pages` and verifies `_site` delivers the tile-library manifest, staged Monterey tile assets, mesh LODs, global overview artifacts, and loader files without raw `.tif`, `.tiff`, `.nc`, `.zip`, `external_data`, local absolute paths, hidden truth, or runtime NOAA/GEBCO URLs.
 
@@ -68,7 +72,7 @@ The global overview is a selection layer, not mission-resolution bathymetry. Mis
 
 The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests.
 
-The static tile library currently registers two staged Monterey tile sets and one Gulf request-only entry. `monterey_canyon_15s` is the mission-ready tile set; `monterey_canyon` is a low-resolution fallback tile set. `gulf_segment_15s` remains request-only until the owner runs the offline download and preprocessing commands. The browser loader ignores request-only regions when choosing staged mission patches. The Pages build copies `assets/reference_bathymetry/` so hosted Alpha testers receive the same staged tile library as local static serving.
+The static tile library currently registers two staged Monterey tile sets and two Gulf request-only entries. `monterey_canyon_15s` is the mission-ready tile set; `monterey_canyon` is a low-resolution fallback tile set. `gulf_segment_15s` and `gulf_segment_demo_15s` remain request-only until the owner runs the offline download and preprocessing commands. The demo region covers west -90.5, east -83.8, south 26.7, north 30.7 and resolves the four expected ETOPO source tiles crossing 30N: `N45W105`, `N45W090`, `N30W105`, and `N30W090`. The browser loader ignores request-only regions when choosing staged mission patches. The Pages build copies `assets/reference_bathymetry/` so hosted Alpha testers receive the same staged tile library as local static serving.
 
 The two Monterey Canyon fixtures are:
 
@@ -96,7 +100,7 @@ The preserved fallback fixture is:
 - shape: 90 columns x 72 rows
 - bounds: west -123.0, east -121.5, south 36.0, north 37.2
 
-Environment Studio opens to the Global Atlas Staging Scene, supports deep zoom, direct rectangle editing, and typed operational-window editing, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users continue from a staged mission-ready tile into the Regional 3D Bathymetry Workspace before confirming bathymetry and generating fields. If a selected region is not staged or is too large for live Alpha generation, the browser exports an `anchor.reference-bathymetry-patch-request` or `anchor.reference-bathymetry-multitile-patch-request` with typed bounds, approximate size, local commands, and boundary-budget metadata instead of generating fake reference data.
+Environment Studio opens to the Global Atlas Staging Scene, supports deep zoom, direct rectangle editing, and typed operational-window editing, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users continue from a staged mission-ready tile into the Regional 3D Bathymetry Workspace before confirming bathymetry and generating fields. If a selected region is not staged or is too large for live Alpha generation, the browser can open a coarse regional preview and exports an `anchor.reference-bathymetry-patch-request` or `anchor.reference-bathymetry-multitile-patch-request` with typed bounds, approximate size, local commands, and boundary-budget metadata instead of generating fake reference data. Coarse preview uses global overview or decimated atlas context only; it is not mission-resolution bathymetry and disables Generate Fields, Compose Environment, Launch Planning, and benchmark export.
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 
@@ -117,7 +121,7 @@ The generated currents, scalars, hotspots, and hazard candidates are determinist
 
 The reference-derived Monterey Canyon path is ready for human alpha retest. Retest evidence lives in ignored local owner-review artifacts, including `artifacts/owner-review/ref-tile-lib-r1a/qa-summary.json` for the static tile-library workflow, while tester instructions and the feedback template are tracked in `docs/alpha_reference_environment_retest_protocol.md` and `alpha/reference-environment-retest-feedback-template.json`.
 
-For REF-ATLAS-INTERACT-R1.4, large valid operational windows such as Gulf-scale selections are not rejected as tiny browser patches. The browser records the selected `OperationalWindow`, reports a separate `GenerationBudget` with `MULTI_TILE_REQUIRED`, and exports `anchor.reference-bathymetry-multitile-patch-request` JSON containing typed bounds, approximate size, tile bounds, suggested fixture prefix, offline download/preprocess commands, claim-boundary flags, and a request digest. The artifact is still a request only: it does not include raw external paths, hidden truth, generated currents, generated scalar fields, or an operational forecast claim.
+For MULTITILE-OPAREA-R1, large valid operational windows such as Gulf-scale selections are not rejected as tiny browser patches. The browser records the selected `OperationalWindow`, reports a separate `GenerationBudget` with `MULTI_TILE_REQUIRED`, enables `Open Coarse Regional Preview`, and exports `anchor.reference-bathymetry-multitile-patch-request` JSON containing typed bounds, approximate size, tile bounds, suggested fixture prefix, offline download/preprocess commands, claim-boundary flags, and a request digest. The artifact is still a request only: it does not include raw external paths, hidden truth, generated currents, generated scalar fields, or an operational forecast claim.
 
 ## Boundaries
 
