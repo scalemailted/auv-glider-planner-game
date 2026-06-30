@@ -106,6 +106,14 @@ import {
   referenceAtlasBoundsForKilometerWindow,
   referenceAtlasBoundsForOperationalPreset
 } from '../../../core/editor/ReferenceAtlasBoundaryBudget.js';
+import {
+  REFERENCE_ATLAS_RECTANGLE_DRAG_MODES,
+  REFERENCE_ATLAS_RECTANGLE_HIT_TARGET_PX,
+  hitTestReferenceAtlasRectangle,
+  referenceAtlasCursorForDragMode,
+  referenceAtlasRectangleGeometry,
+  referenceAtlasUpdateBoundsForDrag
+} from '../../../core/editor/ReferenceAtlasInteractionModel.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -142,6 +150,22 @@ function createReferenceAtlasPerfState() {
     lastCacheKey: null,
     hiddenTruthExposed: false,
     rawExternalDataPathExposed: false
+  };
+}
+
+function createReferenceAtlasRectangleEditorState() {
+  return {
+    enabled: true,
+    activeHandle: null,
+    activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+    hoverHandle: null,
+    movedCount: 0,
+    resizedEdgeCount: 0,
+    resizedCornerCount: 0,
+    tinySelectionHandled: false,
+    lastResizePreservedOppositeEdge: true,
+    lastBudgetStatus: null,
+    lastPatchAvailability: null
   };
 }
 
@@ -238,6 +262,7 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.referenceAtlasTransientView = null;
     this.referenceAtlasTransientBounds = null;
     this.referenceAtlasPerf = createReferenceAtlasPerfState();
+    this.referenceAtlasRectangleEditor = createReferenceAtlasRectangleEditorState();
     this.oversizeGenerationBlockedCount = 0;
     this.lastBlockedGenerationReason = null;
     this.lastPatchRequestType = null;
@@ -753,7 +778,7 @@ export class EnvironmentStudioScene extends PhaserScene {
     }
     this.referenceBoundaryDrawing = !this.referenceBoundaryDrawing;
     this.statusMessage = this.referenceBoundaryDrawing
-      ? 'Bounding-box selection enabled. Drag the atlas map to draw a reference patch.'
+      ? 'Bounding-box selection enabled. Drag the atlas map to draw; drag inside a selected box to move it, edges/corners to resize it.'
       : 'Bounding-box selection disabled.';
     this.render();
   }
@@ -837,6 +862,40 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   operationalWindowEditorDebugPayload() {
     return { ...createDefaultOperationalWindowEditor(), ...(this.operationalWindowEditor ?? {}) };
+  }
+
+  referenceAtlasRectangleEditorDebugPayload() {
+    const canvas = this.referenceAtlasPreviewBinding?.canvas;
+    const rect = canvas?.getBoundingClientRect?.();
+    const canvasSize = {
+      width: Number(rect?.width ?? canvas?.width ?? 900),
+      height: Number(rect?.height ?? canvas?.height ?? 450)
+    };
+    const geometry = referenceAtlasRectangleGeometry({
+      enabled: this.referenceAtlasRectangleEditor?.enabled !== false,
+      selectedBounds: this.referenceAtlasTransientBounds ?? this.session.selectedReferenceWindow?.bounds ?? null,
+      worldView: this.referenceAtlasTransientView ?? this.session.worldView ?? {},
+      atlas: this.session.referenceAtlas,
+      canvasSize,
+      hitTargetPx: REFERENCE_ATLAS_RECTANGLE_HIT_TARGET_PX,
+      activeHandle: this.referenceAtlasRectangleEditor?.activeHandle ?? null,
+      activeDragMode: this.referenceAtlasRectangleEditor?.activeDragMode ?? REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+      hoverHandle: this.referenceAtlasRectangleEditor?.hoverHandle ?? null
+    });
+    return {
+      ...geometry,
+      movedCount: Number(this.referenceAtlasRectangleEditor?.movedCount ?? 0),
+      resizedEdgeCount: Number(this.referenceAtlasRectangleEditor?.resizedEdgeCount ?? 0),
+      resizedCornerCount: Number(this.referenceAtlasRectangleEditor?.resizedCornerCount ?? 0),
+      tinySelectionHandled: this.referenceAtlasRectangleEditor?.tinySelectionHandled === true,
+      lastResizePreservedOppositeEdge: this.referenceAtlasRectangleEditor?.lastResizePreservedOppositeEdge !== false,
+      lastBudgetStatus: this.referenceAtlasRectangleEditor?.lastBudgetStatus ?? this.session.selectedReferenceBoundaryBudget?.budgetStatus ?? null,
+      lastPatchAvailability: this.referenceAtlasRectangleEditor?.lastPatchAvailability ?? this.session.selectedReferenceAvailability?.status ?? null,
+      hiddenTruthExposed: false,
+      rawExternalDataPathExposed: false,
+      simulationChanged: false,
+      scoringChanged: false
+    };
   }
 
   readOperationalWindowEditorFromControls() {
@@ -1005,6 +1064,15 @@ export class EnvironmentStudioScene extends PhaserScene {
       lastPreset: options.lastPreset ?? this.operationalWindowEditor.lastPreset,
       tinySelectionExpanded
     });
+    this.referenceAtlasRectangleEditor = {
+      ...this.referenceAtlasRectangleEditor,
+      tinySelectionHandled: tinySelectionExpanded === true,
+      activeHandle: null,
+      activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+      hoverHandle: null,
+      lastBudgetStatus: budget?.budgetStatus ?? null,
+      lastPatchAvailability: availability?.status ?? (availability?.available ? 'AVAILABLE' : 'NOT_STAGED')
+    };
     this.statusMessage = tinySelectionExpanded
       ? `${REFERENCE_ATLAS_TINY_SELECTION_MESSAGE} Expanded to Local Patch.`
       : this.referenceSelectionStatusMessage(availability, budget);
@@ -1033,6 +1101,15 @@ export class EnvironmentStudioScene extends PhaserScene {
       lastPreset: null,
       tinySelectionExpanded: false
     });
+    this.referenceAtlasRectangleEditor = {
+      ...this.referenceAtlasRectangleEditor,
+      tinySelectionHandled: false,
+      activeHandle: null,
+      activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+      hoverHandle: null,
+      lastBudgetStatus: this.session.selectedReferenceBoundaryBudget?.budgetStatus ?? null,
+      lastPatchAvailability: this.session.selectedReferenceAvailability?.status ?? (this.session.selectedReferenceAvailability?.available ? 'AVAILABLE' : 'NOT_STAGED')
+    };
     this.statusMessage = fixture.role === 'lowResolutionReferencePatch'
       ? `Selected low-resolution fallback overlay: ${fixture.fixtureId}. Use only as a fallback; it is not a missionReadyPatch.`
       : `Selected ${fixture.role} overlay: ${fixture.fixtureId}.`;
@@ -1107,6 +1184,15 @@ export class EnvironmentStudioScene extends PhaserScene {
   clearReferenceWindow() {
     this.session = clearEnvironmentStudioReferenceWindow(this.session);
     this.referenceBoundaryDrawing = false;
+    this.referenceAtlasTransientBounds = null;
+    this.referenceAtlasRectangleEditor = {
+      ...this.referenceAtlasRectangleEditor,
+      activeHandle: null,
+      activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+      hoverHandle: null,
+      lastBudgetStatus: null,
+      lastPatchAvailability: null
+    };
     this.syncOperationalWindowEditorFromBounds(null, { appliedFrom: 'clear' });
     this.statusMessage = 'Cleared selected reference bathymetry patch.';
     this.lastError = null;
@@ -1169,6 +1255,14 @@ export class EnvironmentStudioScene extends PhaserScene {
     });
     this.statusMessage = this.referenceSelectionStatusMessage(this.session.selectedReferenceAvailability, this.session.selectedReferenceBoundaryBudget);
     this.lastError = this.referenceSelectionErrorMessage(this.session.selectedReferenceAvailability, this.session.selectedReferenceBoundaryBudget);
+    this.referenceAtlasRectangleEditor = {
+      ...this.referenceAtlasRectangleEditor,
+      activeHandle: null,
+      activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+      hoverHandle: null,
+      lastBudgetStatus: this.session.selectedReferenceBoundaryBudget?.budgetStatus ?? null,
+      lastPatchAvailability: this.session.selectedReferenceAvailability?.status ?? (this.session.selectedReferenceAvailability?.available ? 'AVAILABLE' : 'NOT_STAGED')
+    };
     this.render();
   }
 
@@ -1801,6 +1895,12 @@ export class EnvironmentStudioScene extends PhaserScene {
     }
     this.referenceAtlasTransientView = null;
     this.referenceAtlasTransientBounds = null;
+    this.referenceAtlasRectangleEditor = {
+      ...this.referenceAtlasRectangleEditor,
+      activeHandle: null,
+      activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+      hoverHandle: null
+    };
     this.referenceAtlasPreviewBinding = null;
     this.referenceAtlasPerf.listenerDetachCount += Number(binding.listenerCount ?? 0);
     this.referenceAtlasPerf.activeListenerCount = 0;
@@ -1853,6 +1953,7 @@ export class EnvironmentStudioScene extends PhaserScene {
       boundaryBudget: debug.boundaryBudget ?? this.session.selectedReferenceBoundaryBudget ?? null,
       operationalWindow: debug.operationalWindow ?? this.session.selectedReferenceOperationalWindow ?? this.session.selectedReferenceBoundaryBudget?.operationalWindow ?? null,
       operationalWindowEditor: this.operationalWindowEditorDebugPayload(),
+      rectangleEditor: this.referenceAtlasRectangleEditorDebugPayload(),
       generationBudget: debug.generationBudget ?? this.session.selectedReferenceGenerationBudget ?? this.session.selectedReferenceBoundaryBudget ?? null,
       referenceAtlasMaxZoom: REFERENCE_ATLAS_MAX_ZOOM,
       lastPatchRequestType: this.lastPatchRequestType,
@@ -1878,7 +1979,9 @@ export class EnvironmentStudioScene extends PhaserScene {
       hiddenTruthExposed: false,
       rawExternalDataPathExposed: false,
       simulationChanged: false,
-      scoringChanged: false
+      scoringChanged: false,
+      plannerChanged: false,
+      fieldEquationsChanged: false
     };
   }
 }
@@ -2471,6 +2574,9 @@ function bindReferenceBathymetryPreview(scene, root) {
     pointerStart: null,
     pointerStartView: null,
     pointerStartLonLat: null,
+    pointerStartBounds: null,
+    activeHandle: null,
+    lastDragUpdate: null,
     rafId: null,
     wheelCommitTimer: null,
     panelUpdateTimer: null
@@ -2497,6 +2603,53 @@ function bindReferenceBathymetryPreview(scene, root) {
     }) ?? null;
   };
   const pointerPoint = (event) => referenceCanvasPoint(canvas, event);
+  const pointerCssPoint = (event) => referenceCanvasCssPoint(canvas, event);
+  const rectangleGeometryForEvent = () => referenceAtlasRectangleGeometry({
+    enabled: scene.referenceAtlasRectangleEditor?.enabled !== false,
+    selectedBounds: scene.referenceAtlasTransientBounds ?? scene.session.selectedReferenceWindow?.bounds ?? null,
+    worldView: scene.referenceAtlasTransientView ?? scene.session.worldView ?? {},
+    atlas: scene.session.referenceAtlas,
+    canvasSize: referenceCanvasCssSize(canvas),
+    hitTargetPx: REFERENCE_ATLAS_RECTANGLE_HIT_TARGET_PX,
+    activeHandle: scene.referenceAtlasRectangleEditor?.activeHandle ?? null,
+    activeDragMode: scene.referenceAtlasRectangleEditor?.activeDragMode ?? REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+    hoverHandle: scene.referenceAtlasRectangleEditor?.hoverHandle ?? null
+  });
+  const setCanvasCursor = (cursor) => {
+    if (canvas?.style) canvas.style.cursor = cursor ?? 'grab';
+  };
+  const resetRectangleDragState = () => {
+    binding.pointerStartBounds = null;
+    binding.activeHandle = null;
+    binding.lastDragUpdate = null;
+    scene.referenceAtlasRectangleEditor = {
+      ...scene.referenceAtlasRectangleEditor,
+      activeHandle: null,
+      activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none
+    };
+    canvas.classList?.remove?.('is-dragging');
+    setCanvasCursor(scene.referenceBoundaryDrawing ? 'crosshair' : 'grab');
+  };
+  const updateHoverState = (event) => {
+    if (scene.referenceBoundaryDrawing) {
+      scene.referenceAtlasRectangleEditor = {
+        ...scene.referenceAtlasRectangleEditor,
+        hoverHandle: null,
+        activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none
+      };
+      setCanvasCursor('crosshair');
+      return;
+    }
+    const hit = hitTestReferenceAtlasRectangle(pointerCssPoint(event), rectangleGeometryForEvent());
+    const previousHover = scene.referenceAtlasRectangleEditor?.hoverHandle ?? null;
+    scene.referenceAtlasRectangleEditor = {
+      ...scene.referenceAtlasRectangleEditor,
+      hoverHandle: hit.handle,
+      activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none
+    };
+    setCanvasCursor(hit.cursor ?? 'grab');
+    if (previousHover !== hit.handle) schedulePreviewDraw();
+  };
   const updateCoordinateLabel = (event) => {
     const lonLat = referenceCanvasLonLat(canvas, scene.session, event, {
       worldView: scene.referenceAtlasTransientView ?? scene.session.worldView
@@ -2514,18 +2667,39 @@ function bindReferenceBathymetryPreview(scene, root) {
     event.preventDefault();
     scene.referenceAtlasPerf.pointerDownCount += 1;
     scene.referenceAtlasPerf.atlasInteractionActive = true;
-    scene.referenceAtlasPerf.lastInteractionType = scene.referenceBoundaryDrawing ? 'boundary' : 'pan';
+    const hit = scene.referenceBoundaryDrawing
+      ? { hit: false, handle: null, dragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.draw, cursor: 'crosshair' }
+      : hitTestReferenceAtlasRectangle(pointerCssPoint(event), rectangleGeometryForEvent());
+    const pointerMode = scene.referenceBoundaryDrawing
+      ? REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.draw
+      : (hit.hit ? hit.dragMode : 'pan');
+    scene.referenceAtlasPerf.lastInteractionType = pointerMode;
     binding.pointerId = event.pointerId;
-    binding.pointerMode = scene.referenceBoundaryDrawing ? 'boundary' : 'pan';
+    binding.pointerMode = pointerMode;
     binding.pointerStart = pointerPoint(event);
     binding.pointerStartView = { ...(scene.referenceAtlasTransientView ?? scene.session.worldView ?? {}) };
     binding.pointerStartLonLat = referenceCanvasLonLat(canvas, scene.session, event, { worldView: binding.pointerStartView });
+    binding.pointerStartBounds = scene.session.selectedReferenceWindow?.bounds
+      ? { ...scene.session.selectedReferenceWindow.bounds }
+      : null;
+    binding.activeHandle = hit.handle ?? null;
+    binding.lastDragUpdate = null;
+    scene.referenceAtlasRectangleEditor = {
+      ...scene.referenceAtlasRectangleEditor,
+      activeHandle: hit.handle ?? null,
+      activeDragMode: isReferenceAtlasRectangleEditorMode(pointerMode)
+        ? pointerMode
+        : REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+      hoverHandle: hit.handle ?? null
+    };
+    canvas.classList?.add?.('is-dragging');
+    setCanvasCursor(referenceAtlasCursorForDragMode(pointerMode, 'grabbing'));
     try {
       canvas.setPointerCapture?.(event.pointerId);
     } catch {
       // Pointer capture is best-effort for older browser engines.
     }
-    if (binding.pointerMode === 'boundary') {
+    if (binding.pointerMode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.draw) {
       scene.referenceAtlasPerf.boundaryDrawStartCount += 1;
       scene.referenceAtlasTransientBounds = referenceAtlasBoundsFromDrag(binding.pointerStartLonLat, binding.pointerStartLonLat, referenceBoundaryDragOptions(scene));
       schedulePreviewDraw();
@@ -2534,14 +2708,40 @@ function bindReferenceBathymetryPreview(scene, root) {
   addListener(canvas, 'pointermove', (event) => {
     scene.referenceAtlasPerf.pointerMoveCount += 1;
     const lonLat = updateCoordinateLabel(event);
-    if (binding.pointerId == null || event.pointerId !== binding.pointerId) return;
+    if (binding.pointerId == null || event.pointerId !== binding.pointerId) {
+      updateHoverState(event);
+      return;
+    }
     event.preventDefault();
     const point = pointerPoint(event);
-    if (binding.pointerMode === 'boundary') {
-      scene.referenceAtlasPerf.lastInteractionType = 'boundary';
+    if (binding.pointerMode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.draw) {
+      scene.referenceAtlasPerf.lastInteractionType = REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.draw;
       scene.referenceAtlasPerf.boundaryPreviewCount += 1;
       scene.referenceAtlasTransientBounds = referenceAtlasBoundsFromDrag(binding.pointerStartLonLat, lonLat, referenceBoundaryDragOptions(scene));
       schedulePreviewDraw();
+      return;
+    }
+    if (isReferenceAtlasRectangleDragMode(binding.pointerMode)) {
+      scene.referenceAtlasPerf.lastInteractionType = binding.pointerMode;
+      if (binding.pointerStartBounds) {
+        binding.lastDragUpdate = referenceAtlasUpdateBoundsForDrag({
+          initialBounds: binding.pointerStartBounds,
+          dragMode: binding.pointerMode,
+          startLonLat: binding.pointerStartLonLat,
+          currentLonLat: lonLat,
+          atlas: scene.session.referenceAtlas,
+          ...referenceBoundaryDragOptions(scene)
+        });
+        scene.referenceAtlasTransientBounds = binding.lastDragUpdate.bounds;
+        scene.referenceAtlasRectangleEditor = {
+          ...scene.referenceAtlasRectangleEditor,
+          activeHandle: binding.activeHandle,
+          activeDragMode: binding.pointerMode,
+          hoverHandle: binding.activeHandle,
+          lastResizePreservedOppositeEdge: binding.lastDragUpdate.lastResizePreservedOppositeEdge !== false
+        };
+        schedulePreviewDraw();
+      }
       return;
     }
     scene.referenceAtlasPerf.lastInteractionType = 'pan';
@@ -2569,17 +2769,46 @@ function bindReferenceBathymetryPreview(scene, root) {
     binding.pointerId = null;
     binding.pointerMode = null;
     scene.referenceAtlasPerf.atlasInteractionActive = false;
+    canvas.classList?.remove?.('is-dragging');
     if (cancelled) {
       scene.referenceAtlasTransientView = null;
       scene.referenceAtlasTransientBounds = null;
+      resetRectangleDragState();
       schedulePreviewDraw();
       return;
     }
-    if (mode === 'boundary') {
+    if (mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.draw) {
       const bounds = scene.referenceAtlasTransientBounds;
       scene.referenceAtlasTransientBounds = null;
       scene.referenceAtlasPerf.boundaryCommitCount += 1;
-      if (bounds) scene.selectReferenceBounds(bounds);
+      resetRectangleDragState();
+      if (bounds) scene.selectReferenceBounds(bounds, { appliedFrom: 'rectangleDraw', mode: 'drawCustom', lastPreset: 'custom' });
+      return;
+    }
+    if (isReferenceAtlasRectangleDragMode(mode)) {
+      const bounds = scene.referenceAtlasTransientBounds;
+      const wasResize = isReferenceAtlasResizeDragMode(mode);
+      const wasCornerResize = isReferenceAtlasCornerResizeDragMode(mode);
+      const preserved = binding.lastDragUpdate?.lastResizePreservedOppositeEdge !== false;
+      scene.referenceAtlasTransientBounds = null;
+      if (moved && bounds) {
+        scene.referenceAtlasRectangleEditor = {
+          ...scene.referenceAtlasRectangleEditor,
+          movedCount: scene.referenceAtlasRectangleEditor.movedCount + (mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.move ? 1 : 0),
+          resizedEdgeCount: scene.referenceAtlasRectangleEditor.resizedEdgeCount + (wasResize && !wasCornerResize ? 1 : 0),
+          resizedCornerCount: scene.referenceAtlasRectangleEditor.resizedCornerCount + (wasCornerResize ? 1 : 0),
+          lastResizePreservedOppositeEdge: preserved
+        };
+        resetRectangleDragState();
+        scene.selectReferenceBounds(bounds, {
+          appliedFrom: `rectangle:${mode}`,
+          mode: scene.operationalWindowEditor.mode,
+          lastPreset: scene.operationalWindowEditor.lastPreset
+        });
+      } else {
+        resetRectangleDragState();
+        schedulePreviewDraw();
+      }
       return;
     }
     if (moved && scene.referenceAtlasTransientView) {
@@ -2592,11 +2821,21 @@ function bindReferenceBathymetryPreview(scene, root) {
       return;
     }
     scene.referenceAtlasTransientView = null;
+    resetRectangleDragState();
     const lonLat = referenceCanvasLonLat(canvas, scene.session, event);
     scene.selectReferenceWindowAt(lonLat.lon, lonLat.lat);
   };
   addListener(canvas, 'pointerup', (event) => finishPointer(event));
   addListener(canvas, 'pointercancel', (event) => finishPointer(event, true));
+  addListener(globalThis.document, 'keydown', (event) => {
+    if (event.key !== 'Escape' || binding.pointerId == null) return;
+    finishPointer({
+      ...event,
+      pointerId: binding.pointerId,
+      clientX: event.clientX ?? 0,
+      clientY: event.clientY ?? 0
+    }, true);
+  });
   addListener(canvas, 'wheel', (event) => {
     event.preventDefault();
     scene.referenceAtlasPerf.wheelCount += 1;
@@ -2626,6 +2865,7 @@ function bindReferenceBathymetryPreview(scene, root) {
       scene.render();
     }, 140) ?? null;
   }, { passive: false });
+  setCanvasCursor('grab');
   drawReferenceBathymetryCanvas(canvas, scene.session, { scene });
 }
 
@@ -2658,7 +2898,10 @@ function drawReferenceBathymetryCanvas(canvas, session = {}, options = {}) {
   }
   drawReferenceGridOverlay(context, drawSession, width, height);
   drawReferenceFixtureCoverageOverlay(context, drawSession, width, height);
-  drawReferenceSelectionOverlay(context, drawSession, width, height, { bounds: options.selectedBounds });
+  drawReferenceSelectionOverlay(context, drawSession, width, height, {
+    bounds: options.selectedBounds,
+    rectangleEditor: scene?.referenceAtlasRectangleEditor
+  });
   recordReferenceAtlasCanvasFrame(scene, startedAt);
 }
 
@@ -2730,25 +2973,35 @@ function drawReferenceSelectionOverlay(context, session = {}, width = 1, height 
   context.fillStyle = 'rgba(248, 226, 108, 0.12)';
   context.fillRect(x, y, rectWidth, rectHeight);
   context.setLineDash([]);
-  context.fillStyle = '#fff5a8';
-  context.strokeStyle = '#2a2100';
-  context.lineWidth = 2;
+  const rectangleEditor = options.rectangleEditor ?? {};
+  const activeHandle = rectangleEditor.activeHandle ?? null;
+  const hoverHandle = rectangleEditor.hoverHandle ?? null;
   const handleSize = 12;
-  for (const point of [
-    [x, y],
-    [x + rectWidth, y],
-    [x, y + rectHeight],
-    [x + rectWidth, y + rectHeight],
-    [x + rectWidth / 2, y],
-    [x + rectWidth / 2, y + rectHeight],
-    [x, y + rectHeight / 2],
-    [x + rectWidth, y + rectHeight / 2]
-  ]) {
-    context.fillRect(point[0] - handleSize / 2, point[1] - handleSize / 2, handleSize, handleSize);
-    context.strokeRect(point[0] - handleSize / 2, point[1] - handleSize / 2, handleSize, handleSize);
+  const handlePoints = [
+    { handle: 'northWest', x, y },
+    { handle: 'northEast', x: x + rectWidth, y },
+    { handle: 'southWest', x, y: y + rectHeight },
+    { handle: 'southEast', x: x + rectWidth, y: y + rectHeight },
+    { handle: 'north', x: x + rectWidth / 2, y },
+    { handle: 'south', x: x + rectWidth / 2, y: y + rectHeight },
+    { handle: 'west', x, y: y + rectHeight / 2 },
+    { handle: 'east', x: x + rectWidth, y: y + rectHeight / 2 }
+  ];
+  for (const point of handlePoints) {
+    const highlighted = point.handle === activeHandle || point.handle === hoverHandle;
+    const size = highlighted ? handleSize + 5 : handleSize;
+    context.fillStyle = highlighted ? '#ffffff' : '#fff5a8';
+    context.strokeStyle = highlighted ? '#111827' : '#2a2100';
+    context.lineWidth = highlighted ? 3 : 2;
+    context.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+    context.strokeRect(point.x - size / 2, point.y - size / 2, size, size);
   }
   const centerX = x + rectWidth / 2;
   const centerY = y + rectHeight / 2;
+  const centerHighlighted = activeHandle === 'center' || hoverHandle === 'center';
+  context.fillStyle = centerHighlighted ? '#ffffff' : '#fff5a8';
+  context.strokeStyle = centerHighlighted ? '#111827' : '#2a2100';
+  context.lineWidth = centerHighlighted ? 3 : 2;
   context.beginPath();
   context.arc(centerX, centerY, handleSize * 0.58, 0, Math.PI * 2);
   context.fill();
@@ -2782,6 +3035,47 @@ function referenceCanvasPoint(canvas, event = {}) {
     x: clampNumber((event.clientX - rect.left) / Math.max(1, rect.width), 0, 1),
     y: clampNumber((event.clientY - rect.top) / Math.max(1, rect.height), 0, 1)
   };
+}
+
+function referenceCanvasCssPoint(canvas, event = {}) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: clampNumber(Number(event.clientX) - Number(rect.left), 0, Math.max(1, Number(rect.width))),
+    y: clampNumber(Number(event.clientY) - Number(rect.top), 0, Math.max(1, Number(rect.height)))
+  };
+}
+
+function referenceCanvasCssSize(canvas) {
+  const rect = canvas?.getBoundingClientRect?.();
+  return {
+    width: Number(rect?.width ?? canvas?.width ?? 900),
+    height: Number(rect?.height ?? canvas?.height ?? 450)
+  };
+}
+
+function isReferenceAtlasRectangleEditorMode(mode) {
+  return mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.draw
+    || isReferenceAtlasRectangleDragMode(mode);
+}
+
+function isReferenceAtlasRectangleDragMode(mode) {
+  return mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.move
+    || isReferenceAtlasResizeDragMode(mode);
+}
+
+function isReferenceAtlasResizeDragMode(mode) {
+  return mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.resizeNorth
+    || mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.resizeSouth
+    || mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.resizeEast
+    || mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.resizeWest
+    || isReferenceAtlasCornerResizeDragMode(mode);
+}
+
+function isReferenceAtlasCornerResizeDragMode(mode) {
+  return mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.resizeNorthEast
+    || mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.resizeNorthWest
+    || mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.resizeSouthEast
+    || mode === REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.resizeSouthWest;
 }
 
 function referenceViewportLonLat(session = {}, nx = 0.5, ny = 0.5) {

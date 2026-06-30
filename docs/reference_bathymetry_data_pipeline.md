@@ -62,7 +62,7 @@ The checked-in manifest currently reports `AVAILABLE` with a compact global over
 
 The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the ETOPO 2022 15 arc-second Monterey Canyon fixture. It does not contain raw source paths or hidden truth.
 
-The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. Oversized selections can be exported as patch requests, but they are not generated live in Alpha.
+The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests.
 
 The static tile library currently registers two staged Monterey tile sets and one Gulf request-only entry. `monterey_canyon_15s` is the mission-ready tile set; `monterey_canyon` is a low-resolution fallback tile set. `gulf_segment_15s` remains request-only until the owner runs the offline download and preprocessing commands. The browser loader ignores request-only regions when choosing staged mission patches. The Pages build copies `assets/reference_bathymetry/` so hosted Alpha testers receive the same staged tile library as local static serving.
 
@@ -92,7 +92,7 @@ The preserved fallback fixture is:
 - shape: 90 columns x 72 rows
 - bounds: west -123.0, east -121.5, south 36.0, north 37.2
 
-Environment Studio opens to the Global Atlas Selector, supports deep zoom and operational-window editing, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users load a staged patch into the Regional Patch Workspace before generating regional bathymetry. If a selected region is not staged or is too large for live Alpha generation, the browser exports an `anchor.reference-bathymetry-patch-request` or `anchor.reference-bathymetry-multitile-patch-request` with typed bounds, approximate size, local commands, and boundary-budget metadata instead of generating fake reference data.
+Environment Studio opens to the Global Atlas Selector, supports deep zoom, direct rectangle editing, and typed operational-window editing, overlays available patch coverage, prefers the 15 arc-second `missionReadyPatch` when present, and keeps the 60 arc-second fixture available as a low-resolution fallback. Users load a staged patch into the Regional Patch Workspace before generating regional bathymetry. If a selected region is not staged or is too large for live Alpha generation, the browser exports an `anchor.reference-bathymetry-patch-request` or `anchor.reference-bathymetry-multitile-patch-request` with typed bounds, approximate size, local commands, and boundary-budget metadata instead of generating fake reference data.
 
 Synthetic benchmark variety should come later from provenance-preserving variants of real reference patches. Procedural synthetic worlds remain experimental.
 

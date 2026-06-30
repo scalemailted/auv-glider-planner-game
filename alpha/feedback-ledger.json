@@ -651,6 +651,39 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-029",
+      "title": "Atlas operational-window rectangle needs direct move and resize handles.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "SCI",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas",
+      "summary": "Alpha review shows that users cannot easily control the selected atlas boundary box. The operational window must support standard rectangle-editing interactions: drag inside to move, drag edges to resize one side, drag corners to resize both sides, plus numeric bounds/size updates and budget refresh.",
+      "decision": "Accepted for REF-ATLAS-BOX-EDIT-R1.",
+      "proposedPhase": "REF-ATLAS-BOX-EDIT-R1",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/ref-atlas-box-edit-r1/qa-summary.json",
+        "tools/js/smoke_reference_atlas_rectangle_hit_testing.mjs",
+        "tools/js/smoke_reference_atlas_rectangle_editor.mjs",
+        "tools/js/audit_reference_atlas_rectangle_editor_acceptance.mjs"
+      ],
+      "acceptanceCriteria": [
+        "The atlas selected operational window can be moved by dragging inside the rectangle.",
+        "Edges resize one side while preserving the opposite edge and corners resize both connected sides.",
+        "Rectangle edits synchronize numeric lon/lat and size controls, boundary budget, and patch availability.",
+        "Large operational windows remain valid selections but live Alpha generation remains budget-gated.",
+        "Monterey 15 arc-second still loads, and Gulf-scale selections still export multi-tile patch requests without changing simulation, scoring, planners, or field equations."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }
