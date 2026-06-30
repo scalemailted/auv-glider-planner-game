@@ -786,7 +786,7 @@
     },
     {
       "feedbackId": "ALPHA-FB-033",
-      "title": "Any valid operational boundary should open a bathymetry representation.",
+      "title": "Regional bathymetry preview needs viewport cleanup, dynamic panels, camera controls, and atlas-return state.",
       "source": "alpha tester",
       "status": "accepted-for-implementation",
       "category": [
@@ -796,23 +796,26 @@
         "EDU"
       ],
       "severity": "P1",
-      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas",
-      "summary": "Alpha review found that Environment Studio still feels broken when a user draws a valid not-staged boundary and sees no bathymetry representation. The product rule is that every valid operational boundary can open a preview; mission-ready generation remains gated on staged app-hosted tiles.",
-      "decision": "Accepted for ENV-BATHY-PREVIEW-R1.",
-      "proposedPhase": "ENV-BATHY-PREVIEW-R1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas / Regional 3D Bathymetry Workspace",
+      "summary": "Alpha visual review shows that Environment Studio now works conceptually, but the Regional Bathymetry Scene still feels cluttered and unfinished. The center viewport should be dedicated to the 3D bathymetry mesh. Unavailable actions should be hidden from the left panel. Users need a reliable Return to Atlas action that preserves the selected boundary. The 3D camera controls and lighting need parity with other scenes, and the global atlas needs a path toward higher-detail zoom display.",
+      "decision": "Accepted for ENV-STUDIO-UX-POLISH-R2.1.",
+      "proposedPhase": "ENV-STUDIO-UX-POLISH-R2.1",
       "ownerNotes": "",
       "evidence": [
-        "artifacts/owner-review/env-bathy-preview-r1/qa-summary.json",
-        "tools/js/smoke_environment_bathymetry_preview_action.mjs",
-        "tools/js/smoke_regional_bathymetry_coarse_preview.mjs",
-        "tools/js/audit_environment_bathymetry_preview_flow.mjs"
+        "artifacts/owner-review/env-studio-ux-polish-r2-1/qa-summary.json",
+        "tools/js/smoke_regional_bathymetry_viewport_cleanup.mjs",
+        "tools/js/smoke_regional_bathymetry_camera_controls.mjs",
+        "tools/js/smoke_environment_studio_return_state.mjs",
+        "tools/js/audit_environment_studio_ux_polish_r2_1.mjs"
       ],
       "acceptanceCriteria": [
-        "Every valid boundary can open an interactive 3D bathymetry preview.",
-        "If no app-hosted mission-ready bathymetry tile is staged, the preview uses the coarse global overview and is not mission-ready.",
-        "Field generation, Planning launch, and benchmark export remain disabled until high-resolution app-hosted bathymetry tiles are staged and validated.",
-        "Valid notStaged regional boxes and large Gulf boxes open coarsePreview mode.",
-        "Monterey mission-ready selection opens stagedSingleTile mode through Open 3D Bathymetry Preview or Continue to Mission-Ready Bathymetry.",
+        "The center viewport is primarily the interactive 3D bathymetry canvas and contains only compact status/legend overlays.",
+        "Coarse preview hides or collapses unavailable mission-ready actions from the main left panel.",
+        "Loaded-region provenance, bounds, LOD, authority, and launch status live in the right inspector.",
+        "Rotate, pan, wheel zoom, reset camera, top-down view, and oblique view work without camera blackout.",
+        "Return to Atlas preserves the selected operational boundary, map viewport, layer state, and action state.",
+        "Atlas high zoom reports app-hosted LOD/detail status without runtime NOAA/GEBCO fetch.",
+        "Monterey mission-ready selection still exposes the generation and launch path.",
         "No browser NOAA/GEBCO fetch, raw external_data path, hidden truth, simulation change, scoring change, planner change, or field-equation change is introduced."
       ],
       "createdAtNonCanonical": "",

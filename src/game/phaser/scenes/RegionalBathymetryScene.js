@@ -7,6 +7,8 @@ import {
   buildEnvironmentStudioReferencePlanningLaunch,
   composeEnvironmentStudioReferenceEnvironment,
   createEnvironmentStudioSession,
+  createReferenceBathymetryMultiTilePatchRequest,
+  createReferenceBathymetryPatchRequest,
   generateEnvironmentStudioRegionFromReferenceWindow,
   importEnvironmentStudioProject,
   regenerateEnvironmentStudioFields,
@@ -72,6 +74,16 @@ export class RegionalBathymetryScene extends PhaserScene {
     this.rendererContainer = null;
     this.previewViewModel = null;
     this.resizeObserver = null;
+    this.cameraControlDebug = {
+      lastCameraMode: 'initial',
+      orbitDragCount: 0,
+      panDragCount: 0,
+      wheelZoomCount: 0,
+      cameraResetCount: 0,
+      cameraBlackoutDetected: false
+    };
+    this.returnToAtlasClicked = false;
+    this.returnStatePayloadDigest = null;
   }
 
   init(data = {}) {
@@ -128,7 +140,7 @@ export class RegionalBathymetryScene extends PhaserScene {
       }, { selectedReferenceFixtureId: this.startData.tileSetId });
     }
     if (this.isCoarsePreview()) {
-      return refreshEnvironmentStudioSession({
+      const coarseSession = refreshEnvironmentStudioSession({
         ...session,
         loadedReferenceFixtureId: null,
         loadedReferenceFixtureRole: null,
@@ -138,6 +150,10 @@ export class RegionalBathymetryScene extends PhaserScene {
         benchmarkBundleResult: null,
         lastAction: 'coarse-regional-preview-opened'
       });
+      return {
+        ...coarseSession,
+        referencePatchRequest: referencePatchRequestForCoarsePreview(coarseSession, this.startData)
+      };
     }
     return this.markHostedTileLoaded(session);
   }
@@ -274,7 +290,20 @@ export class RegionalBathymetryScene extends PhaserScene {
     try {
       this.threeRenderer = createThreeBathymetryRenderer(container, {
         camera: this.previewCameraState(),
-        layerVisibility: this.layerVisibility
+        layerVisibility: this.layerVisibility,
+        onCameraChange: (_camera, controls) => {
+          const previous = this.cameraControlDebug ?? {};
+          this.cameraControlDebug = {
+            ...previous,
+            ...(controls ?? {}),
+            orbitDragCount: Math.max(Number(previous.orbitDragCount ?? 0), Number(controls?.orbitDragCount ?? 0)),
+            panDragCount: Math.max(Number(previous.panDragCount ?? 0), Number(controls?.panDragCount ?? 0)),
+            wheelZoomCount: Math.max(Number(previous.wheelZoomCount ?? 0), Number(controls?.wheelZoomCount ?? 0)),
+            cameraResetCount: Number(previous.cameraResetCount ?? 0),
+            cameraBlackoutDetected: false
+          };
+          if (this.threeRenderer) this.publishDebug(true);
+        }
       });
       updateThreeBathymetryScene(this.threeRenderer, this.previewViewModel);
       setBathymetryLayerVisibility(this.threeRenderer, this.layerVisibility);
@@ -343,7 +372,22 @@ export class RegionalBathymetryScene extends PhaserScene {
     return String(this.app.elements?.consoleRoot?.querySelector?.('#regional-bathymetry-seed')?.value ?? this.session.seed ?? 'env-staging-scene-r1');
   }
 
+  resetCamera() {
+    this.cameraControlDebug = {
+      ...this.cameraControlDebug,
+      lastCameraMode: 'reset',
+      cameraResetCount: Number(this.cameraControlDebug.cameraResetCount ?? 0) + 1,
+      cameraBlackoutDetected: false
+    };
+    this.updatePreviewCamera({ ...DEFAULT_REGIONAL_CAMERA, preset: 'reset', fitComplete: true });
+  }
+
   updatePreviewCamera(patch = {}) {
+    this.cameraControlDebug = {
+      ...this.cameraControlDebug,
+      lastCameraMode: patch.preset ?? patch.controlMode ?? this.cameraControlDebug.lastCameraMode ?? 'camera',
+      cameraBlackoutDetected: false
+    };
     this.session = setEnvironmentStudioPreviewCameraState(this.session, this.previewCameraState(patch));
     this.statusMessage = 'Updated regional bathymetry preview camera metadata.';
     this.render();
@@ -359,7 +403,7 @@ export class RegionalBathymetryScene extends PhaserScene {
 
   zoomPreview(delta) {
     const camera = this.previewCameraState();
-    this.updatePreviewCamera({ zoom: clampNumber(Number(camera.zoom ?? DEFAULT_REGIONAL_CAMERA.zoom) + Number(delta), 18, 180), fitComplete: true });
+    this.updatePreviewCamera({ zoom: clampNumber(Number(camera.zoom ?? DEFAULT_REGIONAL_CAMERA.zoom) + Number(delta), 18, 220), fitComplete: true, preset: Number(delta) < 0 ? 'zoomIn' : 'zoomOut' });
   }
 
   setMeshDetail(detail) {
@@ -513,9 +557,7 @@ export class RegionalBathymetryScene extends PhaserScene {
 
   exportCoarsePreviewPatchRequest() {
     if (!this.isCoarsePreview()) return;
-    const request = this.session.referencePatchRequest
-      ?? this.session.selectedReferenceAvailability?.referencePatchRequest
-      ?? null;
+    const request = referencePatchRequestForCoarsePreview(this.session, this.startData);
     if (!request) {
       this.lastError = 'No staging request is available for this coarse preview.';
       this.statusMessage = 'Patch request export skipped.';
@@ -584,7 +626,41 @@ export class RegionalBathymetryScene extends PhaserScene {
   }
 
   returnToAtlas() {
-    this.scene.start('EnvironmentStudioScene');
+    const returnState = this.buildReturnToAtlasState();
+    this.returnToAtlasClicked = true;
+    this.returnStatePayloadDigest = stableDigest(returnState);
+    this.publishDebug(true);
+    this.scene.start('EnvironmentStudioScene', {
+      returnFromRegional: true,
+      session: cloneJson(returnState.session),
+      returnState
+    });
+  }
+
+  buildReturnToAtlasState() {
+    const session = refreshEnvironmentStudioSession({
+      ...this.session,
+      sourceMode: 'referenceBathymetryAtlas',
+      studioStage: 'globalAtlasSelector'
+    });
+    const selectedBounds = this.startData.selectedBounds ?? session.selectedReferenceWindow?.bounds ?? null;
+    return {
+      atlasViewport: cloneJson(session.worldView ?? this.startData.atlasViewport ?? null),
+      selectedBounds: cloneJson(selectedBounds),
+      selectedPatchDigest: this.startData.rasterDigest ?? session.selectedReferenceWindow?.patchDigest ?? session.loadedReferenceFixture?.digest ?? null,
+      selectedRegionActionState: cloneJson(this.startData.selectedRegionActionState ?? null),
+      selectedTileSetId: this.startData.tileSetId ?? session.selectedReferenceFixtureId ?? session.loadedReferenceFixtureId ?? null,
+      layerMode: session.referenceLayer ?? this.startData.layerMode ?? 'topographyBathymetry',
+      zoom: session.worldView?.zoom ?? null,
+      panCenter: {
+        centerLon: session.worldView?.centerLon ?? null,
+        centerLat: session.worldView?.centerLat ?? null
+      },
+      boundaryEditMode: this.startData.boundaryEditMode ?? 'select',
+      selectedResolutionMeters: session.selectedReferenceWindow?.selectedResolutionMeters ?? null,
+      previewResolutionMeters: session.selectedReferenceWindow?.previewResolutionMeters ?? null,
+      session
+    };
   }
 
   publishDebug(active = true) {
@@ -594,6 +670,7 @@ export class RegionalBathymetryScene extends PhaserScene {
     const missionReady = mode !== 'coarsePreview';
     const previewViewModel = this.previewViewModel ?? buildRegionalBathymetryPreviewViewModel(this.previewModelInput());
     const rendererSummary = threeBathymetryRendererSummary(this.threeRenderer ?? {});
+    const rendererControls = rendererSummary.cameraControls ?? {};
     const rasterDigest = this.startData.rasterDigest
       ?? tile.rasterTiles?.digest
       ?? tile.metadata?.rasterTiles?.digest
@@ -606,6 +683,9 @@ export class RegionalBathymetryScene extends PhaserScene {
       ?? null;
     const planningLaunchEnabled = mode !== 'coarsePreview'
       && this.session.launchValidationResult?.planningLaunchReady === true;
+    const coarsePreviewRequest = mode === 'coarsePreview'
+      ? referencePatchRequestForCoarsePreview(this.session, this.startData)
+      : null;
     const loadedTileCount = mode === 'stagedMultiTile'
         ? Number(tile.tileGrid?.tileCount ?? tile.rasterTiles?.tiles?.length ?? 0)
         : mode === 'stagedSingleTile' && (this.startData.tileSetId ?? tile.tileSetId ?? this.session.loadedReferenceFixtureId)
@@ -618,9 +698,17 @@ export class RegionalBathymetryScene extends PhaserScene {
       rendererType: 'three',
       interactive3dEnabled: Boolean(active && this.threeRenderer && previewViewModel?.interactive3dEnabled),
       cameraControlsEnabled: Boolean(active && this.threeRenderer && previewViewModel?.cameraControlsEnabled),
+      lastCameraMode: rendererControls.lastCameraMode ?? this.cameraControlDebug.lastCameraMode ?? this.previewCameraState().preset ?? 'initial',
+      orbitDragCount: Math.max(Number(rendererControls.orbitDragCount ?? 0), Number(this.cameraControlDebug.orbitDragCount ?? 0)),
+      panDragCount: Math.max(Number(rendererControls.panDragCount ?? 0), Number(this.cameraControlDebug.panDragCount ?? 0)),
+      wheelZoomCount: Math.max(Number(rendererControls.wheelZoomCount ?? 0), Number(this.cameraControlDebug.wheelZoomCount ?? 0)),
+      cameraResetCount: Number(this.cameraControlDebug.cameraResetCount ?? rendererControls.cameraResetCount ?? 0),
+      cameraBlackoutDetected: Boolean(rendererControls.cameraBlackoutDetected ?? this.cameraControlDebug.cameraBlackoutDetected ?? false),
       routeActive: Boolean(active),
       openedFromAtlasBoundary: this.startData.source === 'environmentStudioAtlas',
       selectedBounds: cloneJson(this.startData.selectedBounds ?? this.session.selectedReferenceWindow?.bounds ?? null),
+      selectedRegionActionState: cloneJson(this.startData.selectedRegionActionState ?? null),
+      coarsePreviewRequestType: coarsePreviewRequest?.artifactType ?? null,
       sourceDataset: this.startData.sourceDataset ?? tile.sourceDataset ?? tile.metadata?.sourceDataset ?? 'ETOPO_2022',
       previewSource: this.startData.previewSource ?? (mode === 'coarsePreview' ? 'globalOverview' : 'hostedMissionReadyTile'),
       previewMeshGrid: cloneJson(previewViewModel?.previewMeshGrid ?? null),
@@ -656,6 +744,8 @@ export class RegionalBathymetryScene extends PhaserScene {
       activeRendererCount: Boolean(active && this.threeRenderer) ? 1 : 0,
       activeRafCount: Boolean(active && this.threeRenderer?.animationFrame != null) ? 1 : 0,
       activeCanvasCount: Boolean(active && this.threeRenderer?.renderer?.domElement?.isConnected) ? 1 : 0,
+      returnToAtlasClicked: this.returnToAtlasClicked === true,
+      returnStatePayloadDigest: this.returnStatePayloadDigest,
       planningLaunchEnabled,
       planningLaunchReady: planningLaunchEnabled,
       bathymetryArtifactDigest: this.session.bathymetryArtifactDigest ?? null,
@@ -676,6 +766,49 @@ export class RegionalBathymetryScene extends PhaserScene {
   }
 }
 
+function referencePatchRequestForCoarsePreview(session = {}, startData = {}) {
+  const actionState = startData.selectedRegionActionState ?? {};
+  const selectedBounds = session.selectedReferenceWindow?.bounds ?? startData.selectedBounds ?? actionState.selectedBounds ?? null;
+  const budget = startData.boundaryBudget
+    ?? session.selectedReferenceBoundaryBudget
+    ?? session.selectedReferenceAvailability?.boundaryBudget
+    ?? null;
+  const existingRequest = startData.referencePatchRequest
+    ?? session.referencePatchRequest
+    ?? session.selectedReferenceAvailability?.referencePatchRequest
+    ?? null;
+  if (!selectedBounds) return existingRequest;
+
+  const requestOptions = {
+    boundaryBudget: budget,
+    generationBudget: budget,
+    operationalWindow: budget?.operationalWindow
+      ?? session.selectedReferenceAvailability?.operationalWindow
+      ?? session.selectedReferenceOperationalWindow
+      ?? null
+  };
+  const lonSpan = Math.abs(Number(selectedBounds.eastLon) - Number(selectedBounds.westLon));
+  const latSpan = Math.abs(Number(selectedBounds.northLat) - Number(selectedBounds.southLat));
+  const largeOperationalBounds = Number.isFinite(lonSpan)
+    && Number.isFinite(latSpan)
+    && (lonSpan >= 4 || latSpan >= 3);
+  const requiresMultiTile = budget?.budgetStatus === 'MULTI_TILE_REQUIRED'
+    || budget?.multiTileRecommended === true
+    || budget?.recommendedAction === 'exportMultiTilePatchRequest'
+    || actionState.boundaryBudgetStatus === 'MULTI_TILE_REQUIRED'
+    || actionState.primaryAction === 'exportMultiTileRequest'
+    || actionState.exportMultiTileRequestEnabled === true
+    || actionState.previewAction?.multiTileRequired === true
+    || largeOperationalBounds
+    || existingRequest?.artifactType === 'anchor.reference-bathymetry-multitile-patch-request';
+  if (requiresMultiTile && existingRequest?.artifactType === 'anchor.reference-bathymetry-multitile-patch-request') return existingRequest;
+  if (requiresMultiTile) {
+    return createReferenceBathymetryMultiTilePatchRequest(selectedBounds, session.referenceAtlas, requestOptions);
+  }
+  if (existingRequest?.artifactType === 'anchor.reference-bathymetry-patch-request') return existingRequest;
+  return createReferenceBathymetryPatchRequest(selectedBounds, session.referenceAtlas, requestOptions);
+}
+
 function regionalBathymetryConsoleHtml(scene) {
   const session = scene.session;
   const coarsePreview = scene.isCoarsePreview();
@@ -685,7 +818,7 @@ function regionalBathymetryConsoleHtml(scene) {
   const canValidate = !coarsePreview && fieldsReady;
   const canLaunch = !coarsePreview && session.launchValidationResult?.planningLaunchReady === true;
   const canExportBenchmark = !coarsePreview && canCompose;
-  const coarseRequest = session.referencePatchRequest ?? session.selectedReferenceAvailability?.referencePatchRequest ?? null;
+  const coarseRequest = referencePatchRequestForCoarsePreview(session, scene.startData);
   const coarseRequestIsMultiTile = coarseRequest?.artifactType === 'anchor.reference-bathymetry-multitile-patch-request';
   const camera = scene.previewCameraState();
   const mode = scene.regionalMode();
@@ -743,25 +876,69 @@ function regionalBathymetryConsoleHtml(scene) {
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-regional-panel-section="environment-build">
       <h2>Actions</h2>
-      ${coarsePreview ? '<p class="hud-muted">Generation, composition, launch validation, Planning launch, and benchmark export are disabled in coarse preview.</p>' : ''}
-      <button class="console-button secondary" type="button" data-action="regional-back-atlas">Return to Atlas</button>
-      ${coarsePreview ? `<button class="console-button warning" type="button" data-action="regional-export-preview-request" ${coarseRequest ? '' : 'disabled aria-disabled="true"'}>${coarseRequestIsMultiTile ? 'Export Multi-Tile Request' : 'Export Patch Request'}</button>` : ''}
-      <button class="console-button primary" type="button" data-action="regional-confirm-bathymetry" ${coarsePreview ? 'disabled aria-disabled="true"' : ''}>Confirm Bathymetry</button>
-      <button class="console-button primary" type="button" data-action="regional-generate-fields" ${!coarsePreview && bathymetryReady ? '' : 'disabled'}>Generate Fields</button>
-      <button class="console-button secondary" type="button" data-action="regional-compose-environment" ${canCompose ? '' : 'disabled'}>Compose Environment Artifact</button>
-      <button class="console-button secondary" type="button" data-action="regional-validate-launch" ${canValidate ? '' : 'disabled'}>Validate Launch</button>
-      <button class="console-button primary" type="button" data-action="regional-launch-planning" ${canLaunch ? '' : 'disabled'}>Launch to Planning</button>
-      <button class="console-button secondary" type="button" data-action="regional-export-benchmark" ${canExportBenchmark ? '' : 'disabled'}>Export Public Benchmark Bundle</button>
-      <button class="console-button secondary" type="button" data-action="regional-export-bathymetry" ${coarsePreview ? 'disabled aria-disabled="true"' : ''}>Export Bathymetry Artifact</button>
-      <button class="console-button secondary" type="button" data-action="regional-export-project">Export Project</button>
-      <label class="console-button secondary" for="regional-import-project-file">Import Project</label>
-      <input id="regional-import-project-file" type="file" accept="application/json,.json" hidden data-regional-import-project />
+      ${regionalActionButtonsHtml({
+        coarsePreview,
+        coarseRequest,
+        coarseRequestIsMultiTile,
+        bathymetryReady,
+        fieldsReady,
+        canCompose,
+        canValidate,
+        canLaunch,
+        canExportBenchmark,
+        environmentReady: Boolean(session.environmentCompositionResult?.environmentArtifactStatus === 'CURRENT'),
+        launchValidated: Boolean(session.launchValidationResult)
+      })}
     </section>
   `;
 }
 
+function regionalActionButtonsHtml({
+  coarsePreview,
+  coarseRequest,
+  coarseRequestIsMultiTile,
+  bathymetryReady,
+  fieldsReady,
+  canCompose,
+  canValidate,
+  canLaunch,
+  canExportBenchmark,
+  environmentReady,
+  launchValidated
+} = {}) {
+  const common = [
+    '<button class="console-button secondary" type="button" data-action="regional-back-atlas">Return to Atlas</button>'
+  ];
+  if (coarsePreview) {
+    return `
+      <p class="hud-muted">Preview-only region. Mission-ready generation and launch actions are hidden until staged app-hosted bathymetry tiles exist.</p>
+      ${common.join('')}
+      <button class="console-button warning" type="button" data-action="regional-export-preview-request" ${coarseRequest ? '' : 'disabled aria-disabled="true"'}>${coarseRequestIsMultiTile ? 'Export Multi-Tile Request' : 'Export Patch Request'}</button>
+      <button class="console-button secondary" type="button" data-action="regional-export-project">Export Project</button>
+      <details class="environment-studio-collapsed-actions">
+        <summary>Requires staged tiles</summary>
+        <div class="hud-muted">Confirm Bathymetry, Generate Fields, Compose Environment, Validate Launch, Launch to Planning, and benchmark export remain unavailable for coarse previews.</div>
+      </details>
+      <label class="console-button secondary" for="regional-import-project-file">Import Project</label>
+      <input id="regional-import-project-file" type="file" accept="application/json,.json" hidden data-regional-import-project />
+    `;
+  }
+  const actions = [...common];
+  if (!bathymetryReady) actions.push('<button class="console-button primary" type="button" data-action="regional-confirm-bathymetry">Confirm Bathymetry</button>');
+  if (bathymetryReady && !fieldsReady) actions.push('<button class="console-button primary" type="button" data-action="regional-generate-fields">Generate Fields</button>');
+  if (canCompose && !environmentReady) actions.push('<button class="console-button secondary" type="button" data-action="regional-compose-environment">Compose Environment Artifact</button>');
+  if (canValidate && environmentReady && !launchValidated) actions.push('<button class="console-button secondary" type="button" data-action="regional-validate-launch">Validate Launch</button>');
+  if (canLaunch) actions.push('<button class="console-button primary" type="button" data-action="regional-launch-planning">Launch to Planning</button>');
+  if (canExportBenchmark && environmentReady) actions.push('<button class="console-button secondary" type="button" data-action="regional-export-benchmark">Export Public Benchmark Bundle</button>');
+  if (bathymetryReady) actions.push('<button class="console-button secondary" type="button" data-action="regional-export-bathymetry">Export Bathymetry Artifact</button>');
+  actions.push('<button class="console-button secondary" type="button" data-action="regional-export-project">Export Project</button>');
+  actions.push('<label class="console-button secondary" for="regional-import-project-file">Import Project</label>');
+  actions.push('<input id="regional-import-project-file" type="file" accept="application/json,.json" hidden data-regional-import-project />');
+  return actions.join('');
+}
+
 function bindRegionalBathymetryControls(scene, root) {
-  root?.querySelector?.('[data-action="regional-reset-camera"]')?.addEventListener('click', () => scene.updatePreviewCamera(DEFAULT_REGIONAL_CAMERA));
+  root?.querySelector?.('[data-action="regional-reset-camera"]')?.addEventListener('click', () => scene.resetCamera());
   root?.querySelector?.('[data-action="regional-topdown-view"]')?.addEventListener('click', () => scene.setCameraPreset('topDown'));
   root?.querySelector?.('[data-action="regional-oblique-view"]')?.addEventListener('click', () => scene.setCameraPreset('oblique'));
   root?.querySelector?.('[data-action="regional-zoom-in"]')?.addEventListener('click', () => scene.zoomPreview(-10));
@@ -809,9 +986,9 @@ function regionalBathymetryRightPanelHtml(scene) {
           : 'Generate 3D Bathymetry / Confirm Bathymetry';
   return `
     <section class="waypoint-shell environment-studio-right-panel regional-bathymetry-right-panel" id="regional-bathymetry-status-panel">
-      <div class="console-kicker">Loaded Bathymetry Region</div>
+      <div class="console-kicker">Loaded Region Inspector</div>
       <h2>${escapeHtml(metadata.label ?? tile.label ?? scene.startData.tileSetId ?? 'Hosted Reference Tile')}</h2>
-      <p class="hud-muted">Loaded from hosted reference bathymetry tile. The mesh is decimated for display; the raster/grid remains authoritative for bathymetry sampling, masks, environment generation, simulation, and benchmark export.</p>
+      <p class="hud-muted">Reference raster/grid is authoritative for bathymetry sampling and environment generation. Mesh is visualization-only.</p>
       <div class="cell-inspector-metrics">
         ${metricHtml('Mode', scene.regionalMode())}
         ${metricHtml('Tile set ID', metadata.tileSetId ?? tile.tileSetId ?? scene.startData.tileSetId)}
@@ -829,6 +1006,10 @@ function regionalBathymetryRightPanelHtml(scene) {
         ${metricHtml('Mesh LOD digest', shortDigest(scene.startData.meshLodDigest ?? meshDescriptor.digest ?? mesh.digest))}
         ${metricHtml('Raster authoritative', 'true')}
         ${metricHtml('Mesh authoritative', 'false')}
+        ${metricHtml('Mission ready', 'true')}
+        ${metricHtml('Field generation', scene.session.bathymetryArtifactDigest ? 'enabled' : 'enabled after confirmation')}
+        ${metricHtml('Planning launch', scene.session.launchValidationResult?.planningLaunchReady === true ? 'enabled' : 'disabled until validation')}
+        ${metricHtml('Staging required', 'false')}
         ${metricHtml('Next action', nextAction)}
       </div>
       <table class="environment-studio-table">
@@ -863,47 +1044,23 @@ function regionalBathymetryPreviewHtml(scene) {
     ? 'Selected operational window is shown within the hosted tile extent. Mesh clipping is planned.'
     : 'Selected operational window matches the loaded tile extent.';
   return `
-    <main id="regional-bathymetry-route" class="environment-studio-route regional-bathymetry-route" data-regional-bathymetry-route>
-      <header class="environment-studio-route-header">
-        <div>
-          <p class="console-kicker">Regional 3D Bathymetry Workspace</p>
-          <h1>${escapeHtml(metadata.label ?? tile.label ?? scene.startData.tileSetId ?? 'Hosted Reference Tile')}</h1>
-          <p>Loaded from hosted reference bathymetry tile. 3D mesh is a decimated visualization; raster/grid remains authoritative.</p>
-        </div>
-        <div class="environment-studio-digest">
-          <span>Raster</span>
-          <strong>${escapeHtml(shortDigest(scene.startData.rasterDigest ?? metadata.rasterTiles?.digest ?? tile.rasterTiles?.digest))}</strong>
-          <span>Mesh LOD</span>
-          <strong>${escapeHtml(shortDigest(scene.startData.meshLodDigest ?? scene.meshLodRecord?.digest ?? mesh.digest))}</strong>
-        </div>
-      </header>
-      <section class="environment-studio-preview-grid" aria-label="Regional bathymetry mesh preview">
-        <section class="regional-bathymetry-mesh-shell" data-regional-bathymetry-preview-panel>
-          <div class="regional-bathymetry-mesh-header">
-            <div>
-              <h2>Interactive 3D Bathymetry Preview</h2>
-              <p class="hud-muted">Visualization sampled from ${escapeHtml(mesh.lod ?? scene.meshDetail ?? 'medium')} mesh LOD. Drag to rotate, shift/right-drag to pan, and wheel to zoom. The source raster remains authoritative.</p>
-            </div>
-            <div class="cell-inspector-metrics regional-bathymetry-inline-metrics">
-              ${metricHtml('Vertices', formatInteger(viewModel.previewVertexCount))}
-              ${metricHtml('Triangles', formatInteger(viewModel.previewTriangleCount))}
-              ${metricHtml('Mesh rows', formatInteger(viewModel.previewMeshGrid?.rows))}
-              ${metricHtml('Mesh cols', formatInteger(viewModel.previewMeshGrid?.columns))}
-            </div>
+    <main id="regional-bathymetry-route" class="environment-studio-route regional-bathymetry-route regional-bathymetry-clean-route" data-regional-bathymetry-route data-regional-viewport-clean="true">
+      <section class="regional-bathymetry-workspace" aria-label="Regional bathymetry 3D viewport">
+        <section class="regional-bathymetry-mesh-shell" data-regional-bathymetry-preview-panel data-regional-bathymetry-clean-viewport>
+          <div class="regional-bathymetry-viewport-chip" data-regional-viewport-status>
+            <strong>Mission-ready staged bathymetry</strong>
+            <span>${escapeHtml(metadata.label ?? tile.label ?? scene.startData.tileSetId ?? 'Hosted Reference Tile')}</span>
           </div>
+          <div class="regional-bathymetry-boundary-chip" data-regional-selected-boundary-label>${escapeHtml(boundsLabel(selectedBounds))}</div>
           <div class="regional-bathymetry-three-shell" data-regional-bathymetry-mesh-preview data-regional-bathymetry-three-host data-regional-bathymetry-preview-renderer="three"></div>
           <div class="environment-studio-depth-ramp regional-bathymetry-depth-ramp" aria-label="Bathymetry depth bands">
-            <span style="background:#6f8056">land / nearshore</span>
+            <span style="background:#6f8056">land</span>
             <span style="background:#47b9b3">shelf</span>
             <span style="background:#1c6aa2">slope</span>
             <span style="background:#071b55">deep</span>
           </div>
-          <p class="hud-muted">${escapeHtml(subsetNote)}</p>
+          <div class="regional-bathymetry-subtle-note">${escapeHtml(subsetNote)}</div>
         </section>
-      </section>
-      <section class="environment-studio-boundary">
-        <strong>Authority boundary</strong>
-        <span>Raster/grid bathymetry is authoritative. Preview mesh, color ramp, and selected-boundary overlay are display artifacts only.</span>
       </section>
     </main>
   `;
@@ -918,7 +1075,7 @@ function coarsePreviewRightPanelHtml(scene) {
     <section class="waypoint-shell environment-studio-right-panel regional-bathymetry-right-panel" id="regional-bathymetry-status-panel">
       <div class="console-kicker">Loaded Region Inspector</div>
       <h2>${escapeHtml(overview.label ?? 'Global Reference Overview')}</h2>
-      <p class="hud-muted">This preview uses the app-hosted global overview. It is not mission-ready. Stage high-resolution bathymetry tiles before field generation or Planning launch.</p>
+      <p class="hud-muted">This preview uses app-hosted overview/LOD data. It is not mission-ready. Stage high-resolution bathymetry tiles before field generation or Planning launch.</p>
       <div class="cell-inspector-metrics">
         ${metricHtml('Mode', 'coarsePreview')}
         ${metricHtml('Selected bounds', boundsLabel(selectedBounds))}
@@ -937,6 +1094,8 @@ function coarsePreviewRightPanelHtml(scene) {
         ${metricHtml('Field grid cap', '200 x 140')}
         ${metricHtml('Planning launch', 'disabled')}
         ${metricHtml('Staging required', 'true')}
+        ${metricHtml('Raster authoritative', 'false until staged')}
+        ${metricHtml('Mesh authoritative', 'false')}
         ${metricHtml('Next step', budget.budgetStatus === 'MULTI_TILE_REQUIRED' ? 'Export Multi-Tile Request' : 'Export Patch Request')}
       </div>
       <table class="environment-studio-table">
@@ -959,48 +1118,23 @@ function coarsePreviewHtml(scene) {
   const budget = scene.startData.boundaryBudget ?? scene.session.selectedReferenceBoundaryBudget ?? {};
   const viewModel = buildRegionalBathymetryPreviewViewModel(scene.previewModelInput());
   return `
-    <main id="regional-bathymetry-route" class="environment-studio-route regional-bathymetry-route" data-regional-bathymetry-route data-regional-bathymetry-mode="coarsePreview">
-      <header class="environment-studio-route-header">
-        <div>
-          <p class="console-kicker">Regional 3D Bathymetry Workspace</p>
-          <h1>Coarse Bathymetry Preview</h1>
-          <p>Coarse reference overview preview. Not mission-ready. High-resolution tile staging required.</p>
-        </div>
-        <div class="environment-studio-digest">
-          <span>Overview</span>
-          <strong>${escapeHtml(shortDigest(overview.digest ?? overview.previewRasterDigest))}</strong>
-          <span>Budget</span>
-          <strong>${escapeHtml(budget.budgetStatus ?? 'n/a')}</strong>
-        </div>
-      </header>
-      <section class="environment-studio-preview-grid" aria-label="Coarse regional bathymetry preview">
-        <section class="regional-bathymetry-mesh-shell" data-regional-bathymetry-preview-panel data-regional-coarse-preview>
-          <div class="regional-bathymetry-mesh-header">
-            <div>
-              <h2>Interactive 3D Bathymetry Preview</h2>
-              <p class="hud-muted">Coarse preview only. Not mission-ready. Not suitable for official simulation/scoring. High-resolution tile staging is required before Planning launch.</p>
-            </div>
-            <div class="cell-inspector-metrics regional-bathymetry-inline-metrics">
-              ${metricHtml('Selected bounds', boundsLabel(selectedBounds))}
-              ${metricHtml('Preview mesh', `${formatInteger(viewModel.previewMeshGrid?.columns)} x ${formatInteger(viewModel.previewMeshGrid?.rows)}`)}
-              ${metricHtml('Vertices', formatInteger(viewModel.previewVertexCount))}
-              ${metricHtml('Source cells', formatInteger(budget.sourceCellCount))}
-              ${metricHtml('Planning launch', 'disabled')}
-            </div>
+    <main id="regional-bathymetry-route" class="environment-studio-route regional-bathymetry-route regional-bathymetry-clean-route" data-regional-bathymetry-route data-regional-bathymetry-mode="coarsePreview" data-regional-viewport-clean="true">
+      <section class="regional-bathymetry-workspace" aria-label="Coarse regional bathymetry 3D viewport">
+        <section class="regional-bathymetry-mesh-shell" data-regional-bathymetry-preview-panel data-regional-coarse-preview data-regional-bathymetry-clean-viewport>
+          <div class="regional-bathymetry-viewport-chip warning" data-regional-viewport-status>
+            <strong>Coarse Preview - Not mission-ready</strong>
+            <span>${escapeHtml(overview.label ?? 'App-hosted global overview LOD')}</span>
           </div>
+          <div class="regional-bathymetry-boundary-chip" data-regional-selected-boundary-label>${escapeHtml(boundsLabel(selectedBounds))}</div>
           <div class="regional-bathymetry-three-shell" data-regional-bathymetry-mesh-preview data-regional-bathymetry-three-host data-regional-bathymetry-preview-renderer="three"></div>
           <div class="environment-studio-depth-ramp regional-bathymetry-depth-ramp" aria-label="Bathymetry depth bands">
-            <span style="background:#6f8056">land / nearshore</span>
+            <span style="background:#6f8056">land</span>
             <span style="background:#47b9b3">shelf</span>
             <span style="background:#1c6aa2">slope</span>
             <span style="background:#071b55">deep</span>
           </div>
-          <p class="hud-muted">This view uses global overview metadata or decimated atlas context. It does not create mission-ready bathymetry, currents, science fields, or launchable benchmark artifacts.</p>
+          <div class="regional-bathymetry-subtle-note">Preview mesh ${formatInteger(viewModel.previewMeshGrid?.columns)} x ${formatInteger(viewModel.previewMeshGrid?.rows)}. Stage app-hosted high-resolution bathymetry before field generation or Planning launch.</div>
         </section>
-      </section>
-      <section class="environment-studio-boundary">
-        <strong>Coarse-preview boundary</strong>
-        <span>Overview visualization only. Stage app-hosted multi-tile bathymetry before Planning launch.</span>
       </section>
     </main>
   `;
@@ -1489,6 +1623,24 @@ function clampNumber(value, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number)) return min;
   return Math.max(min, Math.min(max, number));
+}
+
+function stableDigest(value) {
+  const text = stableStringify(value);
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `fnv1a32:${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function cloneJson(value) {

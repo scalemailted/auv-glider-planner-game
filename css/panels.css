@@ -1805,17 +1805,35 @@
 }
 
 .regional-bathymetry-route {
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 100%;
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+
+.regional-bathymetry-preview-host {
+  overflow: hidden;
+  padding: clamp(8px, 1.2vw, 14px);
+}
+
+.regional-bathymetry-workspace {
+  min-height: 0;
+  height: 100%;
+  display: grid;
 }
 
 .regional-bathymetry-mesh-shell {
-  min-height: min(54vh, 34rem);
+  position: relative;
+  min-height: min(72vh, 48rem);
+  height: 100%;
   display: grid;
-  gap: .75rem;
-  padding: .85rem;
-  border: 1px solid rgba(141, 220, 242, .18);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  border: 1px solid rgba(141, 220, 242, .14);
   border-radius: 8px;
-  background: rgba(8, 17, 31, .76);
+  background: #061521;
+  overflow: hidden;
 }
 
 .regional-bathymetry-mesh-header {
@@ -1845,10 +1863,11 @@
 .regional-bathymetry-three-shell {
   position: relative;
   width: 100%;
-  min-height: min(58vh, 38rem);
+  height: 100%;
+  min-height: min(72vh, 48rem);
   overflow: hidden;
-  border: 1px solid rgba(141, 220, 242, .18);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 0;
   background: #061521;
 }
 
@@ -1863,7 +1882,92 @@
 }
 
 .regional-bathymetry-depth-ramp {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: .8rem;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 34rem;
+  background: rgba(3, 11, 21, .72);
+  border: 1px solid rgba(141, 220, 242, .16);
+  border-radius: 6px;
+  padding: .35rem;
+  pointer-events: none;
+}
+
+.regional-bathymetry-viewport-chip,
+.regional-bathymetry-boundary-chip,
+.regional-bathymetry-subtle-note {
+  position: absolute;
+  z-index: 3;
+  max-width: min(34rem, calc(100% - 2rem));
+  border: 1px solid rgba(141, 220, 242, .2);
+  border-radius: 6px;
+  background: rgba(3, 11, 21, .74);
+  color: #e8f6ff;
+  pointer-events: none;
+}
+
+.regional-bathymetry-viewport-chip {
+  top: .85rem;
+  left: .85rem;
+  display: grid;
+  gap: .08rem;
+  padding: .5rem .65rem;
+  font-size: .82rem;
+}
+
+.regional-bathymetry-viewport-chip.warning {
+  border-color: rgba(246, 211, 101, .42);
+}
+
+.regional-bathymetry-viewport-chip span {
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.regional-bathymetry-boundary-chip {
+  top: .85rem;
+  right: .85rem;
+  padding: .45rem .6rem;
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.regional-bathymetry-subtle-note {
+  right: .85rem;
+  bottom: .85rem;
+  padding: .42rem .58rem;
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.environment-studio-atlas-lod-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  width: fit-content;
+  margin-top: .5rem;
+  padding: .36rem .55rem;
+  border: 1px solid rgba(141, 220, 242, .18);
+  border-radius: 6px;
+  background: rgba(8, 17, 31, .72);
+  color: #e8f6ff;
+  font-size: .76rem;
+}
+
+.environment-studio-atlas-lod-chip.warning {
+  border-color: rgba(246, 211, 101, .4);
+}
+
+.environment-studio-atlas-lod-chip span {
+  color: var(--muted);
+}
+
+.environment-studio-collapsed-actions summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .82rem;
 }
 
 .regional-bathymetry-grid line {

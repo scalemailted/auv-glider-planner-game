@@ -16,7 +16,7 @@ export function createThreeBathymetryRenderer(container, options = {}) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x06111f);
   scene.fog = new THREE.FogExp2(0x06111f, 0.012);
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 4000);
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.2, 6000);
   const webglRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
   webglRenderer.setPixelRatio(Math.min(2, Number(globalThis.devicePixelRatio || 1)));
   webglRenderer.setSize(width, height, false);
@@ -34,6 +34,7 @@ export function createThreeBathymetryRenderer(container, options = {}) {
     root.add(group);
   }
   scene.add(new THREE.HemisphereLight(0xbfeeff, 0x07111f, 1.45));
+  scene.add(new THREE.AmbientLight(0xd6f3ff, 0.42));
   const sun = new THREE.DirectionalLight(0xffffff, 2.3);
   sun.position.set(-24, 42, 18);
   scene.add(sun);
@@ -65,6 +66,16 @@ export function createThreeBathymetryRenderer(container, options = {}) {
     viewModel: null,
     layerVisibility: defaultLayerVisibility(options.layerVisibility),
     cameraState: createCameraState(options.camera),
+    cameraControlsDebug: {
+      enabled: true,
+      lastCameraMode: options.camera?.preset ?? 'initial',
+      orbitDragCount: 0,
+      panDragCount: 0,
+      wheelZoomCount: 0,
+      cameraResetCount: 0,
+      cameraBlackoutDetected: false
+    },
+    onCameraChange: typeof options.onCameraChange === 'function' ? options.onCameraChange : null,
     disposed: false,
     animationFrame: null,
     controls: null,
@@ -157,7 +168,14 @@ export function setBathymetryLayerVisibility(rendererState, patch = {}) {
 export function setBathymetryCamera(rendererState, patch = {}) {
   if (!rendererState) return rendererState;
   rendererState.cameraState = createCameraState({ ...(rendererState.cameraState ?? {}), ...(patch ?? {}) });
+  if (patch?.preset || patch?.controlMode) {
+    rendererState.cameraControlsDebug = {
+      ...(rendererState.cameraControlsDebug ?? {}),
+      lastCameraMode: patch.preset ?? patch.controlMode
+    };
+  }
   applyCamera(rendererState);
+  notifyCameraChanged(rendererState, patch?.controlMode ?? patch?.preset ?? null);
   return rendererState;
 }
 
@@ -189,6 +207,11 @@ export function threeBathymetryRendererSummary(rendererState = {}) {
     flowVectorCount: rendererState.viewModel?.flowVectors?.length ?? 0,
     layerVisibility: { ...(rendererState.layerVisibility ?? {}) },
     camera: { ...(rendererState.cameraState ?? {}) },
+    cameraControls: {
+      ...(rendererState.cameraControlsDebug ?? {}),
+      enabled: rendererState.cameraControlsDebug?.enabled !== false,
+      cameraBlackoutDetected: rendererState.cameraControlsDebug?.cameraBlackoutDetected === true
+    },
     ownsSimulationState: false,
     ownsScoring: false,
     ownsPlanning: false,
@@ -294,6 +317,7 @@ function attachPointerControls(rendererState) {
   const canvas = rendererState.renderer.domElement;
   const state = { dragging: false, mode: 'rotate', startX: 0, startY: 0, yaw: 0, pitch: 0, panX: 0, panY: 0 };
   const pointerDown = (event) => {
+    event.preventDefault();
     state.dragging = true;
     state.mode = event.shiftKey || event.button === 1 || event.button === 2 ? 'pan' : 'rotate';
     state.startX = event.clientX;
@@ -306,10 +330,16 @@ function attachPointerControls(rendererState) {
   };
   const pointerMove = (event) => {
     if (!state.dragging) return;
+    event.preventDefault();
     const dx = event.clientX - state.startX;
     const dy = event.clientY - state.startY;
-    if (state.mode === 'pan') setBathymetryCamera(rendererState, { panX: state.panX - dx * 0.018, panY: state.panY + dy * 0.018 });
-    else setBathymetryCamera(rendererState, { yaw: state.yaw + dx * 0.35, pitch: state.pitch + dy * 0.22 });
+    if (state.mode === 'pan') {
+      rendererState.cameraControlsDebug.panDragCount += 1;
+      setBathymetryCamera(rendererState, { panX: state.panX - dx * 0.018, panY: state.panY + dy * 0.018, controlMode: 'pan' });
+    } else {
+      rendererState.cameraControlsDebug.orbitDragCount += 1;
+      setBathymetryCamera(rendererState, { yaw: state.yaw + dx * 0.35, pitch: state.pitch + dy * 0.22, controlMode: 'orbit' });
+    }
   };
   const pointerUp = (event) => {
     state.dragging = false;
@@ -317,7 +347,8 @@ function attachPointerControls(rendererState) {
   };
   const wheel = (event) => {
     event.preventDefault();
-    setBathymetryCamera(rendererState, { zoom: rendererState.cameraState.zoom + Math.sign(event.deltaY) * 2.5 });
+    rendererState.cameraControlsDebug.wheelZoomCount += 1;
+    setBathymetryCamera(rendererState, { zoom: rendererState.cameraState.zoom + Math.sign(event.deltaY) * 2.5, controlMode: 'wheelZoom' });
   };
   canvas.addEventListener('pointerdown', pointerDown);
   canvas.addEventListener('pointermove', pointerMove);
@@ -347,6 +378,10 @@ function applyCamera(rendererState) {
   rendererState.camera.position.set(x, y, z);
   rendererState.camera.lookAt(target);
   rendererState.camera.updateProjectionMatrix();
+  rendererState.cameraControlsDebug = {
+    ...(rendererState.cameraControlsDebug ?? {}),
+    cameraBlackoutDetected: false
+  };
 }
 
 function fitCameraTarget(rendererState, viewModel = {}) {
@@ -379,8 +414,8 @@ function updateOverlay(rendererState, viewModel = {}) {
   const summary = viewModel.summaries?.oceanWorld ?? {};
   const features = (viewModel.featureIds ?? []).slice(0, 6).join(' / ');
   overlay.innerHTML = `
-    <div class="three-bathymetry-title">3D Bathymetric World View</div>
-    <div class="three-bathymetry-subtitle">Synthetic educational terrain | attributed local fixtures only</div>
+    <div class="three-bathymetry-title">Interactive Bathymetry</div>
+    <div class="three-bathymetry-subtitle">Visualization mesh only</div>
     <div class="three-bathymetry-metrics">
       <span>Features ${escapeHtml(features || 'synthetic')}</span>
       <span>Waypoints ${escapeHtml(summary.surfaceWaypointCount ?? viewModel.surfaceWaypoints?.length ?? 0)}</span>
@@ -409,12 +444,23 @@ function createCameraState(input = {}) {
   return {
     yaw: clamp(Number(input.yaw ?? -42), -180, 180),
     pitch: clamp(Number(input.pitch ?? 42), 8, 78),
-    zoom: clamp(Number(input.zoom ?? 58), 12, 180),
-    panX: Number(input.panX ?? 0) || 0,
-    panY: Number(input.panY ?? 0) || 0,
+    zoom: clamp(Number(input.zoom ?? 58), 18, 220),
+    panX: clamp(Number(input.panX ?? 0) || 0, -200, 200),
+    panY: clamp(Number(input.panY ?? 0) || 0, -200, 200),
     verticalExaggeration: clamp(Number(input.verticalExaggeration ?? 1.5), 0.2, 8),
     fitComplete: input.fitComplete === true
   };
+}
+
+function notifyCameraChanged(rendererState, mode = null) {
+  if (!rendererState?.onCameraChange) return;
+  rendererState.onCameraChange(
+    { ...(rendererState.cameraState ?? {}) },
+    {
+      ...(rendererState.cameraControlsDebug ?? {}),
+      lastCameraMode: mode ?? rendererState.cameraControlsDebug?.lastCameraMode ?? 'camera'
+    }
+  );
 }
 
 function worldPointFromMissionPoint(point, terrainMesh = null, yOffset = 0) {

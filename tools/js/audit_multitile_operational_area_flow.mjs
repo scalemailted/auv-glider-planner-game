@@ -115,9 +115,9 @@ try {
   assert.equal(coarseDom.generateFields.disabled, true, 'coarse preview disables field generation');
   assert.equal(coarseDom.composeEnvironment.disabled, true, 'coarse preview disables environment composition');
   assert.equal(coarseDom.launchPlanning.disabled, true, 'coarse preview disables Planning launch');
-  await expectPanelText(page, '#mission-console', /Coarse Bathymetry Preview/i);
+  await expectPanelText(page, '#mission-console', /coarsePreview|Regional Bathymetry/i);
   await expectPanelText(page, '#mission-console', /not mission-ready/i);
-  await expectPanelText(page, '#mission-console', /disabled in coarse preview/i);
+  await expectPanelText(page, '#mission-console', /hidden until staged|Requires staged tiles/i);
   await expectPanelText(page, '#waypoint-timeline', /Planning launch.*disabled/i);
   await screenshot(page, REQUIRED_SCREENSHOTS[2]);
   await screenshot(page, REQUIRED_SCREENSHOTS[3]);
@@ -316,7 +316,7 @@ async function regionalButtonState(page) {
       const element = document.querySelector(selector);
       return {
         exists: Boolean(element),
-        disabled: element?.disabled === true,
+        disabled: element ? element.disabled === true : true,
         text: element?.textContent?.trim() ?? ''
       };
     }

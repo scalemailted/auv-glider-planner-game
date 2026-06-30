@@ -22,6 +22,8 @@ Product Hub -> Simulation Lab -> Environment Studio -> Global Reference Bathymet
 
 The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Every valid boundary can open an interactive 3D bathymetry preview. If high-resolution staged tiles are not available, the preview uses app-hosted overview/LOD data and is not mission-ready. Field generation, Planning launch, and benchmark export require staged mission-ready bathymetry tiles. Continue to Mission-Ready Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests. The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the app-hosted ETOPO 2022 15 arc-second Monterey Canyon fixture.
 
+The Regional Bathymetry Workspace uses the center panel as an interactive 3D bathymetry viewport. Detailed provenance, bounds, LOD, and launch status are shown in the right inspector. The left panel is dynamic and only shows actions available for the current scene mode. Returning to the atlas preserves the selected operational boundary and map viewport. High-zoom atlas detail uses app-hosted overview/LOD assets only; the browser does not download NOAA/GEBCO data at runtime.
+
 The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts staged tile artifacts under `assets/reference_bathymetry/`; raw source data remains outside the app under ignored local preprocessing paths. Mesh LODs are visualization and inspection artifacts only. The raster/grid bathymetry artifact remains authoritative for sampling and environment generation.
 
 1. Open Product Hub.
@@ -49,10 +51,13 @@ The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts st
 23. Select Gulf Segment.
 24. Verify it is a valid operational area with `MULTI_TILE_REQUIRED` generation budget and that Continue to Mission-Ready Bathymetry is disabled.
 25. Open 3D Bathymetry Preview.
-26. Verify the preview states that it is not mission-ready, not suitable for official simulation/scoring, and requires staged multi-tile bathymetry before Planning launch.
-27. Verify Generate Fields, Compose Environment, Launch Planning, and benchmark export are disabled from coarse preview.
-28. Return to the atlas and export a multi-tile patch request.
-29. Export diagnostic feedback bundle if confused or blocked.
+26. Verify the center panel is dominated by the 3D bathymetry viewport and that detailed region information appears in the right inspector.
+27. Rotate, pan, wheel zoom, reset, switch top-down, and switch oblique; confirm the terrain remains visible.
+28. Verify the preview states that it is not mission-ready, not suitable for official simulation/scoring, and requires staged multi-tile bathymetry before Planning launch.
+29. Verify Generate Fields, Compose Environment, Launch Planning, and benchmark export are hidden or collapsed from the main coarse-preview left panel.
+30. Return to the atlas and confirm the selected operational boundary and atlas viewport are preserved.
+31. Export a multi-tile patch request.
+32. Export diagnostic feedback bundle if confused or blocked.
 
 ## Questions For Testers
 

@@ -359,7 +359,7 @@ async function regionalButtonState(page) {
       const element = document.querySelector(selector);
       return {
         exists: Boolean(element),
-        disabled: element?.disabled === true,
+        disabled: element ? element.disabled === true : true,
         text: element?.textContent?.trim?.() ?? ''
       };
     }

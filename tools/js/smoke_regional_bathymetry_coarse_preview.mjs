@@ -85,7 +85,7 @@ assert.equal(debug.plannerChanged, false, 'planner unchanged');
 assert.equal(debug.fieldEquationsChanged, false, 'field equations unchanged');
 
 for (const requiredText of [
-  'Coarse Bathymetry Preview',
+  'Coarse Preview - Not mission-ready',
   'app-hosted global overview',
   'Export Multi-Tile Request',
   'Export Patch Request',
