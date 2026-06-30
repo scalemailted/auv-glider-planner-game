@@ -18,9 +18,9 @@ This is not an operational ocean forecast. It is not certified navigation. It is
 
 Workflow path:
 
-Product Hub -> Simulation Lab -> Environment Studio -> Global Reference Bathymetry Atlas -> verify hosted tile-library status -> draw an operational window -> move it by dragging inside the rectangle -> resize it from an edge and a corner -> verify bounds/budget sync -> select Monterey Canyon mission-ready overlay -> confirm mesh LOD is available and non-authoritative -> Continue to 3D Bathymetry -> Regional 3D Bathymetry Workspace -> Generate 3D Bathymetry -> Generate Currents & Science Fields -> Compose Environment Artifact -> Review Launch Warnings -> Launch to Planning -> Place waypoints -> Execute Mission -> Debrief -> Export Public Benchmark Bundle -> return to atlas -> select Gulf Segment -> verify requestOnly / multi-tile request behavior, valid operational-area status, and MULTI_TILE_REQUIRED budget -> open coarse regional preview -> verify preview is not mission-ready -> export multi-tile patch request
+Product Hub -> Simulation Lab -> Environment Studio -> Global Reference Bathymetry Atlas -> verify hosted tile-library status -> draw an operational window -> move it by dragging inside the rectangle -> resize it from an edge and a corner -> verify bounds/budget sync -> Open 3D Bathymetry Preview for the valid boundary -> verify interactive adaptive-LOD preview if not staged -> return to atlas -> select Monterey Canyon mission-ready overlay -> confirm mesh LOD is available and non-authoritative -> Continue to Mission-Ready Bathymetry -> Regional 3D Bathymetry Workspace -> Generate 3D Bathymetry -> Generate Currents & Science Fields -> Compose Environment Artifact -> Review Launch Warnings -> Launch to Planning -> Place waypoints -> Execute Mission -> Debrief -> Export Public Benchmark Bundle -> return to atlas -> select Gulf Segment -> verify requestOnly / multi-tile request behavior, valid operational-area status, and MULTI_TILE_REQUIRED budget -> Open 3D Bathymetry Preview -> verify preview is not mission-ready -> export multi-tile patch request
 
-The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Continue to 3D Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Request-only and Gulf-scale regions can open a coarse regional preview and route to patch request or multi-tile request export instead. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests. The global overview is a selection layer, not mission-resolution bathymetry. Coarse preview is not mission-ready and disables Generate Fields, Compose Environment, Launch Planning, and benchmark export. Mission-ready generation uses staged regional patches such as the app-hosted ETOPO 2022 15 arc-second Monterey Canyon fixture.
+The global atlas allows arbitrary boundary selection, but live browser generation is budget-gated. The atlas operational window can be moved and resized directly. Drag inside the rectangle to move it, drag edges to resize one side, and drag corners to resize both connected sides. Every valid boundary can open an interactive 3D bathymetry preview. If high-resolution staged tiles are not available, the preview uses app-hosted overview/LOD data and is not mission-ready. Field generation, Planning launch, and benchmark export require staged mission-ready bathymetry tiles. Continue to Mission-Ready Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Large operational windows are valid selections, but live Alpha generation remains budget-gated; oversized regions export patch or multi-tile requests. The global overview is a selection layer, not mission-resolution bathymetry. Mission-ready generation uses staged regional patches such as the app-hosted ETOPO 2022 15 arc-second Monterey Canyon fixture.
 
 The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts staged tile artifacts under `assets/reference_bathymetry/`; raw source data remains outside the app under ignored local preprocessing paths. Mesh LODs are visualization and inspection artifacts only. The raster/grid bathymetry artifact remains authoritative for sampling and environment generation.
 
@@ -33,7 +33,7 @@ The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts st
 7. Verify hosted tile-library status.
 8. Select Monterey Canyon mission-ready hosted tile overlay.
 9. Confirm mesh LOD is available and non-authoritative.
-10. Continue to 3D Bathymetry.
+10. Continue to Mission-Ready Bathymetry.
 11. Confirm the Regional 3D Bathymetry Workspace opens.
 12. Generate 3D Bathymetry.
 13. Generate Currents & Science Fields.
@@ -47,8 +47,8 @@ The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts st
 21. Export Public Benchmark Bundle.
 22. Return to the Global Reference Bathymetry Atlas.
 23. Select Gulf Segment.
-24. Verify it is a valid operational area with `MULTI_TILE_REQUIRED` generation budget and that Continue to 3D Bathymetry is disabled.
-25. Open Coarse Regional Preview.
+24. Verify it is a valid operational area with `MULTI_TILE_REQUIRED` generation budget and that Continue to Mission-Ready Bathymetry is disabled.
+25. Open 3D Bathymetry Preview.
 26. Verify the preview states that it is not mission-ready, not suitable for official simulation/scoring, and requires staged multi-tile bathymetry before Planning launch.
 27. Verify Generate Fields, Compose Environment, Launch Planning, and benchmark export are disabled from coarse preview.
 28. Return to the atlas and export a multi-tile patch request.

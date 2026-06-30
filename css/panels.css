@@ -1842,6 +1842,30 @@
   background: #061521;
 }
 
+.regional-bathymetry-three-shell {
+  position: relative;
+  width: 100%;
+  min-height: min(58vh, 38rem);
+  overflow: hidden;
+  border: 1px solid rgba(141, 220, 242, .18);
+  border-radius: 8px;
+  background: #061521;
+}
+
+.regional-bathymetry-three-shell.three-bathymetry-host {
+  position: relative;
+  inset: auto;
+}
+
+.regional-bathymetry-three-shell .three-bathymetry-host {
+  position: absolute;
+  inset: 0;
+}
+
+.regional-bathymetry-depth-ramp {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .regional-bathymetry-grid line {
   stroke: rgba(255, 255, 255, .08);
   stroke-width: 1;

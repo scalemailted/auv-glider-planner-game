@@ -101,7 +101,8 @@ try {
   assert.equal(gulfDom.openCoarsePreview.disabled, false, 'Gulf coarse preview enabled');
   assert.equal(gulfDom.exportPatchRequest.disabled, false, 'Gulf multi-tile request export enabled');
   assert.equal(gulfDom.continueToBathymetry.disabled, true, 'Gulf continue disabled');
-  await expectPanelText(page, '#waypoint-timeline', /This is a valid operational area\. High-resolution browser loading requires staged multi-tile bathymetry\./);
+  await expectPanelText(page, '#waypoint-timeline', /Open the interactive 3D bathymetry preview now; mission-ready generation remains gated until staged tiles exist\./);
+  await expectPanelText(page, '#waypoint-timeline', /Multi-tile preprocessing required\. Live Alpha generation is disabled for this operational window\./);
   await screenshot(page, REQUIRED_SCREENSHOTS[0]);
   await screenshot(page, REQUIRED_SCREENSHOTS[1]);
 
@@ -114,8 +115,9 @@ try {
   assert.equal(coarseDom.generateFields.disabled, true, 'coarse preview disables field generation');
   assert.equal(coarseDom.composeEnvironment.disabled, true, 'coarse preview disables environment composition');
   assert.equal(coarseDom.launchPlanning.disabled, true, 'coarse preview disables Planning launch');
-  await expectPanelText(page, '#mission-console', /Coarse Preview Only/i);
-  await expectPanelText(page, '#mission-console', /Not mission-ready\. Not suitable for official simulation\/scoring\./i);
+  await expectPanelText(page, '#mission-console', /Coarse Bathymetry Preview/i);
+  await expectPanelText(page, '#mission-console', /not mission-ready/i);
+  await expectPanelText(page, '#mission-console', /disabled in coarse preview/i);
   await expectPanelText(page, '#waypoint-timeline', /Planning launch.*disabled/i);
   await screenshot(page, REQUIRED_SCREENSHOTS[2]);
   await screenshot(page, REQUIRED_SCREENSHOTS[3]);
@@ -141,7 +143,7 @@ try {
   await screenshot(page, REQUIRED_SCREENSHOTS[5]);
 
   await page.click('[data-action="env-reference-continue-bathymetry"]');
-  await waitForRegionalStage(page, (debug) => debug?.mode === 'singleTile'
+  await waitForRegionalStage(page, (debug) => debug?.mode === 'stagedSingleTile'
     && debug?.loadedTileSetId === 'monterey_canyon_15s'
     && debug?.rasterAuthoritativeForSimulation === true);
   regionalDebug = await regionalDebugPayload(page);
@@ -197,11 +199,11 @@ const summary = {
   rawExternalDataPathExposed: browserRequestedExternalData,
   localAbsolutePathExposed,
   hiddenTruthExposed: false,
-  montereyStillWorks: regionalDebug?.mode === 'singleTile'
+  montereyStillWorks: regionalDebug?.mode === 'stagedSingleTile'
     && regionalDebug?.loadedTileSetId === 'monterey_canyon_15s'
     && regionalDebug?.rasterAuthoritativeForSimulation === true,
   montereyContinueEnabled: montereyDom?.continueToBathymetry?.disabled === false,
-  regionalSceneSingleTileStillWorks: regionalDebug?.mode === 'singleTile',
+  regionalSceneSingleTileStillWorks: regionalDebug?.mode === 'stagedSingleTile',
   simulationChanged: false,
   scoringChanged: false,
   plannerChanged: false,

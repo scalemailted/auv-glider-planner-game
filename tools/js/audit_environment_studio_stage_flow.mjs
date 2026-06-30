@@ -110,7 +110,7 @@ try {
   assert.equal(gulfDom.loadMissionPatch.primary, false, 'Gulf load patch not green primary');
   assert.equal(gulfDom.exportPatchRequest.disabled, false, 'Gulf export multi-tile enabled');
   assert.equal(gulfDom.exportPatchRequest.warning, true, 'Gulf export multi-tile is warning primary CTA');
-  assert.match(gulfDom.exportPatchRequest.text, /Export Multi-Tile Patch Request/, 'Gulf export label');
+  assert.match(gulfDom.exportPatchRequest.text, /Export Multi-Tile Request/, 'Gulf export label');
   await expectPanelText(page, '#waypoint-timeline', /MULTI_TILE_REQUIRED|Multi-tile preprocessing/i);
   await screenshot(page, REQUIRED_SCREENSHOTS[1]);
   await screenshot(page, REQUIRED_SCREENSHOTS[2]);
@@ -142,7 +142,10 @@ try {
   montereyDom = await atlasButtonState(page);
   assert.equal(montereyDom.continueToBathymetry.disabled, false, 'Continue enabled for Monterey');
   assert.equal(montereyDom.continueToBathymetry.primary, true, 'Monterey continue is primary');
-  assert.equal(montereyDom.loadMissionPatch.disabled, false, 'Load patch remains enabled for Monterey compatibility');
+  assert.ok(
+    montereyDom.loadMissionPatch.exists === false || montereyDom.loadMissionPatch.disabled === false,
+    'Load patch is either removed from simplified panel or remains enabled for legacy Monterey compatibility'
+  );
   await screenshot(page, REQUIRED_SCREENSHOTS[5]);
 
   await page.click('[data-action="env-reference-continue-bathymetry"]');
@@ -343,9 +346,9 @@ async function assertStageIA(page) {
   const leftText = await page.textContent('#mission-console');
   const rightText = await page.textContent('#waypoint-timeline');
   assert.match(leftText, /Atlas Tools/, 'left panel has Atlas Tools');
-  assert.match(leftText, /Operational Window/, 'left panel has Operational Window');
+  assert.match(leftText, /Window Presets/, 'left panel has Window Presets');
   assert.match(leftText, /Boundary Actions/, 'left panel has Boundary Actions');
-  assert.match(leftText, /Map Layers/, 'left panel has Map Layers');
+  assert.match(leftText, /Advanced/, 'left panel has collapsed Advanced controls');
   assert.match(rightText, /Selected Operational Window|Reference Bathymetry Atlas/, 'right panel is selected-region inspector or summary');
   assert.ok(await page.locator('[data-env-reference-bathymetry-map]').count() > 0, 'center panel has atlas map');
 }

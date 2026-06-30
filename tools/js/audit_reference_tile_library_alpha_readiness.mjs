@@ -97,33 +97,36 @@ try {
   await assertMeshAvailability(page);
   await screenshot(page, REQUIRED_SCREENSHOTS[3]);
 
-  await page.click('[data-action="env-reference-load-patch"]');
-  await waitForDebug(page, (debug) => debug?.loadedFixtureId === 'monterey_canyon_15s' || debug?.loadedReferenceFixtureId === 'monterey_canyon_15s');
+  await page.click('[data-env-stage-section="boundary-actions"] [data-action="env-reference-continue-bathymetry"]');
+  await waitForRegionalDebug(page, (debug) => debug?.mode === 'stagedSingleTile'
+    && debug?.loadedTileSetId === 'monterey_canyon_15s'
+    && debug?.rasterAuthoritativeForSimulation === true
+    && debug?.meshAuthoritativeForSimulation === false);
   await screenshot(page, REQUIRED_SCREENSHOTS[4]);
 
-  await page.click('#mission-console [data-action="env-reference-generate-bathymetry"]');
-  await waitForDebug(page, (debug) => String(debug?.bathymetryArtifactDigest ?? '').includes('fnv1a32:'));
+  await page.click('[data-action="regional-confirm-bathymetry"]');
+  await waitForRegionalDebug(page, (debug) => String(debug?.bathymetryArtifactDigest ?? '').includes('fnv1a32:'));
   await screenshot(page, REQUIRED_SCREENSHOTS[5]);
 
-  await page.click('[data-action="env-studio-generate-fields"]');
-  await waitForDebug(page, (debug) => debug?.fieldGenerationStatus === 'CURRENT' && String(debug?.currentArtifactDigest ?? '').includes('fnv1a32:'));
+  await page.click('[data-action="regional-generate-fields"]');
+  await waitForRegionalDebug(page, (debug) => debug?.fieldGenerationStatus === 'CURRENT' && String(debug?.currentArtifactDigest ?? '').includes('fnv1a32:'));
   await screenshot(page, REQUIRED_SCREENSHOTS[6]);
 
-  await page.click('[data-action="env-studio-compose-environment"]');
-  await waitForDebug(page, (debug) => debug?.environmentCompositionStatus === 'CURRENT' && debug?.environmentArtifactStatus === 'CURRENT');
+  await page.click('[data-action="regional-compose-environment"]');
+  await waitForRegionalDebug(page, (debug) => debug?.environmentCompositionStatus === 'CURRENT');
   await screenshot(page, REQUIRED_SCREENSHOTS[7]);
 
-  await page.click('[data-action="env-studio-validate-launch"]');
-  await waitForDebug(page, (debug) => debug?.planningLaunchReady === true);
+  await page.click('[data-action="regional-validate-launch"]');
+  await waitForRegionalDebug(page, (debug) => debug?.planningLaunchReady === true);
   await screenshot(page, REQUIRED_SCREENSHOTS[8]);
 
-  benchmark = await downloadJson(page, '[data-action="env-studio-export-benchmark"]');
+  benchmark = await downloadJson(page, '[data-action="regional-export-benchmark"]');
   assert.equal(benchmark.data.type, 'anchor.classical-planner-benchmark-bundle', 'benchmark bundle type');
   assert.equal(benchmark.data.visibilityClass, 'PUBLIC', 'benchmark visibility');
   assert.equal(benchmark.data.containsHiddenTruth, false, 'benchmark hides truth');
   assert.equal(validateClassicalPlannerBenchmarkBundle(benchmark.data).status, 'PASS', 'benchmark validates');
 
-  await page.click('[data-action="env-studio-launch-planning"]');
+  await page.click('[data-action="regional-launch-planning"]');
   await page.waitForFunction(
     () => globalThis.anchorGame?.phaser?.scene?.getScene?.('MissionWorkspaceScene')?.sys?.isActive?.() === true,
     null,
@@ -141,7 +144,10 @@ try {
   await selectGulfRequestOnlyWindow(page);
   await screenshot(page, REQUIRED_SCREENSHOTS[9]);
 
-  const loadPatchDisabled = await page.$eval('[data-action="env-reference-load-patch"]', (element) => element.disabled === true);
+  const loadPatchHandle = await page.$('[data-action="env-reference-load-patch"]');
+  const loadPatchDisabled = loadPatchHandle
+    ? await loadPatchHandle.evaluate((element) => element.disabled === true)
+    : true;
   const exportRequestEnabled = await page.$eval('[data-action="env-reference-export-patch-request"]', (element) => element.disabled !== true);
   assert.equal(loadPatchDisabled, true, 'Gulf requestOnly window cannot load as staged patch');
   assert.equal(exportRequestEnabled, true, 'Gulf requestOnly window can export a request');
@@ -253,6 +259,13 @@ async function waitForDebug(page, predicate) {
   }, String(predicate), { timeout: 45_000 });
 }
 
+async function waitForRegionalDebug(page, predicate) {
+  await page.waitForFunction((predicateSource) => {
+    const fn = new Function('debug', `return (${predicateSource})(debug);`);
+    return fn(globalThis.ANCHOR_REGIONAL_BATHYMETRY_DEBUG ?? {});
+  }, String(predicate), { timeout: 60_000 });
+}
+
 async function assertMeshAvailability(page) {
   const debug = await page.evaluate(() => globalThis.ANCHOR_ENVIRONMENT_STUDIO_DEBUG ?? {});
   const matchedTileSetId = debug.matchedFixtureId ?? debug.loadedFixtureId ?? 'monterey_canyon_15s';
@@ -284,7 +297,7 @@ async function selectGulfRequestOnlyWindow(page) {
 async function returnToMainMenu(page) {
   await page.evaluate(() => {
     const phaser = globalThis.anchorGame?.phaser;
-    const activeScenes = ['MissionWorkspaceScene', 'EnvironmentStudioScene', 'SimulationScene', 'DebriefScene'];
+    const activeScenes = ['RegionalBathymetryScene', 'MissionWorkspaceScene', 'EnvironmentStudioScene', 'SimulationScene', 'DebriefScene'];
     for (const sceneName of activeScenes) {
       const scene = phaser?.scene?.getScene?.(sceneName);
       if (scene?.sys?.isActive?.()) {

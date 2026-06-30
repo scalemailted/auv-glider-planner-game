@@ -139,7 +139,8 @@ for (const requiredCopy of [
   'verify hosted tile-library status',
   'select Monterey Canyon mission-ready overlay',
   'confirm mesh LOD is available and non-authoritative',
-  'Continue to 3D Bathymetry',
+  'Continue to Mission-Ready Bathymetry',
+  'Open 3D Bathymetry Preview',
   'Regional 3D Bathymetry Workspace',
   'not an operational ocean forecast',
   'not certified navigation',
@@ -149,6 +150,7 @@ for (const requiredCopy of [
   'Export Public Benchmark Bundle',
   'select Gulf Segment',
   'requestOnly / multi-tile request behavior',
+  'Every valid boundary can open an interactive 3D bathymetry preview',
   'export multi-tile patch request'
 ]) {
   assert.ok(protocol.includes(requiredCopy), `retest protocol must include: ${requiredCopy}`);

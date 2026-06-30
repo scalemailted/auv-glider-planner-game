@@ -709,8 +709,8 @@
         "tools/js/audit_environment_studio_stage_flow.mjs"
       ],
       "acceptanceCriteria": [
-        "Environment Studio opens to a Global Atlas Staging Scene with tools/actions on the left, atlas map in the center, and selected-region inspector on the right.",
-        "Continue to 3D Bathymetry is enabled only for hosted mission-ready tile selections.",
+        "Environment Studio opens to a Global Atlas Setup Scene with tools/actions on the left, atlas map in the center, and selected-region inspector on the right.",
+        "Continue to Mission-Ready Bathymetry is enabled only for hosted mission-ready tile selections.",
         "Continue opens RegionalBathymetryScene with selected bounds, tile set metadata, raster digest, and non-authoritative mesh LOD metadata.",
         "Unstaged regions export patch requests, and Gulf-scale regions export multi-tile patch requests without scene transition.",
         "Raster/grid bathymetry remains authoritative, mesh LODs remain visualization-only, and browser runtime does not fetch NOAA/GEBCO or expose raw external_data paths."
@@ -730,7 +730,7 @@
       ],
       "severity": "P1",
       "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas",
-      "summary": "Alpha review found that a Gulf-scale notStaged / MULTI_TILE_REQUIRED operational window still shows green Continue to 3D Bathymetry and Load Mission Patch buttons. Clicking Continue silently does nothing. The UI should disable or hide unsupported launch actions and make Export Multi-Tile Patch Request the primary action.",
+      "summary": "Alpha review found that a Gulf-scale notStaged / MULTI_TILE_REQUIRED operational window still shows green Continue to Mission-Ready Bathymetry and Load Mission Patch buttons. Clicking Continue silently does nothing. The UI should disable or hide unsupported launch actions and make Export Multi-Tile Request the primary action.",
       "decision": "Accepted for ENV-STAGING-SCENE-R1.1.",
       "proposedPhase": "ENV-STAGING-SCENE-R1.1",
       "ownerNotes": "",
@@ -741,11 +741,11 @@
         "tools/js/audit_environment_studio_stage_flow.mjs"
       ],
       "acceptanceCriteria": [
-        "Continue to 3D Bathymetry is disabled and visually grey for no selection, notStaged selections, and MULTI_TILE_REQUIRED selections.",
+        "Continue to Mission-Ready Bathymetry is disabled and visually grey for no selection, notStaged selections, and MULTI_TILE_REQUIRED selections.",
         "Load Mission Patch is disabled for notStaged and Gulf-scale request-only selections.",
         "Export Patch Request is the primary request action for local or regional notStaged selections.",
-        "Export Multi-Tile Patch Request is the primary request action for Gulf-scale or basin-scale MULTI_TILE_REQUIRED selections.",
-        "Monterey 15 arc-second mission-ready selection keeps Continue to 3D Bathymetry enabled and opens RegionalBathymetryScene.",
+        "Export Multi-Tile Request is the primary request action for Gulf-scale or basin-scale MULTI_TILE_REQUIRED selections.",
+        "Monterey 15 arc-second mission-ready selection keeps Continue to Mission-Ready Bathymetry enabled and opens RegionalBathymetryScene.",
         "Unsupported actions do not silently no-op and record visible blocked-action feedback without changing simulation, scoring, planners, or field equations."
       ],
       "createdAtNonCanonical": "",
@@ -775,10 +775,79 @@
       ],
       "acceptanceCriteria": [
         "Large Gulf-style regions remain valid operational areas with operationalSelectionStatus=VALID and generationBudgetStatus=MULTI_TILE_REQUIRED.",
-        "Open Coarse Regional Preview is enabled for valid selected regions, including request-only and MULTI_TILE_REQUIRED regions.",
+        "Open 3D Bathymetry Preview is enabled for valid selected regions, including request-only and MULTI_TILE_REQUIRED regions.",
         "Coarse preview clearly states that it is not mission-ready, not suitable for official simulation/scoring, and requires staged multi-tile bathymetry before Planning launch.",
         "Generate Fields, Compose Environment, Launch Planning, and benchmark export stay disabled from coarse preview.",
         "Gulf-scale request-only regions still export multi-tile patch requests, and Monterey 15 arc-second still opens as the mission-ready single-tile path.",
+        "No browser NOAA/GEBCO fetch, raw external_data path, hidden truth, simulation change, scoring change, planner change, or field-equation change is introduced."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-033",
+      "title": "Any valid operational boundary should open a bathymetry representation.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas",
+      "summary": "Alpha review found that Environment Studio still feels broken when a user draws a valid not-staged boundary and sees no bathymetry representation. The product rule is that every valid operational boundary can open a preview; mission-ready generation remains gated on staged app-hosted tiles.",
+      "decision": "Accepted for ENV-BATHY-PREVIEW-R1.",
+      "proposedPhase": "ENV-BATHY-PREVIEW-R1",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/env-bathy-preview-r1/qa-summary.json",
+        "tools/js/smoke_environment_bathymetry_preview_action.mjs",
+        "tools/js/smoke_regional_bathymetry_coarse_preview.mjs",
+        "tools/js/audit_environment_bathymetry_preview_flow.mjs"
+      ],
+      "acceptanceCriteria": [
+        "Every valid boundary can open an interactive 3D bathymetry preview.",
+        "If no app-hosted mission-ready bathymetry tile is staged, the preview uses the coarse global overview and is not mission-ready.",
+        "Field generation, Planning launch, and benchmark export remain disabled until high-resolution app-hosted bathymetry tiles are staged and validated.",
+        "Valid notStaged regional boxes and large Gulf boxes open coarsePreview mode.",
+        "Monterey mission-ready selection opens stagedSingleTile mode through Open 3D Bathymetry Preview or Continue to Mission-Ready Bathymetry.",
+        "No browser NOAA/GEBCO fetch, raw external_data path, hidden truth, simulation change, scoring change, planner change, or field-equation change is introduced."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-034",
+      "title": "Environment Studio needs simplified atlas controls and real 3D bathymetry previews.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "SCI",
+        "BENCH",
+        "EDU"
+      ],
+      "severity": "P1",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas / Regional 3D Bathymetry Workspace",
+      "summary": "Alpha review found that the atlas left panel remained too diagnostic-heavy and the coarse preview felt like a placeholder instead of a bathymetry scene. Every valid boundary should open an interactive 3D bathymetry preview with adaptive LOD while mission-ready generation stays gated on staged tiles.",
+      "decision": "Accepted for ENV-STUDIO-ALPHA-UX-R2.",
+      "proposedPhase": "ENV-STUDIO-ALPHA-UX-R2",
+      "ownerNotes": "",
+      "evidence": [
+        "artifacts/owner-review/env-studio-alpha-ux-r2/qa-summary.json",
+        "tools/js/smoke_environment_studio_left_panel_simplified.mjs",
+        "tools/js/smoke_regional_bathymetry_interactive_mesh.mjs",
+        "tools/js/audit_environment_studio_alpha_ux_readiness.mjs"
+      ],
+      "acceptanceCriteria": [
+        "The default atlas left panel shows only header, atlas tools, window presets, boundary actions, and collapsed Advanced controls.",
+        "The right panel owns selected operational-window bounds, bathymetry availability, scale, budget, and next-step status.",
+        "Every valid boundary can open Open 3D Bathymetry Preview.",
+        "Large Gulf-scale regions remain valid and open an adaptive-LOD interactive 3D preview under browser mesh caps.",
+        "Coarse previews keep field generation, Planning launch, and benchmark export disabled until staged mission-ready tiles exist.",
+        "Monterey 15 arc-second mission-ready selection still opens stagedSingleTile mode and preserves the field-generation path.",
         "No browser NOAA/GEBCO fetch, raw external_data path, hidden truth, simulation change, scoring change, planner change, or field-equation change is introduced."
       ],
       "createdAtNonCanonical": "",

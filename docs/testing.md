@@ -24,17 +24,20 @@ node tools/js/smoke_reference_tile_library_atlas_coverage.mjs
 node tools/js/smoke_multitile_operational_area_contract.mjs
 node tools/js/smoke_environment_studio_stage_contract.mjs
 node tools/js/smoke_environment_studio_action_state.mjs
+node tools/js/smoke_environment_studio_left_panel_simplified.mjs
+node tools/js/smoke_regional_bathymetry_interactive_mesh.mjs
 node tools/js/smoke_regional_bathymetry_scene_contract.mjs
 node tools/js/audit_reference_tile_library_alpha_readiness.mjs
 node tools/js/audit_environment_studio_stage_flow.mjs
 node tools/js/audit_multitile_operational_area_flow.mjs
+node tools/js/audit_environment_studio_alpha_ux_readiness.mjs
 npm.cmd run build:pages
 node tools/js/audit_reference_tile_library_pages_delivery.mjs
 npm.cmd run smoke:pages
 npm.cmd run audit:reference-bathy
 ```
 
-ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The browser does not download NOAA/GEBCO data at runtime. External public bathymetry data is downloaded and preprocessed offline, then registered as staged ANCHOR tile artifacts. Environment Studio is a staged workflow. The Global Atlas Staging Scene is used to select and inspect an operational boundary window. Continue to 3D Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. Request-only and Gulf-scale regions can open a coarse regional preview and export patch or multi-tile request artifacts; coarse preview disables field generation, environment composition, Planning launch, and benchmark export. The regional 3D mesh is a decimated visualization artifact. The reference raster/grid remains authoritative for bathymetry sampling, masks, environment generation, simulation, and benchmark export. The alpha-readiness audit writes `artifacts/owner-review/ref-tile-lib-r1a/qa-summary.json`; the staged-scene audit writes `artifacts/owner-review/env-staging-scene-r1-1/qa-summary.json`; the multi-tile operational-area audit writes `artifacts/owner-review/multitile-oparea-r1/qa-summary.json`; the Pages delivery audit requires `_site` to include the tile-library manifest, staged Monterey rasters, Monterey mesh LODs, global overview artifacts, and loader files without raw `.tif`, `.tiff`, `.nc`, `.zip`, `external_data`, hidden truth, local absolute paths, or runtime NOAA/GEBCO URLs.
+ANCHOR hosts curated app-ready reference bathymetry tiles as static assets. The browser does not download NOAA/GEBCO data at runtime. External public bathymetry data is downloaded and preprocessed offline, then registered as staged ANCHOR tile artifacts. Environment Studio has two stages. The Global Atlas Setup Scene is for selecting and inspecting an operational boundary. Every valid boundary can open an interactive 3D bathymetry preview. If high-resolution staged tiles are not available, the preview uses app-hosted overview/LOD data and is not mission-ready. Field generation, Planning launch, and benchmark export require staged mission-ready bathymetry tiles. Continue to Mission-Ready Bathymetry is enabled only when the selected operational window matches an app-hosted mission-ready tile set. The regional 3D mesh is a decimated visualization artifact. The reference raster/grid remains authoritative for bathymetry sampling, masks, environment generation, simulation, and benchmark export. The alpha-readiness audit writes `artifacts/owner-review/ref-tile-lib-r1a/qa-summary.json`; the staged-scene audit writes `artifacts/owner-review/env-staging-scene-r1-1/qa-summary.json`; the multi-tile operational-area audit writes `artifacts/owner-review/multitile-oparea-r1/qa-summary.json`; the any-valid-boundary preview audit writes `artifacts/owner-review/env-bathy-preview-r1/qa-summary.json`; the alpha UX readiness audit writes `artifacts/owner-review/env-studio-alpha-ux-r2/qa-summary.json`; the Pages delivery audit requires `_site` to include the tile-library manifest, staged Monterey rasters, Monterey mesh LODs, global overview artifacts, and loader files without raw `.tif`, `.tiff`, `.nc`, `.zip`, `external_data`, hidden truth, local absolute paths, or runtime NOAA/GEBCO URLs.
 
 ## SCI-VALID-R2A Scientific Validation Checks
 

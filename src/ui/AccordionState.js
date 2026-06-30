@@ -24,7 +24,10 @@ export function applyMissionConsoleAccordions(root, mode = 'default', defaults =
       continue;
     }
     const key = section.dataset.accordionKey || slugify(title);
-    const expanded = state[mode][key] ?? defaults[key] ?? defaults[title] ?? !options.defaultCollapsed;
+    const expanded = state[mode][key]
+      ?? defaults[key]
+      ?? defaults[title]
+      ?? (section.dataset.defaultCollapsed === 'true' ? false : !options.defaultCollapsed);
     section.dataset.accordionKey = key;
     section.dataset.accordionReady = 'true';
     section.classList.add('accordion-section');
