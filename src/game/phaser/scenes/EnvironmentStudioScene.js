@@ -116,6 +116,15 @@ import {
   referenceAtlasRectangleGeometry,
   referenceAtlasUpdateBoundsForDrag
 } from '../../../core/editor/ReferenceAtlasInteractionModel.js';
+import {
+  ENVIRONMENT_STUDIO_BATHYMETRY_MODES,
+  ENVIRONMENT_STUDIO_CURATED_REGION_OPTIONS,
+  bathymetryModeById,
+  curatedRegionBoundsCenter,
+  curatedRegionById,
+  normalizeEnvironmentStudioBathymetryMode,
+  normalizeEnvironmentStudioCuratedRegionSelection
+} from '../../../core/editor/EnvironmentStudioCuratedRegions.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -517,6 +526,58 @@ export function referenceAtlasStageActionState(session = {}) {
     multiTileRequestEnabled: actionState.exportMultiTileRequest.enabled,
     inspectFallbackEnabled: actionState.inspectFallback.enabled
   };
+}
+
+function curatedRegionDebugForSession(session = {}) {
+  const selection = normalizeEnvironmentStudioCuratedRegionSelection(session.curatedRegion ?? null);
+  const availability = session.selectedReferenceAvailability ?? null;
+  const boundaryBudget = session.selectedReferenceBoundaryBudget ?? availability?.boundaryBudget ?? null;
+  const atlasStageAction = referenceAtlasStageActionState(session);
+  const selected = Boolean(session.selectedReferenceWindow);
+  const missionReadyAvailable = atlasStageAction.missionReadyTileAvailable === true
+    || availability?.status === 'missionReadyPatchAvailable';
+  const stagedFallback = availability?.status === 'lowResolutionReferencePatchAvailable';
+  const requestOnly = selected && !missionReadyAvailable && !stagedFallback;
+  const currentStatus = !selected
+    ? 'none'
+    : missionReadyAvailable
+      ? 'stagedMissionReady'
+      : stagedFallback
+        ? 'stagedFallback'
+        : boundaryBudget?.budgetStatus === 'MULTI_TILE_REQUIRED'
+          ? 'multiTileRequired'
+          : selection.currentStatus === 'requestOnly'
+            ? 'requestOnly'
+            : 'notStaged';
+  return {
+    ...selection,
+    currentStatus,
+    missionReadyAvailable,
+    requestOnly,
+    boundsApplied: selection.boundsApplied === true || (selection.selectedRegionSource === 'curatedRegion' && selected),
+    atlasViewportFocused: selection.atlasViewportFocused === true,
+    openPreviewAvailable: atlasStageAction.openBathymetryPreviewEnabled === true,
+    availableNow: missionReadyAvailable
+      ? 'missionReadyBathymetry'
+      : atlasStageAction.openBathymetryPreviewEnabled === true
+        ? 'coarsePreview'
+        : 'none',
+    requiresStaging: selected && !missionReadyAvailable,
+    stagingRole: missionReadyAvailable
+      ? 'missionReadyPatch'
+      : stagedFallback
+        ? 'stagedFallback'
+        : boundaryBudget?.budgetStatus === 'MULTI_TILE_REQUIRED'
+          ? 'multiTileRequest'
+          : selection.stagingRole ?? 'patchRequest',
+    boundaryBudgetStatus: boundaryBudget?.budgetStatus ?? null,
+    matchedFixtureId: availability?.matchedFixtureId ?? null,
+    matchedFixtureRole: availability?.matchedFixtureRole ?? null
+  };
+}
+
+function bathymetryModeDebugForSession(session = {}) {
+  return normalizeEnvironmentStudioBathymetryMode(session.bathymetryMode ?? null);
 }
 
 function currentReferencePatchRequestForSession(session = {}) {
@@ -1372,6 +1433,82 @@ export class EnvironmentStudioScene extends PhaserScene {
     this.render();
   }
 
+  selectCuratedRegion(regionId = 'none') {
+    const region = curatedRegionById(regionId);
+    if (region.regionId === 'none') {
+      this.session = refreshEnvironmentStudioSession({
+        ...this.session,
+        curatedRegion: normalizeEnvironmentStudioCuratedRegionSelection({
+          selectedRegionId: null,
+          selectedRegionSource: this.session.selectedReferenceWindow ? 'custom' : 'custom',
+          boundsApplied: false,
+          atlasViewportFocused: false
+        })
+      });
+      this.statusMessage = 'Curated region cleared. The current editable operational window was left unchanged.';
+      this.lastError = null;
+      this.render();
+      return;
+    }
+    if (!this.referenceDataAvailable()) {
+      this.blockReferenceBathymetryAction('Curated region selection');
+      return;
+    }
+    const bounds = region.bounds;
+    const center = curatedRegionBoundsCenter(bounds);
+    const viewPatch = referenceAtlasViewForCenter(center.lon, center.lat, REFERENCE_ATLAS_FOCUS_ZOOM, this.session.referenceAtlas);
+    let nextSession = setEnvironmentStudioWorldView(this.session, viewPatch);
+    nextSession = selectEnvironmentStudioReferenceWindow(nextSession, {
+      ...bounds,
+      selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
+      previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
+    });
+    nextSession = refreshEnvironmentStudioSession({
+      ...nextSession,
+      curatedRegion: normalizeEnvironmentStudioCuratedRegionSelection({
+        ...region,
+        selectedRegionId: region.regionId,
+        selectedRegionSource: 'curatedRegion',
+        boundsApplied: true,
+        atlasViewportFocused: true
+      })
+    });
+    this.session = nextSession;
+    this.referenceBoundaryDrawing = false;
+    this.referenceAtlasTransientBounds = null;
+    this.syncOperationalWindowEditorFromBounds(this.session.selectedReferenceWindow?.bounds, {
+      appliedFrom: 'curatedRegion',
+      mode: 'curatedRegion',
+      lastPreset: region.regionId,
+      tinySelectionExpanded: false
+    });
+    this.referenceAtlasRectangleEditor = {
+      ...this.referenceAtlasRectangleEditor,
+      tinySelectionHandled: false,
+      activeHandle: null,
+      activeDragMode: REFERENCE_ATLAS_RECTANGLE_DRAG_MODES.none,
+      hoverHandle: null,
+      lastBudgetStatus: this.session.selectedReferenceBoundaryBudget?.budgetStatus ?? null,
+      lastPatchAvailability: this.session.selectedReferenceAvailability?.status ?? (this.session.selectedReferenceAvailability?.available ? 'AVAILABLE' : 'NOT_STAGED')
+    };
+    this.statusMessage = `Applied curated region: ${region.label}. The boundary remains editable.`;
+    this.lastError = this.referenceSelectionErrorMessage(this.session.selectedReferenceAvailability, this.session.selectedReferenceBoundaryBudget);
+    this.render();
+  }
+
+  setBathymetryMode(modeId = 'realReference') {
+    const mode = bathymetryModeById(modeId);
+    this.session = refreshEnvironmentStudioSession({
+      ...this.session,
+      bathymetryMode: normalizeEnvironmentStudioBathymetryMode(mode.id)
+    });
+    this.statusMessage = mode.implemented
+      ? `Bathymetry mode set to ${mode.label}.`
+      : `${mode.label} is visible as a product scaffold; it does not change mission authority in this phase.`;
+    this.lastError = null;
+    this.render();
+  }
+
   toggleReferenceBoundaryDrawing() {
     if (!this.referenceDataAvailable()) {
       this.referenceBoundaryDrawing = false;
@@ -1679,6 +1816,17 @@ export class EnvironmentStudioScene extends PhaserScene {
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
     });
+    if (options.selectedRegionSource !== 'curatedRegion') {
+      this.session = refreshEnvironmentStudioSession({
+        ...this.session,
+        curatedRegion: normalizeEnvironmentStudioCuratedRegionSelection({
+          selectedRegionId: null,
+          selectedRegionSource: options.selectedRegionSource ?? 'custom',
+          boundsApplied: false,
+          atlasViewportFocused: false
+        })
+      });
+    }
     this.referenceBoundaryDrawing = false;
     this.referenceAtlasTransientBounds = null;
     const availability = this.session.selectedReferenceAvailability;
@@ -1721,6 +1869,15 @@ export class EnvironmentStudioScene extends PhaserScene {
       selectedResolutionMeters: this.numberValue('env-reference-output-resolution', 1500),
       previewResolutionMeters: this.numberValue('env-reference-preview-resolution', 6000)
     }, { selectedReferenceFixtureId: fixture.fixtureId });
+    this.session = refreshEnvironmentStudioSession({
+      ...this.session,
+      curatedRegion: normalizeEnvironmentStudioCuratedRegionSelection({
+        selectedRegionId: null,
+        selectedRegionSource: 'hostedPatch',
+        boundsApplied: true,
+        atlasViewportFocused: false
+      })
+    });
     this.referenceBoundaryDrawing = false;
     this.syncOperationalWindowEditorFromBounds(this.session.selectedReferenceWindow?.bounds, {
       appliedFrom: 'fixture',
@@ -1957,6 +2114,15 @@ export class EnvironmentStudioScene extends PhaserScene {
 
   clearReferenceWindow() {
     this.session = clearEnvironmentStudioReferenceWindow(this.session);
+    this.session = refreshEnvironmentStudioSession({
+      ...this.session,
+      curatedRegion: normalizeEnvironmentStudioCuratedRegionSelection({
+        selectedRegionId: null,
+        selectedRegionSource: 'custom',
+        boundsApplied: false,
+        atlasViewportFocused: false
+      })
+    });
     this.referenceBoundaryDrawing = false;
     this.referenceAtlasTransientBounds = null;
     this.referenceAtlasRectangleEditor = {
@@ -2720,11 +2886,15 @@ export class EnvironmentStudioScene extends PhaserScene {
     const referenceAtlasPerfDebug = referenceAtlasPerfDebugPayload(this);
     const atlasStageDebug = referenceAtlasStageDebugPayload(this.session);
     const atlasLod = atlasLodStatusForSession(this.session);
+    const curatedRegionDebug = curatedRegionDebugForSession(this.session);
+    const bathymetryModeDebug = bathymetryModeDebugForSession(this.session);
     globalThis.ANCHOR_REFERENCE_ATLAS_PERF_DEBUG = referenceAtlasPerfDebug;
     globalThis.ANCHOR_ENVIRONMENT_STUDIO_DEBUG = {
       ...debug,
       referenceAtlasPerf: referenceAtlasPerfDebug,
       atlasLod,
+      curatedRegion: curatedRegionDebug,
+      bathymetryMode: bathymetryModeDebug,
       version: ENVIRONMENT_STUDIO_SCENE_VERSION,
       routeActive: Boolean(active),
       lastReturnedFromRegional: this.lastReturnedFromRegional === true,
@@ -3241,6 +3411,20 @@ function referenceAtlasSimplifiedConsoleHtml({
     </section>
     <section class="console-section environment-studio-basic-panel" data-keep-title="true" data-env-stage-section="window-presets">
       <h2>Window Presets</h2>
+      <label class="compact-field" data-env-curated-region-control>
+        Curated Region
+        <select id="env-curated-region" data-env-curated-region-select aria-label="Curated Region">
+          ${ENVIRONMENT_STUDIO_CURATED_REGION_OPTIONS.map((region) => `<option value="${escapeAttr(region.regionId)}" ${region.regionId === (session.curatedRegion?.selectedRegionId ?? 'none') ? 'selected' : ''}>${escapeHtml(region.label)}</option>`).join('')}
+        </select>
+      </label>
+      <div class="hud-muted">Choose a curated ocean region to place an editable operational window on the atlas.</div>
+      <label class="compact-field" data-env-bathymetry-mode-control>
+        Bathymetry Mode
+        <select id="env-bathymetry-mode" data-env-bathymetry-mode-select aria-label="Bathymetry Mode">
+          ${ENVIRONMENT_STUDIO_BATHYMETRY_MODES.map((mode) => `<option value="${escapeAttr(mode.id)}" ${mode.id === (session.bathymetryMode?.selectedMode ?? 'realReference') ? 'selected' : ''}>${escapeHtml(mode.label)}</option>`).join('')}
+        </select>
+      </label>
+      <div class="hud-muted">${escapeHtml(session.bathymetryMode?.modeImplemented ? session.bathymetryMode.claimBoundary : `${session.bathymetryMode?.label ?? 'Selected mode'} is a scaffold in this phase; mission authority is not switched.`)}</div>
       <div class="environment-studio-camera-row environment-studio-operational-preset-row" aria-label="Operational window presets">
         ${REFERENCE_ATLAS_OPERATIONAL_WINDOW_PRESETS.map((preset) => `<button type="button" class="${editor.lastPreset === preset.id || operationalWindow?.userIntent === preset.id || operationalWindow?.scaleClass === preset.id || (preset.id === 'gulfSegment' && operationalWindow?.scaleClass === 'gulfScale') ? 'active' : ''}" data-env-reference-window-preset="${escapeAttr(preset.id)}" ${disabledAttr}>${escapeHtml(presetLabels[preset.id] ?? preset.label)}</button>`).join('')}
       </div>
@@ -3370,6 +3554,8 @@ function blockedInstructionsHtml() {
 
 function bindEnvironmentStudioReferenceAtlasControls(scene, root) {
   root?.querySelector?.('[data-env-reference-source-mode]')?.addEventListener('change', (event) => scene.setSourceMode(event.target.value));
+  root?.querySelector?.('[data-env-curated-region-select]')?.addEventListener('change', (event) => scene.selectCuratedRegion(event.target.value));
+  root?.querySelector?.('[data-env-bathymetry-mode-select]')?.addEventListener('change', (event) => scene.setBathymetryMode(event.target.value));
   root?.querySelectorAll?.('[data-env-reference-view-action]')?.forEach((button) => {
     button.addEventListener('click', () => scene.adjustReferenceView(button.getAttribute('data-env-reference-view-action')));
   });
@@ -3447,6 +3633,8 @@ function referenceAtlasRightPanelHtml(session = {}) {
   const fixtures = session.referenceAtlas?.referenceFixtures ?? manifest.fixtures ?? [];
   const missionReadyCount = fixtures.filter((fixture) => fixture.role === 'missionReadyPatch').length;
   const lowResCount = fixtures.filter((fixture) => fixture.role === 'lowResolutionReferencePatch').length;
+  const curatedRegion = curatedRegionDebugForSession(session);
+  const bathymetryMode = bathymetryModeDebugForSession(session);
   if (!selected) {
     return `
       <section class="waypoint-shell environment-studio-right-panel" id="env-studio-status-panel">
@@ -3465,6 +3653,11 @@ function referenceAtlasRightPanelHtml(session = {}) {
           ${metricHtml('Low-res fallback', lowResCount)}
           ${metricHtml('Hosted tile sets', session.referenceTileLibraryDebug?.stagedTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.stagedTileSetCount ?? 0)}
           ${metricHtml('Request-only regions', session.referenceTileLibraryDebug?.requestOnlyTileSetCount ?? session.referenceTileLibrary?.coverageSummary?.requestOnlyTileSetCount ?? 0)}
+          ${metricHtml('Curated preset', curatedRegion.selectedRegionLabel ?? 'None')}
+          ${metricHtml('Source', curatedRegion.selectedRegionSource ?? 'custom')}
+          ${metricHtml('Bathymetry mode', bathymetryMode.label)}
+          ${metricHtml('Mode status', bathymetryMode.modeImplemented ? 'implemented' : 'planned scaffold')}
+          ${metricHtml('Mission authority', bathymetryMode.missionAuthority)}
           ${metricHtml('Tile Library', shortDigest(session.referenceTileLibrary?.digest))}
           ${metricHtml('Manifest Digest', shortDigest(manifest.manifestDigest))}
           ${metricHtml('Atlas Digest', shortDigest(atlas.atlasDigest))}
@@ -3536,6 +3729,14 @@ function referenceAtlasRightPanelHtml(session = {}) {
           ${metricHtml('Raster shape', loaded.columns && loaded.rows ? `${loaded.columns} x ${loaded.rows}` : 'n/a')}
           ${metricHtml('Hosted Tile Set', loaded.tileLibraryTileSetId ?? loaded.tileSetId ?? 'legacy fixture')}
           ${metricHtml('Preview Mesh', loaded.meshLods?.length ? 'available' : 'not registered')}
+          ${metricHtml('Curated preset', curatedRegion.selectedRegionLabel ?? 'None')}
+          ${metricHtml('Source', curatedRegion.selectedRegionSource ?? 'hostedPatch')}
+          ${metricHtml('Bathymetry mode', bathymetryMode.label)}
+          ${metricHtml('Mode status', bathymetryMode.modeImplemented ? 'implemented' : 'planned scaffold')}
+          ${metricHtml('Mission authority', bathymetryMode.missionAuthority)}
+          ${metricHtml('Staging status', curatedRegion.currentStatus)}
+          ${metricHtml('Available now', curatedRegion.availableNow)}
+          ${metricHtml('Requires staging', curatedRegion.requiresStaging ? 'yes' : 'no')}
           ${budgetMetrics}
           ${metricHtml('Digest', shortDigest(loaded.digest))}
           ${metricHtml('Bathymetry', session.bathymetryArtifactDigest ? 'CURRENT' : 'NOT_GENERATED')}
@@ -3554,6 +3755,16 @@ function referenceAtlasRightPanelHtml(session = {}) {
       <p class="hud-muted">${escapeHtml(nextStepExplanation)}</p>
       <div class="cell-inspector-metrics">
         ${metricHtml('Patch Digest', shortDigest(selected.patchDigest))}
+        ${metricHtml('Curated preset', curatedRegion.selectedRegionLabel ?? 'None')}
+        ${metricHtml('Source', curatedRegion.selectedRegionSource ?? 'custom')}
+        ${metricHtml('Bathymetry mode recommendation', curatedRegion.bathymetryModeRecommendation)}
+        ${metricHtml('Bathymetry mode', bathymetryMode.label)}
+        ${metricHtml('Mode status', bathymetryMode.modeImplemented ? 'implemented' : 'planned scaffold')}
+        ${metricHtml('Mission authority', bathymetryMode.missionAuthority)}
+        ${metricHtml('Staging status', curatedRegion.currentStatus)}
+        ${metricHtml('Available now', curatedRegion.availableNow)}
+        ${metricHtml('Requires staging', curatedRegion.requiresStaging ? 'yes' : 'no')}
+        ${metricHtml('Bounds confidence', curatedRegion.boundsConfidence)}
         ${metricHtml('West / East lon', `${formatNumber(bounds.westLon)} / ${formatNumber(bounds.eastLon)}`)}
         ${metricHtml('South / North lat', `${formatNumber(bounds.southLat)} / ${formatNumber(bounds.northLat)}`)}
         ${metricHtml('Center lon / lat', operationalWindow ? `${formatNumber(operationalWindow.centerLon)} / ${formatNumber(operationalWindow.centerLat)}` : 'n/a')}

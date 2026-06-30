@@ -823,7 +823,7 @@
     },
     {
       "feedbackId": "ALPHA-FB-034",
-      "title": "Environment Studio needs simplified atlas controls and real 3D bathymetry previews.",
+      "title": "Add curated operational-region presets and bathymetry mode architecture.",
       "source": "alpha tester",
       "status": "accepted-for-implementation",
       "category": [
@@ -833,24 +833,24 @@
         "EDU"
       ],
       "severity": "P1",
-      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas / Regional 3D Bathymetry Workspace",
-      "summary": "Alpha review found that the atlas left panel remained too diagnostic-heavy and the coarse preview felt like a placeholder instead of a bathymetry scene. Every valid boundary should open an interactive 3D bathymetry preview with adaptive LOD while mission-ready generation stays gated on staged tiles.",
-      "decision": "Accepted for ENV-STUDIO-ALPHA-UX-R2.",
-      "proposedPhase": "ENV-STUDIO-ALPHA-UX-R2",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Global Reference Bathymetry Atlas",
+      "summary": "Environment Studio needs a clear curated-region selector and explicit bathymetry source modes: Real Reference, Reference-Enhanced Synthetic, and Fully Synthetic Sandbox. Selecting a curated region should place an editable boundary box on the atlas without claiming mission readiness unless staged tiles exist.",
+      "decision": "Accepted for ENV-STUDIO-HANDOFF-R0.",
+      "proposedPhase": "ENV-STUDIO-HANDOFF-R0",
       "ownerNotes": "",
       "evidence": [
-        "artifacts/owner-review/env-studio-alpha-ux-r2/qa-summary.json",
-        "tools/js/smoke_environment_studio_left_panel_simplified.mjs",
-        "tools/js/smoke_regional_bathymetry_interactive_mesh.mjs",
-        "tools/js/audit_environment_studio_alpha_ux_readiness.mjs"
+        "docs/environment_studio_product_handoff.md",
+        "src/core/editor/EnvironmentStudioCuratedRegions.js",
+        "tools/js/smoke_environment_studio_curated_regions.mjs",
+        "tools/js/audit_environment_studio_product_handoff.mjs"
       ],
       "acceptanceCriteria": [
-        "The default atlas left panel shows only header, atlas tools, window presets, boundary actions, and collapsed Advanced controls.",
-        "The right panel owns selected operational-window bounds, bathymetry availability, scale, budget, and next-step status.",
-        "Every valid boundary can open Open 3D Bathymetry Preview.",
-        "Large Gulf-scale regions remain valid and open an adaptive-LOD interactive 3D preview under browser mesh caps.",
-        "Coarse previews keep field generation, Planning launch, and benchmark export disabled until staged mission-ready tiles exist.",
-        "Monterey 15 arc-second mission-ready selection still opens stagedSingleTile mode and preserves the field-generation path.",
+        "Curated Region dropdown defaults to None and lists Monterey Canyon, Hawaii / Island Slope, Puerto Rico Trench / Island Shelf, Florida Straits, Gulf Shelf / Canyon Segment, Northeast US Shelf Break, California Shelf Break, and Alaska Fjord / Shelf Region.",
+        "Selecting a curated region applies editable operational bounds and focuses the atlas.",
+        "Monterey Canyon can be mission-ready only when staged tile-library artifacts support it.",
+        "Non-Monterey presets remain requestOnly, notStaged, or multiTileRequired unless staged assets are added later.",
+        "Open 3D Bathymetry Preview remains available for valid curated operational regions.",
+        "Bathymetry modes distinguish Real Reference, Reference-Enhanced Synthetic, and Fully Synthetic Sandbox without falsely claiming unimplemented modes.",
         "No browser NOAA/GEBCO fetch, raw external_data path, hidden truth, simulation change, scoring change, planner change, or field-equation change is introduced."
       ],
       "createdAtNonCanonical": "",

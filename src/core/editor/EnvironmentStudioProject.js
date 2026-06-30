@@ -119,6 +119,10 @@ import {
   referenceAtlasBudgetAllowsGeneration,
   sourceResolutionArcSecondsFromReference
 } from './ReferenceAtlasBoundaryBudget.js';
+import {
+  normalizeEnvironmentStudioBathymetryMode,
+  normalizeEnvironmentStudioCuratedRegionSelection
+} from './EnvironmentStudioCuratedRegions.js';
 
 export const ENVIRONMENT_STUDIO_PROJECT_TYPE = 'anchor.environment-studio-project';
 export const ENVIRONMENT_STUDIO_PROJECT_VERSION = '1.0.0';
@@ -578,6 +582,8 @@ export function createEnvironmentStudioSession(options = {}) {
     randomization: recipe.randomization,
     sourceMode: normalizeSourceMode(options.sourceMode ?? (explicitWorldMode ? 'proceduralSyntheticSandbox' : 'referenceBathymetryAtlas')),
     studioStage: normalizeStudioStage(options.studioStage ?? (legacyAtlasMode ? 'atlasWindow' : explicitWorldMode ? 'worldMap' : 'globalAtlasSelector')),
+    curatedRegion: normalizeEnvironmentStudioCuratedRegionSelection(options.curatedRegion ?? options.selectedCuratedRegion ?? null),
+    bathymetryMode: normalizeEnvironmentStudioBathymetryMode(options.bathymetryMode ?? options.bathymetryModeSelection ?? null),
     referenceBathymetryManifest,
     referenceTileLibrary: options.referenceTileLibrary ?? null,
     referenceTileLibraryDebug: options.referenceTileLibraryDebug ?? null,
@@ -1842,6 +1848,8 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     randomization: session.randomization,
     sourceMode: session.sourceMode,
     studioStage: session.studioStage,
+    curatedRegion: session.curatedRegion,
+    bathymetryMode: session.bathymetryMode,
     referenceBathymetryManifest: compactReferenceBathymetryManifest(session.referenceBathymetryManifest ?? session.referenceAtlas?.manifest),
     referenceTileLibrary: compactReferenceTileLibrary(session.referenceTileLibrary),
     referenceTileLibraryDebug: session.referenceTileLibraryDebug ?? null,
@@ -2442,6 +2450,8 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     missionScale: session.missionScale,
     intendedGliders: session.intendedGliders,
     sourceMode: session.sourceMode,
+    curatedRegion: session.curatedRegion,
+    bathymetryMode: session.bathymetryMode,
     defaultStage: atlasMetrics.defaultStage,
     overviewStatus: atlasMetrics.overviewStatus,
     overviewDigest: atlasMetrics.overviewDigest,
@@ -2645,6 +2655,8 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     intendedGliders: session.intendedGliders,
     sourceMode: session.sourceMode,
     defaultSourceMode: 'referenceBathymetryAtlas',
+    curatedRegion: session.curatedRegion,
+    bathymetryMode: session.bathymetryMode,
     defaultStage: atlasMetrics.defaultStage,
     defaultViewIsRegionalPatch: atlasMetrics.defaultViewIsRegionalPatch,
     proceduralSandboxDefault: false,
@@ -3757,6 +3769,8 @@ function projectStateFromProject(project = {}) {
     randomization: project.randomization,
     sourceMode: project.sourceMode,
     studioStage: project.studioStage,
+    curatedRegion: project.curatedRegion ?? project.selectedCuratedRegion,
+    bathymetryMode: project.bathymetryMode ?? project.bathymetryModeSelection,
     referenceBathymetryManifest: project.referenceBathymetryManifest ?? project.referenceManifest ?? project.referenceAtlas?.manifest,
     referenceTileLibrary: project.referenceTileLibrary,
     referenceTileLibraryDebug: project.referenceTileLibraryDebug,
@@ -3910,6 +3924,8 @@ function normalizeSession(input = {}) {
     randomization: recipe.randomization,
     sourceMode: normalizeSourceMode(input.sourceMode ?? (explicitWorldMode ? 'proceduralSyntheticSandbox' : 'referenceBathymetryAtlas')),
     studioStage: normalizeStudioStage(input.studioStage ?? (input.tiles?.length ? 'regionalBathymetry' : legacyAtlasMode ? 'atlasWindow' : explicitWorldMode ? 'worldMap' : 'globalAtlasSelector')),
+    curatedRegion: normalizeEnvironmentStudioCuratedRegionSelection(input.curatedRegion ?? input.selectedCuratedRegion ?? null),
+    bathymetryMode: normalizeEnvironmentStudioBathymetryMode(input.bathymetryMode ?? input.bathymetryModeSelection ?? null),
     referenceBathymetryManifest,
     referenceTileLibrary: input.referenceTileLibrary ?? null,
     referenceTileLibraryDebug: input.referenceTileLibraryDebug ?? null,

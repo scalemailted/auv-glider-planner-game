@@ -12,6 +12,8 @@ Environment Studio has two stages. The Global Atlas Setup Scene is for selecting
 
 The Regional Bathymetry Workspace uses the center panel as an interactive 3D bathymetry viewport. Detailed provenance, bounds, LOD, and launch status are shown in the right inspector. The left panel is dynamic and only shows actions available for the current scene mode. Returning to the atlas preserves the selected operational boundary and map viewport. High-zoom atlas detail uses app-hosted overview/LOD assets only; the browser does not download NOAA/GEBCO data at runtime.
 
+The curated-region selector is a browser-side product scaffold, not a downloader. Its presets place editable operational windows and report whether the current staged assets make the region `stagedMissionReady`, `stagedFallback`, `requestOnly`, `notStaged`, or `multiTileRequired`. Only Monterey can be mission-ready in the current checked-in tile library. Other curated regions remain request-only or not staged until offline preprocessing creates app-hosted tile artifacts.
+
 The regional 3D mesh is a decimated visualization artifact. The reference raster/grid remains authoritative for bathymetry sampling, masks, environment generation, simulation, and benchmark export.
 
 ## Commands

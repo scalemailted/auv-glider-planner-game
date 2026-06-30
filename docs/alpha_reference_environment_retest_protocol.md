@@ -24,40 +24,44 @@ The global atlas allows arbitrary boundary selection, but live browser generatio
 
 The Regional Bathymetry Workspace uses the center panel as an interactive 3D bathymetry viewport. Detailed provenance, bounds, LOD, and launch status are shown in the right inspector. The left panel is dynamic and only shows actions available for the current scene mode. Returning to the atlas preserves the selected operational boundary and map viewport. High-zoom atlas detail uses app-hosted overview/LOD assets only; the browser does not download NOAA/GEBCO data at runtime.
 
+The Global Atlas Setup Scene includes a Curated Region selector. Use `None` for custom boundaries, or choose presets such as Monterey Canyon and Gulf Shelf / Canyon Segment to place editable seed windows. Curated presets do not download data. They show mission readiness only when matching staged app-hosted tile artifacts exist. The Bathymetry Mode selector is a scaffold that keeps Real Reference, Reference-Enhanced Synthetic, and Fully Synthetic Sandbox claim boundaries explicit; only Real Reference is the current implemented authority path.
+
 The browser must not download NOAA/GEBCO source data at runtime. ANCHOR hosts staged tile artifacts under `assets/reference_bathymetry/`; raw source data remains outside the app under ignored local preprocessing paths. Mesh LODs are visualization and inspection artifacts only. The raster/grid bathymetry artifact remains authoritative for sampling and environment generation.
 
 1. Open Product Hub.
 2. Open Simulation Lab.
 3. Open Environment Studio.
 4. Confirm Environment Studio opens to the Global Reference Bathymetry Atlas.
-5. Draw a boundary box, drag inside it to move it, drag one edge to resize one side, and drag one corner to resize both connected sides.
-6. Confirm the numeric bounds/size editor, budget status, and patch availability update after rectangle edits.
-7. Verify hosted tile-library status.
-8. Select Monterey Canyon mission-ready hosted tile overlay.
-9. Confirm mesh LOD is available and non-authoritative.
-10. Continue to Mission-Ready Bathymetry.
-11. Confirm the Regional 3D Bathymetry Workspace opens.
-12. Generate 3D Bathymetry.
-13. Generate Currents & Science Fields.
-14. Compose Environment Artifact.
-15. Review Launch Warnings.
-16. Launch to Planning.
-17. Inspect environment identity and claim boundary.
-18. Place waypoints.
-19. Execute Mission.
-20. Reach Debrief.
-21. Export Public Benchmark Bundle.
-22. Return to the Global Reference Bathymetry Atlas.
-23. Select Gulf Segment.
-24. Verify it is a valid operational area with `MULTI_TILE_REQUIRED` generation budget and that Continue to Mission-Ready Bathymetry is disabled.
-25. Open 3D Bathymetry Preview.
-26. Verify the center panel is dominated by the 3D bathymetry viewport and that detailed region information appears in the right inspector.
-27. Rotate, pan, wheel zoom, reset, switch top-down, and switch oblique; confirm the terrain remains visible.
-28. Verify the preview states that it is not mission-ready, not suitable for official simulation/scoring, and requires staged multi-tile bathymetry before Planning launch.
-29. Verify Generate Fields, Compose Environment, Launch Planning, and benchmark export are hidden or collapsed from the main coarse-preview left panel.
-30. Return to the atlas and confirm the selected operational boundary and atlas viewport are preserved.
-31. Export a multi-tile patch request.
-32. Export diagnostic feedback bundle if confused or blocked.
+5. Confirm the Curated Region dropdown defaults to None and the Bathymetry Mode selector defaults to Real Reference.
+6. Select Monterey Canyon from Curated Region and confirm the editable boundary appears.
+7. Draw a boundary box, drag inside it to move it, drag one edge to resize one side, and drag one corner to resize both connected sides.
+8. Confirm the numeric bounds/size editor, budget status, and patch availability update after rectangle edits.
+9. Verify hosted tile-library status.
+10. Select Monterey Canyon mission-ready hosted tile overlay if needed.
+11. Confirm mesh LOD is available and non-authoritative.
+12. Continue to Mission-Ready Bathymetry.
+13. Confirm the Regional 3D Bathymetry Workspace opens.
+14. Generate 3D Bathymetry.
+15. Generate Currents & Science Fields.
+16. Compose Environment Artifact.
+17. Review Launch Warnings.
+18. Launch to Planning.
+19. Inspect environment identity and claim boundary.
+20. Place waypoints.
+21. Execute Mission.
+22. Reach Debrief.
+23. Export Public Benchmark Bundle.
+24. Return to the Global Reference Bathymetry Atlas.
+25. Select Gulf Shelf / Canyon Segment from Curated Region.
+26. Verify it is a valid operational area with `MULTI_TILE_REQUIRED` or request-only staging status and that Continue to Mission-Ready Bathymetry is disabled.
+27. Open 3D Bathymetry Preview.
+28. Verify the center panel is dominated by the 3D bathymetry viewport and that detailed region information appears in the right inspector.
+29. Rotate, pan, wheel zoom, reset, switch top-down, and switch oblique; confirm the terrain remains visible.
+30. Verify the preview states that it is not mission-ready, not suitable for official simulation/scoring, and requires staged multi-tile bathymetry before Planning launch.
+31. Verify Generate Fields, Compose Environment, Launch Planning, and benchmark export are hidden or collapsed from the main coarse-preview left panel.
+32. Return to the atlas and confirm the selected operational boundary and atlas viewport are preserved.
+33. Export a multi-tile patch request.
+34. Export diagnostic feedback bundle if confused or blocked.
 
 ## Questions For Testers
 
