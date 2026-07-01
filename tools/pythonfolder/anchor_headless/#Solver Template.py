@@ -20,20 +20,26 @@ class Solver():
         self.preparedFrames = {}
         self.nowRoi = None
         self.nowCurrent = None
-        self.scanMax = 10000
-        self.scanStrict = 0.001
+        self.scanMax = 1000
+        self.scanStrict = 0.01
         self.priorityTargets = world["packet"]["planningData"]["priorityTargets"]
         self.stars = []
         self.hazardPenalty = world["packet"]["mission"]["scoring"]["hazardPenalty"]/100
+        self.finalPaths = []
+        # self.numAgents = 2   //h..      
+        self.numAgents = len(world["packet"]["mission"]["agents"])
 
         for index, star in enumerate(self.priorityTargets):
             self.stars.append({index:{}})               
             self.stars[index].update({"value":star["value"]/10, "frames":star["frames"], "collected":False})
-            
-    def find_best_path(self):
+    def find_best_paths(self):
+        for agent in range(self.numAgents):
+            self.find_best_path(self.finalPaths)
+    def find_best_path(self, previousCells=[]):
+        self.paths = [] 
         self.prepare_frames()
-        self.deployment_canidates()
-        self.update_paths()
+        self.deployment_canidates(previousCells)
+        self.update_paths(previousCells)
 
     def prepare_frames(self):
         for frame in self.frames:
@@ -46,52 +52,53 @@ class Solver():
         self.nowRoi = self.preparedFrames[roundedTime]["roi"]
         self.nowCurrent = self.preparedFrames[roundedTime]["current"]
 
-    def update_paths(self):
+    def update_paths(self, previousCells):
         for i, path in enumerate(self.paths):
             scans = round(0 if path[1] < self.scanStrict*0.2 else self.scanMax*0.2 if path[1] < self.scanStrict*0.4 else self.scanMax*0.4 if path[1] < self.scanStrict*0.6 else self.scanMax*0.6 if path[1] < 0.9*self.scanStrict else self.scanMax*0.8 if path[1] < self.scanStrict else self.scanMax)
             if not isinstance(path[0][0], tuple):
                 temp1 = path[0].pop(0)
                 temp2 = path[0].pop(0)
                 path[0].insert(0, (temp1, temp2))
-            self.make_canidates(path[0][-1], path[0], scans, path[1]*path[2], i, path[2], path[3])
+            self.make_canidates(path[0][-1], path[0], scans, path[1], i, path[2], path[3], previousCells)
         self.paths.sort(key= lambda item: item[1]*item[3])
+        for cell in self.paths[-1][4]:
+            self.finalPaths.append(cell)
         print(self.paths[-1])
         print(self.paths[-1][1] * self.paths[-1][3])
+        print()
 
-    def deployment_canidates(self):
+    def deployment_canidates(self, previousCells):
         for deploymentCell in self.deploymentCells:
             tupDeploymentCell = (deploymentCell["x"], deploymentCell["y"])
-            self.make_canidates(tupDeploymentCell, (tupDeploymentCell), 5)
-
-    def make_canidates(self, cell, cells, num, value=0, destroyIndex=None, time=0, Olddistance=0):
+            self.make_canidates(tupDeploymentCell, (tupDeploymentCell), 5, pastPathTraversed=previousCells)
+  
+    def make_canidates(self, cell, cells, num, value=0, destroyIndex=None, time=0, Olddistance=0, pastPathTraversed=[]):
         traversedCells = []
-        used = cells
         potential = []
         if isinstance(cells, list):
             for index, (x,y) in enumerate(cells):
                 try:
                     for traversedX, traversedY in self.bresenham_line(x, y, cells[index+1][0], cells[index+1][1]):
-                        traversedCells.append((traversedX, traversedY))
+                        if traversedCells.count((traversedX, traversedY)) == 0:
+                            traversedCells.append((traversedX, traversedY))
                 except IndexError:
                     pass
+        for cell in pastPathTraversed:
+            if traversedCells.count(cell) == 0:
+                traversedCells.append(cell)
         for y in range(len(self.nowRoi)):
             for x in range(len(self.nowRoi[y])):
-                if self.terrain[y][x] != 1 and self.hazards[y][x] != 1 and used.count((x,y)) == 0 and (x,y) != cell and ([cell["x"] for cell in self.deploymentCells].count(x) <= 1 and [cell["y"] for cell in self.deploymentCells].count(y) <= 1):
-                    scored, distance, length = self.rate_cell((x,y), cell, traversedCells, time)
+                if self.terrain[y][x] != 1 and self.hazards[y][x] != 1 and traversedCells.count((x,y)) == 0 and (x,y) != cell and ([cell["x"] for cell in self.deploymentCells].count(x) <= 1 and [cell["y"] for cell in self.deploymentCells].count(y) <= 1):
+                    scored, distance   = self.rate_cell((x,y), cell, traversedCells, time)
                     if distance != -1 and scored != -1:
                         Thistime = time
                         Thistime += distance
                         distance += Olddistance
                         if Thistime < self.timeLimit:
-                            potential.append([(x,y), scored/length, Thistime, distance])
-        potential.sort(reverse=True, key=lambda item: item[1])
+                            potential.append([(x,y), scored, Thistime, distance])
+        potential.sort(reverse=True, key=lambda item: item[1]/distance)
         final = potential[:(num + 1)]
         for item in final:
-            newTraversedCells = []
-            if isinstance(cells, list):
-                for x, y in self.bresenham_line(cells[-1][0], cells[-1][1], item[0][0], item[0][1]):
-                    if (x,y) != (cells[-1][0], cells[-1][1]):
-                        newTraversedCells.append((x,y))
             temp = item[0]
             item[1] += value
             item[0] = []
@@ -102,7 +109,6 @@ class Solver():
             self.paths.append(item)
         if destroyIndex != None:
             self.paths.pop(destroyIndex)
-
     def rate_cell(self, ratedCell, startCell, traversedCells, timed):
         score = 0
         distance = 0
@@ -129,24 +135,26 @@ class Solver():
                     else:
                         score += (self.nowRoi[cellY][cellX] - self.hazardPenalty)
             else:
-                return -1, -1, -1
+                return -1, -1
             score += self.checkStar((cellX, cellY), liveDistance)
         for cellX, cellY in self.anti_aliased_line(startCell[0], startCell[1], ratedCell[0], ratedCell[1]):
             if self.terrain[cellY][cellX] == 1:
-                return -1,-1,-1
+                return -1,-1
         score -= energy_cost*0.05
-        return score, distance, length
-    
+        return score, distance
+        
     def find_dist(self, x, y):
         return max(0.0, math.hypot(x, y))
     
     def checkStar(self, cell, time):
         for star in self.stars:
             starLocation = self.getStarPlaceTime(star, time)
+            # print(starLocation)
             if starLocation == cell:
+                # print("found")
                 return star["value"]
         return 0
-            
+
     def getStarPlaceTime(self, star, time):
         diff = {}
         for index, frame in enumerate(star["frames"]):
@@ -154,6 +162,7 @@ class Solver():
         diff = dict(sorted(diff.items()))
         bestFrame = star["frames"][list(diff.keys())[0]]
         if bestFrame["active"]:
+            print("g")
             return (bestFrame["x"], bestFrame["y"])
         else:
             return (-999,-999)
@@ -221,6 +230,6 @@ class Solver():
 file = my_io.load_solver_packet(r"C:\Users\wabbi\OneDrive\Documents\GitHub\auv-glider-planner-game\tools\pythonfolder\anchor_headless\anchor.solver-packet (4).json")
 
 world=world.build_headless_world(file)
-solved = Solver(world)
+slv = Solver(world)
 
-solved.find_best_path()
+slv.find_best_paths()
