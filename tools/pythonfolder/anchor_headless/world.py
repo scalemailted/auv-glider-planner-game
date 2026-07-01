@@ -30,10 +30,11 @@ def summarize_packet(packet):
 def build_headless_world(packet):
     level = packet.get("level") or {}
     mission = packet.get("mission") or {}
+    mode = level.get("meta").get("replaySeedContract").get("generationConfig").get("mode")
     visible = ((packet.get("planningData") or {}).get("visibleFields") or {})
     terrain = visible.get("terrain") or (level.get("layers") or {}).get("terrain") or []
     hazards = visible.get("hazards") or (level.get("layers") or {}).get("hazards") or []
-    forecast_frame = choose_forecast_frame(visible)
+    forecast_frame = choose_forecast_frame(visible, mode)
     grid = ((level.get("world") or {}).get("grid") or {})
     time = ((level.get("world") or {}).get("time") or {})
     width = int(grid.get("width") or (len(terrain[0]) if terrain else 0))
@@ -45,6 +46,7 @@ def build_headless_world(packet):
         "packet": packet,
         "level": level,
         "mission": mission,
+        "mode": mode,
         "width": width,
         "height": height,
         "duration": duration,
@@ -62,8 +64,9 @@ def build_headless_world(packet):
     }
 
 
-def choose_forecast_frame(visible):
-    forecast = visible.get("forecast") or {}
+def choose_forecast_frame(visible, mode):
+    isStochastic = mode != "deterministic"
+    forecast = (visible.get("forecast") if isStochastic else visible.get("truth")) or {}
     frames = forecast.get("frames") or []
     if frames:
         return frames[0]

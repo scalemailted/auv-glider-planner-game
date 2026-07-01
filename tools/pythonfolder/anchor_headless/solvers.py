@@ -1,10 +1,10 @@
 """Small baseline solvers for ANCHOR external solver templates."""
 
 import math
-
+import world
+import my_io
 
 def greedy_forecast_plan(world, max_waypoints=4):
-    candidates = make_candidates(world)
     used = set()
     agent_plans = []
     for agent in world["agents"]:
@@ -18,6 +18,7 @@ def greedy_forecast_plan(world, max_waypoints=4):
         waypoints = []
 
         for index in range(min(max_waypoints, world["windowCount"])):
+            candidates = make_candidates(world, current)
             target = choose_target(current, candidates, used, world)
             if target is None:
                 break
@@ -53,13 +54,17 @@ def greedy_forecast_plan(world, max_waypoints=4):
     return agent_plans
 
 
-def make_candidates(world):
+def make_candidates(world, current):
     candidates = []
     for y in range(world["height"]):
         for x in range(world["width"]):
             if is_blocked(world, x, y) or is_hazard(world, x, y):
                 continue
-            value = roi_expected_value(value_at(world["roi"], x, y, 0.0))
+            value = 0
+            # print()
+            for xPath, yPath, in bresenham_line(current[0], current[1], x, y):
+                # print((xPath, yPath))
+                value += roi_expected_value(value_at(world["roi"], xPath, yPath, 0.0))
             if value <= 0:
                 continue
             candidates.append({"x": x, "y": y, "value": value})
@@ -94,6 +99,7 @@ def choose_target(current, candidates, used, world):
     if not scored:
         return None
     scored.sort(reverse=True, key=lambda item: item[:3])
+    print(scored[0][3])
     return scored[0][3]
 
 
@@ -154,3 +160,8 @@ def valid_point(point):
         return True
     except (TypeError, ValueError):
         return False
+
+file = my_io.load_solver_packet("anchor.solver-packet (4).json")
+
+world=world.build_headless_world(file)
+greedy_forecast_plan(world)
