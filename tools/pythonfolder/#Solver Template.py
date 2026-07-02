@@ -2,7 +2,6 @@
 import math
 import world
 import my_io
-
 class Solver():
     def __init__(self, world):
         self.dims = (world["width"], world["height"])

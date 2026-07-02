@@ -32,7 +32,7 @@ The default Colab template is non-oracle:
 }
 ```
 
-Colab proposes. Game validates. Game simulates. Game scores.
+Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.
 
 The notebook also includes an optional Node.js path:
 
@@ -67,7 +67,55 @@ node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.j
 
 Notebook/Python validation is intentionally lightweight. The browser game remains the official validator, simulator, and scorer.
 
-## Headless Helper Package
+## COLAB-BENCH-R1 Classical Planner Benchmark Notebook
+
+For a comprehensive benchmark workflow, open or upload:
+
+```text
+tools/python/notebooks/anchor_classical_planner_benchmark.ipynb
+```
+
+The starter notebook remains the minimal introduction: one readable greedy baseline and import loop.
+
+The benchmark notebook adds checked-in fixtures, Dijkstra/UCS, A*, Weighted A*, greedy value per predicted cost, beam search, time-expanded A*, a bounded exact small-instance oracle, timing summaries, matplotlib/pandas visualizations where available, `anchor.plan` export, Node authoritative evaluation, benchmark records, and reproducibility manifests.
+
+COLAB-BENCH-R1.1 adds a public `anchor.classical-planner-benchmark-bundle` workflow and a notebook section titled `Exported Data Integrity and Web-App Parity`. It reconstructs exported public bathymetry, masks, U/V/W currents, scalar fields, mission geometry, candidate nodes, fairness metadata, and parity probes from the bundle, then writes:
+
+```text
+anchor_benchmark_output/colab_execution_report.json
+anchor_benchmark_output/colab_execution_package.json
+anchor_benchmark_output/reproducibility_manifest.json
+anchor_benchmark_output/tables/public_bundle_summary.json
+anchor_benchmark_output/tables/parity_probe_results.json
+anchor_benchmark_output/tables/parity_table.json
+```
+
+After a real Colab/Python run, finalize and validate the execution package from the repository root:
+
+```bash
+node tools/js/finalize_colab_benchmark_acceptance.mjs anchor_benchmark_output/colab_execution_package.json
+npm.cmd run validate:colab-acceptance -- anchor_benchmark_output/colab_acceptance_report.json
+```
+
+If Python or Colab was not actually executed, do not mark the notebook workflow verified. The current checked-in local evidence is `../../tests/fixtures/colab_benchmark/colab_bench_r1_1_local_acceptance.json`: `LOCAL_PYTHON_EXECUTION_VERIFIED`, with hosted Google Colab Run-all smoke still pending as `GO_FOR_ALPHA_R1_WITH_COLAB_HOSTING_SMOKE_PENDING`.
+
+The support package is:
+
+```text
+tools/python/anchor_benchmark/
+```
+
+Core planner logic uses the Python standard library. Optional notebook visualization may use normal Colab libraries such as `pandas` and `matplotlib`.
+
+The benchmark boundary is unchanged:
+
+```text
+Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.
+```
+
+The notebook does not port the ANCHOR simulator or official scoring into Python. Final scores come from the existing Node/browser ANCHOR referee path.
+
+## Headless Helper yackage
 
 `tools/python/anchor_headless/` contains small standard-library helpers used by the Colab template:
 
@@ -78,3 +126,58 @@ Notebook/Python validation is intentionally lightweight. The browser game remain
 - `export.py` writes project-compatible `anchor.plan` metadata.
 
 These helpers are intentionally not a Python port of the browser simulator.
+
+## OceanBox-JS / Node Headless Runtime
+
+H1 does not add a Python OceanBox simulator. The canonical non-browser runtime is Node.js so it can reuse portable ANCHOR JavaScript contracts.
+
+Colab/Python workflows should call:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/demo
+```
+
+or load a pre-generated bundle and analyze `observations.csv`, `glider_tracks.csv`, and `score_report.json`. Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.
+
+## H2 Browser Bundle Loader Workflow
+
+For browser/Colab bundle inspection, generate a public bundle with Node:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-demo --no-hidden-export --combined-json
+```
+
+Then load `runs/public-demo/bundle.json` in the browser Headless Bundle Viewer or analyze the JSON/CSV files with Python standard-library `json` and `csv`. This remains artifact analysis, not a Python simulator port.
+
+## H2.1 Checked-In Bundle Analysis
+
+Colab/Python can load `docs/examples/headless_oceanbox_js_public_bundle.example.json` directly with standard-library `json` and inspect `bundle["observations"]`, `bundle["gliderTracks"]`, and `bundle["scoreReport"]`. That file is the same public fixture loaded by the browser Headless Bundle Viewer. Python remains an artifact-analysis or Node-calling workflow, not a second simulator.
+
+## H3.1 Roundtrip Artifact Analysis
+
+After Node writes `runs/h3-roundtrip/bundle.json` and `roundtrip_report.json`, or when using the checked-in `docs/examples/headless_solver_roundtrip_bundle.example.json` and `docs/examples/headless_solver_roundtrip_report.example.json`, Python/Colab can read both with standard-library `json` for analysis. The report states whether packet visibility and plan validation passed, which plan/agent was executed, whether hidden truth was exported, and that headless scoring is not official browser scoring. Python remains an artifact-analysis or Node-calling workflow, not a simulator implementation.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+
+## MOTION-R1 Artifact Analysis
+
+Python/Colab workflows may inspect MOTION-R1 JSON artifacts such as `motionTrajectory`, `controlTrace`, and `motionDiagnostics` from Node/OceanBox-JS bundles. Python remains an artifact-analysis or Node-calling workflow; no Python simulator is added. The JavaScript runtime remains canonical for deterministic motion replay.
+
+ENV-R1: Python/Colab workflows may analyze `bathymetrySummary` and `missionGeometrySummary` artifacts exported by Node/OceanBox-JS. Python remains an artifact-analysis or wrapper workflow, not the simulator.
+
+## SIM-R1 Feasibility Artifact Analysis
+
+Python/Colab workflows may inspect MOTION-R1 mission-feasibility reports, and workflows may inspect cost graph / adjacency matrix exports and motion-cost matrices produced by Node/OceanBox-JS, while scenario-comparison reports remain future work. Python should remain an artifact-analysis or Node-calling workflow; it should not become a second simulator or claim calibrated ocean forecasting. See `../../docs/mission_feasibility_simulator_requirements.md`.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See ../../docs/mission_scoring_and_regret.md for the SCORE-R1 artifact contract and boundaries.
+
+## Replay Artifact Analysis
+
+Python/Colab workflows may inspect H4.1 replay artifacts and `anchor.browser.headless-replay-summary` files as JSON artifacts. Python remains an analysis or Node-calling workflow; no Python replay simulator or hidden-state referee is added.
