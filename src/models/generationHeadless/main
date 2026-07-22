@@ -1,0 +1,14 @@
+const ScenarioConfig = require('./ScenarioConfig')
+const SolverPacketExporter = require('./SolverPacketExporter')
+
+function downloadPacket()
+{
+
+  return SolverPacketExporter.buildSolverPacket(ScenarioConfig.generateScenarioFromConfig({
+  ...ScenarioConfig.createDefaultScenarioConfig(mode="forecast"),
+  operationalDomainProfileId:'regionalFleetArea'
+  }))
+
+}
+
+module.exports = {downloadPacket}

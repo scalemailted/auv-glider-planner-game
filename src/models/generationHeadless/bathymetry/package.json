@@ -1,0 +1,9 @@
+{
+  "name": "@anchor/bathymetry",
+  "version": "0.0.0-arch-r1",
+  "private": true,
+  "description": "Bathymetry, terrain, and wet-mask scientific package boundary for ANCHOR.",
+  "exports": {
+    ".": "./src/index.js"
+  }
+}

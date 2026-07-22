@@ -1,0 +1,10 @@
+{
+  "name": "@anchor/mission-simulator",
+  "version": "0.0.0-arch-r1",
+  "private": true,
+  "type": "module",
+  "description": "Portable mission simulator package boundary for ANCHOR.",
+  "exports": {
+    ".": "./src/index.js"
+  }
+}

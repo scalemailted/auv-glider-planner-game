@@ -1,0 +1,10 @@
+{
+  "name": "@anchor/scalar-processes",
+  "version": "0.1.0-process-pkg-r1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./src/index.js": "./src/index.js"
+  },
+  "private": true
+}
